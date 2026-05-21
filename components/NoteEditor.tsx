@@ -99,7 +99,7 @@ export function NoteEditor({
             </span>
             {target.mode === "edit" && (
               <span className="font-mono text-xs text-[var(--color-muted)]">
-                {target.note.id.slice(0, 6)}
+                {target.note.id.slice(-6)}
               </span>
             )}
           </div>
