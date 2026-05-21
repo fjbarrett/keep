@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { newId, pool, ready, rowToNote, NoteRow } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     await ready();
     const { rows } = await pool().query<NoteRow>(
-      `SELECT * FROM notes ORDER BY updated_at DESC`,
+      `SELECT * FROM notes WHERE user_id = $1 ORDER BY updated_at DESC`,
+      [session.user.id],
     );
     return NextResponse.json({ notes: rows.map(rowToNote) });
   } catch (err) {
@@ -20,17 +26,22 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     await ready();
     const body = await req.json();
     const id = newId();
     const now = Date.now();
     const { rows } = await pool().query<NoteRow>(
-      `INSERT INTO notes (id, title, body, tint, pinned, archived, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+      `INSERT INTO notes (id, user_id, title, body, tint, pinned, archived, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
        RETURNING *`,
       [
         id,
+        session.user.id,
         String(body.title ?? ""),
         String(body.body ?? ""),
         String(body.tint ?? "natural"),

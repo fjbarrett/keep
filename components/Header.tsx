@@ -1,15 +1,49 @@
+import Image from "next/image";
+import { auth, signOut } from "@/auth";
 import { Logo } from "./Logo";
 
-export function Header() {
+export async function Header() {
+  const session = await auth();
+  const user = session?.user;
+
   return (
     <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-      <div className="mx-auto flex w-full max-w-5xl items-baseline justify-between px-6 py-4">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
         <a href="/" className="flex items-baseline gap-2">
           <Logo />
           <span className="text-xs text-[var(--color-muted)]">
             personal notes, kept private
           </span>
         </a>
+
+        {user && (
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/signin" });
+            }}
+            className="flex items-center gap-3"
+          >
+            {user.image && (
+              <Image
+                src={user.image}
+                alt={user.name ?? "You"}
+                width={28}
+                height={28}
+                className="rounded-full"
+              />
+            )}
+            <span className="hidden text-xs text-[var(--color-muted)] sm:block">
+              {user.name ?? user.email}
+            </span>
+            <button
+              type="submit"
+              className="rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1 text-xs font-medium text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            >
+              Sign out
+            </button>
+          </form>
+        )}
       </div>
     </header>
   );

@@ -55,6 +55,7 @@ async function bootstrap(): Promise<void> {
   await pool().query(`
     CREATE TABLE IF NOT EXISTS notes (
       id          TEXT PRIMARY KEY,
+      user_id     TEXT,
       title       TEXT   NOT NULL DEFAULT '',
       body        TEXT   NOT NULL DEFAULT '',
       tint        TEXT   NOT NULL DEFAULT 'natural',
@@ -63,8 +64,13 @@ async function bootstrap(): Promise<void> {
       created_at  BIGINT NOT NULL,
       updated_at  BIGINT NOT NULL
     );
+    -- Pre-auth installs had no user_id column; add it idempotently. Left
+    -- nullable so any orphaned rows from before auth don't block the migration
+    -- — they simply won't match any user_id filter.
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS user_id TEXT;
     CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at DESC);
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
+    CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
   `);
 }
 
