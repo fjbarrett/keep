@@ -116,6 +116,7 @@ export function NotesView() {
     if (!note) return;
     setSearchOpen(false);
     setQuery("");
+    setActiveNoteId(note.id);
     setTarget({ mode: "edit", note });
   }
 
@@ -285,30 +286,42 @@ export function NotesView() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
-        {error && <DbError error={error} onRetry={refresh} />}
-        {(isGuest || hasLocalNotes) && notes.length > 0 && (
-          <GuestSaveBanner
-            isGuest={isGuest}
-            hasLocalNotes={hasLocalNotes}
-            onSave={saveLocalNotes}
-          />
-        )}
+      <main className="flex min-h-0 flex-1 px-4 py-4 sm:px-6">
+        <div className="grid min-h-0 w-full grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="flex min-h-[420px] flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] lg:h-[calc(100vh-112px)]">
+            <div className="border-b border-[var(--color-border)] p-4">
+              {error && <DbError error={error} onRetry={refresh} compact />}
+              {(isGuest || hasLocalNotes) && notes.length > 0 && (
+                <GuestSaveBanner
+                  isGuest={isGuest}
+                  hasLocalNotes={hasLocalNotes}
+                  onSave={saveLocalNotes}
+                  compact
+                />
+              )}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h1 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">
+                    {VIEW_TITLES[view]}
+                  </h1>
+                  <p className="text-sm text-[var(--color-muted)]">
+                    {hydrated
+                      ? `${filtered.length} ${filtered.length === 1 ? "note" : "notes"}`
+                      : "loading..."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTarget({ mode: "new" })}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+                  aria-label="New note"
+                  title="New note"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                </button>
+              </div>
 
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">
-                {VIEW_TITLES[view]}
-              </h1>
-              <p className="text-sm text-[var(--color-muted)]">
-                {hydrated
-                  ? `${filtered.length} ${filtered.length === 1 ? "note" : "notes"}`
-                  : "loading…"}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
               <input
                 ref={importRef}
                 type="file"
@@ -320,102 +333,125 @@ export function NotesView() {
                 type="button"
                 onClick={() => importRef.current?.click()}
                 disabled={importing}
-                className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
               >
-                <UploadIcon className="h-4 w-4" />
+                <UploadIcon className="h-3.5 w-3.5" />
                 {importing ? "Importing" : "Import"}
               </button>
               {notes.length > 0 && isGuest ? (
                 <button
                   type="button"
                   onClick={handleGuestExport}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
                 >
-                  <DownloadIcon className="h-4 w-4" />
+                  <DownloadIcon className="h-3.5 w-3.5" />
                   Export
                 </button>
               ) : notes.length > 0 ? (
                 <a
                   href="/api/notes/export"
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
                 >
-                  <DownloadIcon className="h-4 w-4" />
+                  <DownloadIcon className="h-3.5 w-3.5" />
                   Export
                 </a>
               ) : (
                 <button
                   type="button"
                   disabled
-                  className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-muted)] opacity-60"
+                  className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-muted)] opacity-60"
                 >
-                  <DownloadIcon className="h-4 w-4" />
+                  <DownloadIcon className="h-3.5 w-3.5" />
                   Export
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setTarget({ mode: "new" })}
-                className="flex items-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-              >
-                <PlusIcon className="h-4 w-4" />
-                New note
-              </button>
+              </div>
+
+              <div className="mt-4">
+                <ViewTabs view={view} setView={setView} counts={counts} />
+              </div>
             </div>
-          </div>
 
-          <ViewTabs view={view} setView={setView} counts={counts} />
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              {!hydrated ? null : filtered.length === 0 ? (
+                query ? (
+                  <NoResults query={query} />
+                ) : (
+                  <EmptyState view={view} />
+                )
+              ) : (
+                <div className="flex flex-col gap-5">
+                  {view === "all" && pinned.length > 0 && (
+                    <section>
+                      <SectionLabel label="Pinned" count={pinned.length} />
+                      <NoteList
+                        notes={pinned}
+                        activeId={activeNoteId}
+                        onOpen={openNote}
+                        onSelect={setActiveNoteId}
+                        onTogglePin={togglePin}
+                        onToggleArchive={toggleArchive}
+                        onRemove={remove}
+                        onSetTint={setTint}
+                      />
+                    </section>
+                  )}
 
-          {!hydrated ? null : filtered.length === 0 ? (
-            query ? (
-              <NoResults query={query} />
-            ) : (
-              <EmptyState view={view} />
-            )
-          ) : (
-            <div className="flex flex-col gap-6">
-              {view === "all" && pinned.length > 0 && (
-                <section>
-                  <SectionLabel label="Pinned" count={pinned.length} />
-                  <NoteList
-                    notes={pinned}
-                    activeId={activeNoteId}
-                    onOpen={(n) => setTarget({ mode: "edit", note: n })}
-                    onSelect={setActiveNoteId}
-                    onTogglePin={togglePin}
-                    onToggleArchive={toggleArchive}
-                    onRemove={remove}
-                    onSetTint={setTint}
-                  />
-                </section>
+                  <section>
+                    {view === "all" && pinned.length > 0 && others.length > 0 && (
+                      <SectionLabel label="Others" count={others.length} />
+                    )}
+                    <NoteList
+                      notes={others}
+                      activeId={activeNoteId}
+                      onOpen={openNote}
+                      onSelect={setActiveNoteId}
+                      onTogglePin={togglePin}
+                      onToggleArchive={toggleArchive}
+                      onRemove={remove}
+                      onSetTint={setTint}
+                    />
+                  </section>
+                </div>
               )}
-
-              <section>
-                {view === "all" && pinned.length > 0 && others.length > 0 && (
-                  <SectionLabel label="Others" count={others.length} />
-                )}
-                <NoteList
-                  notes={others}
-                  activeId={activeNoteId}
-                  onOpen={(n) => setTarget({ mode: "edit", note: n })}
-                  onSelect={setActiveNoteId}
-                  onTogglePin={togglePin}
-                  onToggleArchive={toggleArchive}
-                  onRemove={remove}
-                  onSetTint={setTint}
-                />
-              </section>
             </div>
-          )}
+          </aside>
+
+          <section className="hidden min-h-[420px] min-w-0 lg:block lg:h-[calc(100vh-112px)]">
+            {target ? (
+              <NoteEditor
+                target={target}
+                onClose={() => setTarget(null)}
+                onCreate={create}
+                onUpdate={update}
+                onRemove={remove}
+                presentation="panel"
+              />
+            ) : (
+              <div className="grid h-full place-items-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]">
+                <div className="px-8 text-center">
+                  <p className="text-sm font-medium text-[var(--color-text)]">
+                    Select a note
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    Open a note from the sidebar or create a new one.
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       </main>
 
-      <NoteEditor
-        target={target}
-        onClose={() => setTarget(null)}
-        onCreate={create}
-        onUpdate={update}
-        onRemove={remove}
-      />
+      <div className="lg:hidden">
+        <NoteEditor
+          target={target}
+          onClose={() => setTarget(null)}
+          onCreate={create}
+          onUpdate={update}
+          onRemove={remove}
+        />
+      </div>
 
       {searchOpen && (
         <SearchOverlay
@@ -466,13 +502,19 @@ function GuestSaveBanner({
   isGuest,
   hasLocalNotes,
   onSave,
+  compact = false,
 }: {
   isGuest: boolean;
   hasLocalNotes: boolean;
   onSave: () => Promise<{ saved: number }>;
+  compact?: boolean;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+    <div
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 ${
+        compact ? "mb-3" : "mb-6"
+      }`}
+    >
       <p className="text-sm text-[var(--color-muted)]">
         {hasLocalNotes
           ? "Some notes are saved only in this browser."
@@ -646,12 +688,18 @@ function NoResults({ query }: { query: string }) {
 function DbError({
   error,
   onRetry,
+  compact = false,
 }: {
   error: string;
   onRetry: () => void;
+  compact?: boolean;
 }) {
   return (
-    <div className="mb-6 flex items-start justify-between gap-4 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+    <div
+      className={`flex items-start justify-between gap-4 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 ${
+        compact ? "mb-3" : "mb-6"
+      }`}
+    >
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-[var(--color-text)]">
           Couldn't reach Postgres

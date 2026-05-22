@@ -23,12 +23,14 @@ export function NoteEditor({
   onCreate,
   onUpdate,
   onRemove,
+  presentation = "modal",
 }: {
   target: EditorTarget;
   onClose: () => void;
   onCreate: (n: Partial<Note>) => void;
   onUpdate: (id: string, patch: Partial<Note>) => void;
   onRemove: (id: string) => void;
+  presentation?: "modal" | "panel";
 }) {
   const [body, setBody] = useState("");
   const [tint, setTint] = useState<Tint>("natural");
@@ -79,14 +81,8 @@ export function NoteEditor({
 
   if (!target) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={close}
-      />
-
-      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+  const editor = (
+    <>
         <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
           <div className="flex items-center gap-3">
             <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
@@ -127,14 +123,14 @@ export function NoteEditor({
           </div>
         </div>
 
-        <div className="px-4 py-4">
+        <div className="flex min-h-0 flex-1 px-4 py-4">
           <textarea
             ref={bodyRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Start writing…"
             rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
-            className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+            className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
           />
         </div>
 
@@ -184,6 +180,26 @@ export function NoteEditor({
             </button>
           </div>
         </div>
+    </>
+  );
+
+  if (presentation === "panel") {
+    return (
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+        {editor}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={close}
+      />
+
+      <div className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+        {editor}
       </div>
     </div>
   );
