@@ -9,6 +9,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Added keyboard shortcuts for search, creating notes, view switching, navigation, opening, pinning, archiving, and deleting.
 
 ### Changed
+- Gave the top bar a more colorful sage-tinted background.
 - Renamed the app display name from fKeep to Keep and removed the header tagline.
 - Made notes body-first by removing title entry from creation and editing.
 
