@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { inferNoteTitle } from "./inferTitle";
 import { Note, Tint } from "./types";
 
 const GUEST_NOTES_KEY = "keep.guestNotes.v1";
@@ -64,6 +65,7 @@ export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  const [localNoteIds, setLocalNoteIds] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -71,30 +73,19 @@ export function useNotes() {
       const data = await api<{ notes: Note[] }>("/api/notes");
       const guestNotes = readGuestNotes();
       if (guestNotes.length > 0) {
-        const imported = await Promise.all(
-          guestNotes.map((note) =>
-            api<{ note: Note }>("/api/notes", {
-              method: "POST",
-              json: {
-                title: note.title,
-                body: note.body,
-                tint: note.tint,
-                pinned: note.pinned,
-                archived: note.archived,
-              },
-            }),
-          ),
-        );
-        clearGuestNotes();
-        setNotes([...imported.map((item) => item.note), ...data.notes]);
+        setLocalNoteIds(new Set(guestNotes.map((note) => note.id)));
+        setNotes([...guestNotes, ...data.notes]);
       } else {
+        setLocalNoteIds(new Set());
         setNotes(data.notes);
       }
       setIsGuest(false);
       setError(null);
     } catch (e) {
       if (e instanceof Error && e.message === "Unauthorized") {
-        setNotes(readGuestNotes());
+        const guestNotes = readGuestNotes();
+        setLocalNoteIds(new Set(guestNotes.map((note) => note.id)));
+        setNotes(guestNotes);
         setIsGuest(true);
         setError(null);
       } else {
@@ -110,22 +101,28 @@ export function useNotes() {
   }, [refresh]);
 
   useEffect(() => {
-    if (hydrated && isGuest) writeGuestNotes(notes);
-  }, [hydrated, isGuest, notes]);
+    if (!hydrated) return;
+    if (isGuest || localNoteIds.size > 0) {
+      writeGuestNotes(notes.filter((note) => isGuest || localNoteIds.has(note.id)));
+    }
+  }, [hydrated, isGuest, localNoteIds, notes]);
 
   const create = useCallback(async (partial: Partial<Note>) => {
+    const body = partial.body ?? "";
+    const title = partial.title || inferNoteTitle(body);
     if (isGuest) {
       const now = Date.now();
       const note: Note = {
         id: localId(),
-        title: partial.title ?? "",
-        body: partial.body ?? "",
+        title,
+        body,
         tint: partial.tint ?? "natural",
         pinned: partial.pinned ?? false,
         archived: partial.archived ?? false,
         createdAt: now,
         updatedAt: now,
       };
+      setLocalNoteIds((prev) => new Set(prev).add(note.id));
       setNotes((prev) => [note, ...prev]);
       return note;
     }
@@ -134,8 +131,8 @@ export function useNotes() {
       const data = await api<{ note: Note }>("/api/notes", {
         method: "POST",
         json: {
-          title: partial.title ?? "",
-          body: partial.body ?? "",
+          title,
+          body,
           tint: partial.tint ?? "natural",
           pinned: partial.pinned ?? false,
           archived: partial.archived ?? false,
@@ -150,29 +147,40 @@ export function useNotes() {
   }, [isGuest]);
 
   const update = useCallback(async (id: string, patch: Partial<Note>) => {
+    const nextPatch =
+      patch.body !== undefined
+        ? { ...patch, title: inferNoteTitle(patch.body) }
+        : patch;
     setNotes((prev) =>
       prev.map((n) =>
-        n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n,
+        n.id === id ? { ...n, ...nextPatch, updatedAt: Date.now() } : n,
       ),
     );
-    if (isGuest) return;
+    if (isGuest || localNoteIds.has(id)) return;
 
     try {
       const data = await api<{ note: Note }>(`/api/notes/${id}`, {
         method: "PATCH",
-        json: patch,
+        json: nextPatch,
       });
       setNotes((prev) => prev.map((n) => (n.id === id ? data.note : n)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
       refresh();
     }
-  }, [isGuest, refresh]);
+  }, [isGuest, localNoteIds, refresh]);
 
   const remove = useCallback(async (id: string) => {
     const prev = notes;
     setNotes((p) => p.filter((n) => n.id !== id));
-    if (isGuest) return;
+    if (isGuest || localNoteIds.has(id)) {
+      setLocalNoteIds((ids) => {
+        const next = new Set(ids);
+        next.delete(id);
+        return next;
+      });
+      return;
+    }
 
     try {
       await api(`/api/notes/${id}`, { method: "DELETE" });
@@ -180,7 +188,7 @@ export function useNotes() {
       setError(e instanceof Error ? e.message : "Failed to delete");
       setNotes(prev);
     }
-  }, [isGuest, notes]);
+  }, [isGuest, localNoteIds, notes]);
 
   const importKeepFile = useCallback(async (file: File) => {
     if (isGuest) {
@@ -193,7 +201,7 @@ export function useNotes() {
       const importable = imported.filter((note) => !note.trashed);
       const guestNotes: Note[] = importable.map((note, index) => ({
         id: `${localId()}${index.toString(36).toUpperCase()}`,
-        title: "",
+        title: inferNoteTitle(note.body),
         body: note.body,
         tint: note.tint,
         pinned: note.pinned,
@@ -201,6 +209,11 @@ export function useNotes() {
         createdAt: note.createdAt || now,
         updatedAt: note.updatedAt || now,
       }));
+      setLocalNoteIds((prev) => {
+        const next = new Set(prev);
+        for (const note of guestNotes) next.add(note.id);
+        return next;
+      });
       setNotes((prev) => [...guestNotes, ...prev]);
       return {
         imported: guestNotes.length,
@@ -227,6 +240,33 @@ export function useNotes() {
     await refresh();
     return result;
   }, [isGuest, refresh]);
+
+  const saveLocalNotes = useCallback(async () => {
+    const localNotes = notes.filter((note) => localNoteIds.has(note.id));
+    if (localNotes.length === 0) return { saved: 0 };
+
+    const imported = await Promise.all(
+      localNotes.map((note) =>
+        api<{ note: Note }>("/api/notes", {
+          method: "POST",
+          json: {
+            title: note.title || inferNoteTitle(note.body),
+            body: note.body,
+            tint: note.tint,
+            pinned: note.pinned,
+            archived: note.archived,
+          },
+        }),
+      ),
+    );
+    clearGuestNotes();
+    setLocalNoteIds(new Set());
+    setNotes((prev) => [
+      ...imported.map((item) => item.note),
+      ...prev.filter((note) => !localNoteIds.has(note.id)),
+    ]);
+    return { saved: imported.length };
+  }, [localNoteIds, notes]);
 
   const togglePin = useCallback(
     (id: string) => {
@@ -261,12 +301,14 @@ export function useNotes() {
     notes,
     hydrated,
     isGuest,
+    hasLocalNotes: localNoteIds.size > 0,
     error,
     refresh,
     create,
     update,
     remove,
     importKeepFile,
+    saveLocalNotes,
     togglePin,
     toggleArchive,
     setTint,

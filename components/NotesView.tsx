@@ -24,7 +24,7 @@ function searchableText(note: { body: string; title: string }) {
 }
 
 function previewText(note: Note) {
-  const text = searchableText(note).replace(/\s+/g, " ").trim();
+  const text = (note.title || searchableText(note)).replace(/\s+/g, " ").trim();
   return text || "(empty)";
 }
 
@@ -43,12 +43,14 @@ export function NotesView() {
     notes,
     hydrated,
     isGuest,
+    hasLocalNotes,
     error,
     refresh,
     create,
     update,
     remove,
     importKeepFile,
+    saveLocalNotes,
     togglePin,
     toggleArchive,
     setTint,
@@ -281,7 +283,13 @@ export function NotesView() {
     <>
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
         {error && <DbError error={error} onRetry={refresh} />}
-        {isGuest && notes.length > 0 && <GuestSaveBanner />}
+        {(isGuest || hasLocalNotes) && notes.length > 0 && (
+          <GuestSaveBanner
+            isGuest={isGuest}
+            hasLocalNotes={hasLocalNotes}
+            onSave={saveLocalNotes}
+          />
+        )}
 
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -450,18 +458,42 @@ function noteFileContent(note: Note) {
   return `${noteText(note)}\n`;
 }
 
-function GuestSaveBanner() {
+function GuestSaveBanner({
+  isGuest,
+  hasLocalNotes,
+  onSave,
+}: {
+  isGuest: boolean;
+  hasLocalNotes: boolean;
+  onSave: () => Promise<{ saved: number }>;
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
       <p className="text-sm text-[var(--color-muted)]">
-        These notes are saved only in this browser.
+        {hasLocalNotes
+          ? "Some notes are saved only in this browser."
+          : "These notes are saved only in this browser."}
       </p>
-      <a
-        href="/signin?from=/"
-        className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-      >
-        Sign in to save
-      </a>
+      {isGuest ? (
+        <a
+          href="/signin?from=/"
+          className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+        >
+          Sign in to save
+        </a>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            onSave().catch((error) => {
+              alert(error instanceof Error ? error.message : "Failed to save");
+            });
+          }}
+          className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+        >
+          Save to account
+        </button>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { newId, pool, ready, rowToNote, NoteRow } from "@/lib/db";
+import { inferNoteTitle } from "@/lib/inferTitle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
   try {
     await ready();
     const body = await req.json();
+    const noteBody = String(body.body ?? "");
     const id = newId();
     const now = Date.now();
     const { rows } = await pool().query<NoteRow>(
@@ -42,8 +44,8 @@ export async function POST(req: Request) {
       [
         id,
         session.user.id,
-        String(body.title ?? ""),
-        String(body.body ?? ""),
+        String(body.title ?? "") || inferNoteTitle(noteBody),
+        noteBody,
         String(body.tint ?? "natural"),
         Boolean(body.pinned ?? false),
         Boolean(body.archived ?? false),
