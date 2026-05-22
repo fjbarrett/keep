@@ -1,0 +1,63 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import {
+  googleKeepImportId,
+  parseGoogleKeepImport,
+} from "@/lib/googleKeepImport";
+import { pool, ready } from "@/lib/db";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const form = await req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "Upload a Takeout ZIP or Keep JSON file" }, { status: 400 });
+    }
+
+    const { notes, skipped } = await parseGoogleKeepImport(
+      file.name,
+      await file.arrayBuffer(),
+    );
+    const importable = notes.filter((note) => !note.trashed);
+
+    await ready();
+    let imported = 0;
+    for (const note of importable) {
+      const result = await pool().query(
+        `INSERT INTO notes (id, user_id, title, body, tint, pinned, archived, created_at, updated_at)
+         VALUES ($1, $2, '', $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          googleKeepImportId(session.user.id, note),
+          session.user.id,
+          note.body,
+          note.tint,
+          note.pinned,
+          note.archived,
+          note.createdAt,
+          note.updatedAt,
+        ],
+      );
+      imported += result.rowCount ?? 0;
+    }
+
+    return NextResponse.json({
+      imported,
+      skipped: skipped + notes.length - importable.length,
+      duplicates: importable.length - imported,
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Import failed" },
+      { status: 500 },
+    );
+  }
+}

@@ -6,7 +6,12 @@ import { Note, View } from "@/lib/types";
 import { NoteList, SectionLabel } from "@/components/NoteList";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { EmptyState } from "@/components/EmptyState";
-import { DownloadIcon, PlusIcon, SearchIcon } from "@/components/Icons";
+import {
+  DownloadIcon,
+  PlusIcon,
+  SearchIcon,
+  UploadIcon,
+} from "@/components/Icons";
 
 const VIEW_TITLES: Record<View, string> = {
   all: "Your notes",
@@ -50,9 +55,11 @@ export function NotesView() {
   const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
 
   const counts = useMemo(
     () => ({
@@ -102,6 +109,31 @@ export function NotesView() {
     setSearchOpen(false);
     setQuery("");
     setTarget({ mode: "edit", note });
+  }
+
+  async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/notes/import", {
+        method: "POST",
+        body,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Import failed");
+      }
+      await refresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Import failed");
+    } finally {
+      setImporting(false);
+    }
   }
 
   useEffect(() => {
@@ -256,6 +288,22 @@ export function NotesView() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={importRef}
+                type="file"
+                accept=".zip,.json,application/zip,application/json"
+                onChange={handleImport}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => importRef.current?.click()}
+                disabled={importing}
+                className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
+              >
+                <UploadIcon className="h-4 w-4" />
+                {importing ? "Importing" : "Import"}
+              </button>
               {notes.length > 0 ? (
                 <a
                   href="/api/notes/export"
