@@ -6,14 +6,18 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 ### Added
+- Added Google Keep Takeout import from ZIP or JSON files.
+- Added notes export as a single text file or a ZIP of text files when exporting multiple notes.
 - Added keyboard shortcuts for search, creating notes, view switching, navigation, opening, pinning, archiving, and deleting.
 
 ### Changed
 - Gave the top bar a more colorful sage-tinted background.
+- Replaced the always-visible search field with a shortcut-driven overlay.
 - Renamed the app display name from fKeep to Keep and removed the header tagline.
 - Made notes body-first by removing title entry from creation and editing.
 
 ### Fixed
+- Prevented row color palettes from being clipped by the notes list container.
 
 ## [0.1.0] - YYYY-MM-DD
 ### Added

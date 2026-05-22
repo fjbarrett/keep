@@ -6,7 +6,7 @@ import { Note, View } from "@/lib/types";
 import { NoteList, SectionLabel } from "@/components/NoteList";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { EmptyState } from "@/components/EmptyState";
-import { PlusIcon } from "@/components/Icons";
+import { DownloadIcon, PlusIcon } from "@/components/Icons";
 
 const VIEW_TITLES: Record<View, string> = {
   all: "Your notes",
@@ -110,6 +110,7 @@ export function NotesView() {
     function onKeyDown(event: KeyboardEvent) {
       const key = event.key.toLowerCase();
       const typing = isEditableElement(event.target);
+      const searchFocused = event.target === searchRef.current;
 
       if ((event.metaKey || event.ctrlKey) && key === "k") {
         event.preventDefault();
@@ -121,7 +122,25 @@ export function NotesView() {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
 
       if (typing || target) {
-        if (event.key === "Escape" && event.target === searchRef.current) {
+        if (searchFocused && (event.key === "ArrowDown" || key === "j")) {
+          event.preventDefault();
+          selectByOffset(1);
+          return;
+        }
+
+        if (searchFocused && (event.key === "ArrowUp" || key === "k")) {
+          event.preventDefault();
+          selectByOffset(-1);
+          return;
+        }
+
+        if (searchFocused && (event.key === "Enter" || key === "o")) {
+          event.preventDefault();
+          openNote(activeNote ?? visibleNotes[0] ?? null);
+          return;
+        }
+
+        if (event.key === "Escape" && searchFocused) {
           setQuery("");
           searchRef.current?.blur();
         }
@@ -219,6 +238,24 @@ export function NotesView() {
                 placeholder="Search notes…"
                 className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] shadow-sm focus:border-[var(--color-text)] focus:outline-none"
               />
+              {notes.length > 0 ? (
+                <a
+                  href="/api/notes/export"
+                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                >
+                  <DownloadIcon className="h-4 w-4" />
+                  Export
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-muted)] opacity-60"
+                >
+                  <DownloadIcon className="h-4 w-4" />
+                  Export
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setTarget({ mode: "new" })}
