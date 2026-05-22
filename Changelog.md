@@ -20,6 +20,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Made notes body-first by removing title entry from creation and editing.
 
 ### Fixed
+- Normalized stale guest note titles so dashboard rows stay abbreviated.
 - Prevented row color palettes from being clipped by the notes list container.
 
 ## [0.1.0] - YYYY-MM-DD
