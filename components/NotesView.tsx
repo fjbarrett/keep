@@ -6,7 +6,7 @@ import { Note, View } from "@/lib/types";
 import { NoteList, SectionLabel } from "@/components/NoteList";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { EmptyState } from "@/components/EmptyState";
-import { DownloadIcon, PlusIcon } from "@/components/Icons";
+import { DownloadIcon, PlusIcon, SearchIcon } from "@/components/Icons";
 
 const VIEW_TITLES: Record<View, string> = {
   all: "Your notes",
@@ -16,6 +16,11 @@ const VIEW_TITLES: Record<View, string> = {
 
 function searchableText(note: { body: string; title: string }) {
   return note.body.trim() || note.title.trim();
+}
+
+function previewText(note: Note) {
+  const text = searchableText(note).replace(/\s+/g, " ").trim();
+  return text || "(empty)";
 }
 
 function isEditableElement(target: EventTarget | null) {
@@ -44,6 +49,7 @@ export function NotesView() {
 
   const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -58,7 +64,7 @@ export function NotesView() {
   );
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = searchOpen ? query.trim().toLowerCase() : "";
     return notes
       .filter((n) => {
         if (view === "archive") return n.archived;
@@ -70,7 +76,7 @@ export function NotesView() {
         return searchableText(n).toLowerCase().includes(q);
       })
       .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [notes, view, query]);
+  }, [notes, view, query, searchOpen]);
 
   const pinned = view === "all" ? filtered.filter((n) => n.pinned) : [];
   const others = view === "all" ? filtered.filter((n) => !n.pinned) : filtered;
@@ -80,6 +86,32 @@ export function NotesView() {
   );
   const activeNote =
     visibleNotes.find((note) => note.id === activeNoteId) ?? null;
+
+  function openSearch() {
+    setSearchOpen(true);
+  }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setQuery("");
+    searchRef.current?.blur();
+  }
+
+  function openNote(note: Note | null) {
+    if (!note) return;
+    setSearchOpen(false);
+    setQuery("");
+    setTarget({ mode: "edit", note });
+  }
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const focusTimer = window.setTimeout(() => {
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    }, 20);
+    return () => window.clearTimeout(focusTimer);
+  }, [searchOpen]);
 
   useEffect(() => {
     if (visibleNotes.length === 0) {
@@ -103,10 +135,6 @@ export function NotesView() {
       setActiveNoteId(visibleNotes[nextIndex].id);
     }
 
-    function openNote(note: Note | null) {
-      if (note) setTarget({ mode: "edit", note });
-    }
-
     function onKeyDown(event: KeyboardEvent) {
       const key = event.key.toLowerCase();
       const typing = isEditableElement(event.target);
@@ -114,8 +142,7 @@ export function NotesView() {
 
       if ((event.metaKey || event.ctrlKey) && key === "k") {
         event.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
+        openSearch();
         return;
       }
 
@@ -141,16 +168,14 @@ export function NotesView() {
         }
 
         if (event.key === "Escape" && searchFocused) {
-          setQuery("");
-          searchRef.current?.blur();
+          closeSearch();
         }
         return;
       }
 
       if (event.key === "/" || key === "f") {
         event.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
+        openSearch();
         return;
       }
 
@@ -231,13 +256,6 @@ export function NotesView() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search notes…"
-                className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] shadow-sm focus:border-[var(--color-text)] focus:outline-none"
-              />
               {notes.length > 0 ? (
                 <a
                   href="/api/notes/export"
@@ -320,7 +338,104 @@ export function NotesView() {
         onUpdate={update}
         onRemove={remove}
       />
+
+      {searchOpen && (
+        <SearchOverlay
+          query={query}
+          setQuery={setQuery}
+          searchRef={searchRef}
+          results={visibleNotes}
+          activeId={activeNoteId}
+          setActiveId={setActiveNoteId}
+          onOpen={openNote}
+          onClose={closeSearch}
+        />
+      )}
     </>
+  );
+}
+
+function SearchOverlay({
+  query,
+  setQuery,
+  searchRef,
+  results,
+  activeId,
+  setActiveId,
+  onOpen,
+  onClose,
+}: {
+  query: string;
+  setQuery: (value: string) => void;
+  searchRef: React.RefObject<HTMLInputElement>;
+  results: Note[];
+  activeId: string | null;
+  setActiveId: (id: string) => void;
+  onOpen: (note: Note) => void;
+  onClose: () => void;
+}) {
+  const hasQuery = query.trim().length > 0;
+
+  return (
+    <div className="fixed inset-0 z-40 px-4 pt-[14vh]">
+      <button
+        type="button"
+        aria-label="Close search"
+        className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-4 py-3">
+          <SearchIcon className="h-5 w-5 shrink-0 text-[var(--color-muted)]" />
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search notes..."
+            className="min-w-0 flex-1 border-0 bg-transparent text-lg text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+          />
+        </div>
+
+        <div className="max-h-[45vh] overflow-y-auto p-2">
+          {results.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {results.map((note) => {
+                const active = note.id === activeId;
+                return (
+                  <button
+                    key={note.id}
+                    type="button"
+                    onMouseEnter={() => setActiveId(note.id)}
+                    onClick={() => onOpen(note)}
+                    className={`flex items-center justify-between gap-4 rounded-md px-3 py-2 text-left ${
+                      active
+                        ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]"
+                        : "text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      {previewText(note)}
+                    </span>
+                    <span className="shrink-0 font-mono text-[10px] text-[var(--color-muted)]">
+                      {new Date(note.updatedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="px-3 py-8 text-center">
+              <p className="text-sm font-medium text-[var(--color-text)]">
+                {hasQuery ? "No notes found" : "Start typing to search"}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

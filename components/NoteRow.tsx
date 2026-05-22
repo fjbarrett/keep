@@ -58,7 +58,7 @@ export function NoteRow({
   return (
     <li
       ref={rowRef}
-      className={`group relative flex items-center justify-between gap-4 px-4 py-3 ${
+      className={`group relative flex items-center justify-between gap-4 px-4 py-3 first:rounded-t-[7px] last:rounded-b-[7px] ${
         active ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
       }`}
       onMouseEnter={onSelect}
