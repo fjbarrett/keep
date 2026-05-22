@@ -6,6 +6,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 ### Added
+- Added low-cost LLM-generated dashboard titles with local fallback.
 - Added inferred dashboard titles for notes.
 - Added guest notes with local browser storage and sign-in sync.
 - Added Google Keep Takeout import from ZIP or JSON files.

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { KeepImportNote, parseGoogleKeepImport } from "@/lib/googleKeepImport";
 import { pool, ready } from "@/lib/db";
-import { inferNoteTitle } from "@/lib/inferTitle";
+import { generateNoteTitle } from "@/lib/titleModel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         [
           googleKeepImportId(session.user.id, note),
           session.user.id,
-          inferNoteTitle(note.body),
+          await generateNoteTitle(note.body),
           note.body,
           note.tint,
           note.pinned,
