@@ -24,7 +24,7 @@ export function NoteList({
 }) {
   if (notes.length === 0) return null;
   return (
-    <ul className="divide-y divide-[var(--color-border)] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+    <ul className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
       {notes.map((n) => (
         <NoteRow
           key={n.id}
