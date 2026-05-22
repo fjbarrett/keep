@@ -69,10 +69,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "new") {
       if (body.trim()) {
-        onCreate({ title: "", body, tint, pinned, archived });
+        onCreate({ body, tint, pinned, archived });
       }
     } else {
-      onUpdate(target.note.id, { title: "", body, tint, pinned, archived });
+      onUpdate(target.note.id, { body, tint, pinned, archived });
     }
     onClose();
   }

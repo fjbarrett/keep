@@ -25,7 +25,7 @@ function formatDate(t: number): string {
 }
 
 function notePreview(note: Note): string {
-  const trimmed = (note.body || note.title).replace(/\s+/g, " ").trim();
+  const trimmed = (note.title || note.body).replace(/\s+/g, " ").trim();
   return trimmed.length > 0 ? trimmed : "(empty)";
 }
 

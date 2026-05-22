@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { KeepImportNote, parseGoogleKeepImport } from "@/lib/googleKeepImport";
 import { pool, ready } from "@/lib/db";
+import { inferNoteTitle } from "@/lib/inferTitle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,11 +45,12 @@ export async function POST(req: Request) {
     for (const note of importable) {
       const result = await pool().query(
         `INSERT INTO notes (id, user_id, title, body, tint, pinned, archived, created_at, updated_at)
-         VALUES ($1, $2, '', $3, $4, $5, $6, $7, $8)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (id) DO NOTHING`,
         [
           googleKeepImportId(session.user.id, note),
           session.user.id,
+          inferNoteTitle(note.body),
           note.body,
           note.tint,
           note.pinned,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
+import { inferNoteTitle } from "@/lib/inferTitle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,14 @@ export async function PATCH(
   try {
     await ready();
     const patch = await req.json();
+    if (
+      patch &&
+      typeof patch === "object" &&
+      typeof patch.body === "string" &&
+      patch.title === undefined
+    ) {
+      patch.title = inferNoteTitle(patch.body);
+    }
     const sets: string[] = [];
     const values: unknown[] = [];
     let i = 1;
