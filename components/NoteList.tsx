@@ -5,14 +5,18 @@ import { NoteRow } from "./NoteRow";
 
 export function NoteList({
   notes,
+  activeId,
   onOpen,
+  onSelect,
   onTogglePin,
   onToggleArchive,
   onRemove,
   onSetTint,
 }: {
   notes: Note[];
+  activeId?: string | null;
   onOpen: (n: Note) => void;
+  onSelect?: (id: string) => void;
   onTogglePin: (id: string) => void;
   onToggleArchive: (id: string) => void;
   onRemove: (id: string) => void;
@@ -25,7 +29,9 @@ export function NoteList({
         <NoteRow
           key={n.id}
           note={n}
+          active={activeId === n.id}
           onOpen={() => onOpen(n)}
+          onSelect={() => onSelect?.(n.id)}
           onTogglePin={() => onTogglePin(n.id)}
           onToggleArchive={() => onToggleArchive(n.id)}
           onRemove={() => onRemove(n.id)}

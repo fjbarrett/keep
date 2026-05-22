@@ -1,17 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNotes } from "@/lib/useNotes";
-import { View } from "@/lib/types";
+import { Note, View } from "@/lib/types";
 import { NoteList, SectionLabel } from "@/components/NoteList";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { EmptyState } from "@/components/EmptyState";
+import { PlusIcon } from "@/components/Icons";
 
 const VIEW_TITLES: Record<View, string> = {
   all: "Your notes",
   pinned: "Pinned",
   archive: "Archive",
 };
+
+function searchableText(note: { body: string; title: string }) {
+  return note.body.trim() || note.title.trim();
+}
+
+function isEditableElement(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT" ||
+    target.isContentEditable
+  );
+}
 
 export function NotesView() {
   const {
@@ -30,6 +45,8 @@ export function NotesView() {
   const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
   const [target, setTarget] = useState<EditorTarget>(null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const counts = useMemo(
     () => ({
@@ -50,26 +67,131 @@ export function NotesView() {
       })
       .filter((n) => {
         if (!q) return true;
-        return (
-          n.title.toLowerCase().includes(q) ||
-          n.body.toLowerCase().includes(q)
-        );
+        return searchableText(n).toLowerCase().includes(q);
       })
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }, [notes, view, query]);
 
   const pinned = view === "all" ? filtered.filter((n) => n.pinned) : [];
   const others = view === "all" ? filtered.filter((n) => !n.pinned) : filtered;
+  const visibleNotes = useMemo(
+    () => (view === "all" ? [...pinned, ...others] : filtered),
+    [filtered, others, pinned, view],
+  );
+  const activeNote =
+    visibleNotes.find((note) => note.id === activeNoteId) ?? null;
 
-  function handleCreate(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const titleEl = form.elements.namedItem("title") as HTMLInputElement | null;
-    const title = titleEl?.value?.trim();
-    if (!title) return;
-    create({ title, body: "", tint: "natural" });
-    form.reset();
-  }
+  useEffect(() => {
+    if (visibleNotes.length === 0) {
+      setActiveNoteId(null);
+      return;
+    }
+    if (!activeNoteId || !visibleNotes.some((note) => note.id === activeNoteId)) {
+      setActiveNoteId(visibleNotes[0].id);
+    }
+  }, [activeNoteId, visibleNotes]);
+
+  useEffect(() => {
+    function selectByOffset(offset: number) {
+      if (visibleNotes.length === 0) return;
+      const currentIndex = Math.max(
+        0,
+        visibleNotes.findIndex((note) => note.id === activeNoteId),
+      );
+      const nextIndex =
+        (currentIndex + offset + visibleNotes.length) % visibleNotes.length;
+      setActiveNoteId(visibleNotes[nextIndex].id);
+    }
+
+    function openNote(note: Note | null) {
+      if (note) setTarget({ mode: "edit", note });
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      const typing = isEditableElement(event.target);
+
+      if ((event.metaKey || event.ctrlKey) && key === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (typing || target) {
+        if (event.key === "Escape" && event.target === searchRef.current) {
+          setQuery("");
+          searchRef.current?.blur();
+        }
+        return;
+      }
+
+      if (event.key === "/" || key === "f") {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+
+      if (key === "n" || key === "c") {
+        event.preventDefault();
+        setTarget({ mode: "new" });
+        return;
+      }
+
+      if (event.key === "1") {
+        setView("all");
+        return;
+      }
+      if (event.key === "2") {
+        setView("pinned");
+        return;
+      }
+      if (event.key === "3") {
+        setView("archive");
+        return;
+      }
+
+      if (event.key === "ArrowDown" || key === "j") {
+        event.preventDefault();
+        selectByOffset(1);
+        return;
+      }
+      if (event.key === "ArrowUp" || key === "k") {
+        event.preventDefault();
+        selectByOffset(-1);
+        return;
+      }
+
+      if (event.key === "Enter" || key === "o") {
+        event.preventDefault();
+        openNote(activeNote);
+        return;
+      }
+
+      if (key === "p" && activeNote) {
+        event.preventDefault();
+        togglePin(activeNote.id);
+        return;
+      }
+
+      if (key === "a" && activeNote) {
+        event.preventDefault();
+        toggleArchive(activeNote.id);
+        return;
+      }
+
+      if ((event.key === "Delete" || event.key === "Backspace") && activeNote) {
+        event.preventDefault();
+        if (confirm("Delete this note for good?")) remove(activeNote.id);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, visibleNotes]);
 
   return (
     <>
@@ -91,25 +213,20 @@ export function NotesView() {
 
             <div className="flex flex-wrap items-center gap-2">
               <input
+                ref={searchRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search notes…"
                 className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] shadow-sm focus:border-[var(--color-text)] focus:outline-none"
               />
-              <form onSubmit={handleCreate} className="flex items-center gap-2">
-                <input
-                  name="title"
-                  placeholder="New note title…"
-                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] shadow-sm focus:border-[var(--color-text)] focus:outline-none"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-                >
-                  Create
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={() => setTarget({ mode: "new" })}
+                className="flex items-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+              >
+                <PlusIcon className="h-4 w-4" />
+                New note
+              </button>
             </div>
           </div>
 
@@ -128,7 +245,9 @@ export function NotesView() {
                   <SectionLabel label="Pinned" count={pinned.length} />
                   <NoteList
                     notes={pinned}
+                    activeId={activeNoteId}
                     onOpen={(n) => setTarget({ mode: "edit", note: n })}
+                    onSelect={setActiveNoteId}
                     onTogglePin={togglePin}
                     onToggleArchive={toggleArchive}
                     onRemove={remove}
@@ -143,7 +262,9 @@ export function NotesView() {
                 )}
                 <NoteList
                   notes={others}
+                  activeId={activeNoteId}
                   onOpen={(n) => setTarget({ mode: "edit", note: n })}
+                  onSelect={setActiveNoteId}
                   onTogglePin={togglePin}
                   onToggleArchive={toggleArchive}
                   onRemove={remove}

@@ -30,32 +30,27 @@ export function NoteEditor({
   onUpdate: (id: string, patch: Partial<Note>) => void;
   onRemove: (id: string) => void;
 }) {
-  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tint, setTint] = useState<Tint>("natural");
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
-  const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!target) return;
     if (target.mode === "edit") {
-      setTitle(target.note.title);
-      setBody(target.note.body);
+      setBody(target.note.body || target.note.title);
       setTint(target.note.tint);
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
     } else {
-      setTitle("");
       setBody("");
       setTint("natural");
       setPinned(false);
       setArchived(false);
     }
     setTimeout(() => {
-      if (target.mode === "new") titleRef.current?.focus();
-      else bodyRef.current?.focus();
+      bodyRef.current?.focus();
     }, 30);
   }, [target]);
 
@@ -68,16 +63,16 @@ export function NoteEditor({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, title, body, tint, pinned, archived]);
+  }, [target, body, tint, pinned, archived]);
 
   function close() {
     if (!target) return;
     if (target.mode === "new") {
-      if (title.trim() || body.trim()) {
-        onCreate({ title, body, tint, pinned, archived });
+      if (body.trim()) {
+        onCreate({ title: "", body, tint, pinned, archived });
       }
     } else {
-      onUpdate(target.note.id, { title, body, tint, pinned, archived });
+      onUpdate(target.note.id, { title: "", body, tint, pinned, archived });
     }
     onClose();
   }
@@ -133,21 +128,13 @@ export function NoteEditor({
         </div>
 
         <div className="px-4 py-4">
-          <input
-            ref={titleRef}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
-            className="w-full border-0 bg-transparent text-lg font-semibold tracking-tight text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
-          />
-
           <textarea
             ref={bodyRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Start writing…"
             rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
-            className="mt-2 w-full resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+            className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
           />
         </div>
 

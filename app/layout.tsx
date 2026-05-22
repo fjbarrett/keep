@@ -4,8 +4,8 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "fKeep",
-  description: "Personal notes, kept private.",
+  title: "Keep",
+  description: "Keep notes.",
 };
 
 export default function RootLayout({
