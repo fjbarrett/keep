@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
-import { inferNoteTitle } from "@/lib/inferTitle";
+import { generateNoteTitle } from "@/lib/titleModel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export async function PATCH(
       typeof patch.body === "string" &&
       patch.title === undefined
     ) {
-      patch.title = inferNoteTitle(patch.body);
+      patch.title = await generateNoteTitle(patch.body);
     }
     const sets: string[] = [];
     const values: unknown[] = [];

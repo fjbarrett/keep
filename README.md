@@ -53,7 +53,7 @@ lib/
 
 ## Deployment
 
-Deploys cleanly to Vercel. Set `DATABASE_URL` as a project environment variable; everything else is zero-config. Any Postgres provider works — the connection layer handles both managed (real CA) and self-hosted (self-signed) certs.
+Deploys cleanly to Vercel. Set `DATABASE_URL` as a project environment variable. Set `OPENAI_API_KEY` to enable LLM-generated note titles; without it, Keep falls back to local zero-token title inference. Any Postgres provider works — the connection layer handles both managed (real CA) and self-hosted (self-signed) certs.
 
 ## License
 

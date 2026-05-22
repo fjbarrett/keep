@@ -7,6 +7,7 @@ export default auth((req) => {
   if (req.auth) return;
 
   const { pathname } = req.nextUrl;
+  if (pathname === "/api/notes/title") return;
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
