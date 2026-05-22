@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
 import { Note, View } from "@/lib/types";
 import { NoteList, SectionLabel } from "@/components/NoteList";
@@ -24,7 +25,10 @@ function searchableText(note: { body: string; title: string }) {
 }
 
 function previewText(note: Note) {
-  const text = (note.title || searchableText(note)).replace(/\s+/g, " ").trim();
+  const title = needsInferredTitle(note.title, note.body)
+    ? inferNoteTitle(searchableText(note))
+    : note.title;
+  const text = title.replace(/\s+/g, " ").trim();
   return text || "(empty)";
 }
 

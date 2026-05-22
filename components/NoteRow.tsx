@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { Note, Tint } from "@/lib/types";
 import { TINT_HEX_SOLID, TintPicker } from "./TintPicker";
 import {
@@ -25,7 +26,10 @@ function formatDate(t: number): string {
 }
 
 function notePreview(note: Note): string {
-  const trimmed = (note.title || note.body).replace(/\s+/g, " ").trim();
+  const title = needsInferredTitle(note.title, note.body)
+    ? inferNoteTitle(note.body || note.title)
+    : note.title;
+  const trimmed = title.replace(/\s+/g, " ").trim();
   return trimmed.length > 0 ? trimmed : "(empty)";
 }
 

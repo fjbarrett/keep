@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { inferNoteTitle } from "./inferTitle";
+import { inferNoteTitle, needsInferredTitle } from "./inferTitle";
 import { Note, Tint } from "./types";
 
 const GUEST_NOTES_KEY = "keep.guestNotes.v1";
@@ -20,10 +20,23 @@ function readGuestNotes(): Note[] {
     const raw = window.localStorage.getItem(GUEST_NOTES_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeStoredNote).filter((note): note is Note => Boolean(note));
   } catch {
     return [];
   }
+}
+
+function normalizeStoredNote(value: unknown): Note | null {
+  if (!value || typeof value !== "object") return null;
+  const note = value as Note;
+  const body = String(note.body ?? "");
+  const title = String(note.title ?? "");
+  return {
+    ...note,
+    title: needsInferredTitle(title, body) ? inferNoteTitle(body || title) : title,
+    body,
+  };
 }
 
 function writeGuestNotes(notes: Note[]) {
