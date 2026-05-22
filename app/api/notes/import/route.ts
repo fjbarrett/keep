@@ -1,13 +1,24 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import {
-  googleKeepImportId,
-  parseGoogleKeepImport,
-} from "@/lib/googleKeepImport";
+import { KeepImportNote, parseGoogleKeepImport } from "@/lib/googleKeepImport";
 import { pool, ready } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function googleKeepImportId(userId: string, note: KeepImportNote) {
+  return `GK${crypto
+    .createHash("sha1")
+    .update(userId)
+    .update("\0")
+    .update(note.sourceName)
+    .update("\0")
+    .update(String(note.createdAt))
+    .digest("hex")
+    .slice(0, 22)
+    .toUpperCase()}`;
+}
 
 export async function POST(req: Request) {
   const session = await auth();

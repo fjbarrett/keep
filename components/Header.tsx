@@ -13,7 +13,7 @@ export async function Header() {
           <Logo />
         </a>
 
-        {user && (
+        {user ? (
           <form
             action={async () => {
               "use server";
@@ -40,6 +40,13 @@ export async function Header() {
               Sign out
             </button>
           </form>
+        ) : (
+          <a
+            href="/signin?from=/"
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1 text-xs font-medium text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
+            Sign in
+          </a>
         )}
       </div>
     </header>

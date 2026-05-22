@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import JSZip from "jszip";
 import { Tint } from "./types";
 
@@ -134,22 +133,9 @@ export async function parseGoogleKeepImport(
   }
 
   if (lowerName.endsWith(".json")) {
-    const note = noteFromJson(fileName, Buffer.from(data).toString("utf8"));
+    const note = noteFromJson(fileName, new TextDecoder().decode(data));
     return { notes: note ? [note] : [], skipped: note ? 0 : 1 };
   }
 
   return { notes: [], skipped: 1 };
-}
-
-export function googleKeepImportId(userId: string, note: KeepImportNote) {
-  return `GK${crypto
-    .createHash("sha1")
-    .update(userId)
-    .update("\0")
-    .update(note.sourceName)
-    .update("\0")
-    .update(String(note.createdAt))
-    .digest("hex")
-    .slice(0, 22)
-    .toUpperCase()}`;
 }

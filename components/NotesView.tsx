@@ -42,11 +42,13 @@ export function NotesView() {
   const {
     notes,
     hydrated,
+    isGuest,
     error,
     refresh,
     create,
     update,
     remove,
+    importKeepFile,
     togglePin,
     toggleArchive,
     setTint,
@@ -118,22 +120,28 @@ export function NotesView() {
 
     setImporting(true);
     try {
-      const body = new FormData();
-      body.append("file", file);
-      const res = await fetch("/api/notes/import", {
-        method: "POST",
-        body,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? "Import failed");
-      }
-      await refresh();
+      await importKeepFile(file);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Import failed");
     } finally {
       setImporting(false);
     }
+  }
+
+  async function handleGuestExport() {
+    if (notes.length === 0) return;
+    if (notes.length === 1) {
+      downloadBlob(noteFileName(notes[0]), noteFileContent(notes[0]), "text/plain");
+      return;
+    }
+
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    for (const note of notes) {
+      zip.file(noteFileName(note), noteFileContent(note));
+    }
+    const content = await zip.generateAsync({ type: "blob" });
+    downloadBlob("keep-notes.zip", content, "application/zip");
   }
 
   useEffect(() => {
@@ -273,6 +281,7 @@ export function NotesView() {
     <>
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
         {error && <DbError error={error} onRetry={refresh} />}
+        {isGuest && notes.length > 0 && <GuestSaveBanner />}
 
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -304,7 +313,16 @@ export function NotesView() {
                 <UploadIcon className="h-4 w-4" />
                 {importing ? "Importing" : "Import"}
               </button>
-              {notes.length > 0 ? (
+              {notes.length > 0 && isGuest ? (
+                <button
+                  type="button"
+                  onClick={handleGuestExport}
+                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                >
+                  <DownloadIcon className="h-4 w-4" />
+                  Export
+                </button>
+              ) : notes.length > 0 ? (
                 <a
                   href="/api/notes/export"
                   className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
@@ -400,6 +418,51 @@ export function NotesView() {
         />
       )}
     </>
+  );
+}
+
+function downloadBlob(fileName: string, content: BlobPart, type: string) {
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function noteText(note: Note) {
+  return note.body.trim() || note.title.trim();
+}
+
+function noteFileName(note: Note) {
+  const base =
+    noteText(note)
+      .split("\n")[0]
+      ?.replace(/\s+/g, " ")
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "")
+      .trim()
+      .slice(0, 60) || "note";
+  return `${base}-${note.id.slice(-6)}.txt`;
+}
+
+function noteFileContent(note: Note) {
+  return `${noteText(note)}\n`;
+}
+
+function GuestSaveBanner() {
+  return (
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+      <p className="text-sm text-[var(--color-muted)]">
+        These notes are saved only in this browser.
+      </p>
+      <a
+        href="/signin?from=/"
+        className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+      >
+        Sign in to save
+      </a>
+    </div>
   );
 }
 

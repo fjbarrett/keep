@@ -6,6 +6,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 ### Added
+- Added guest notes with local browser storage and sign-in sync.
 - Added Google Keep Takeout import from ZIP or JSON files.
 - Added notes export as a single text file or a ZIP of text files when exporting multiple notes.
 - Added keyboard shortcuts for search, creating notes, view switching, navigation, opening, pinning, archiving, and deleting.
