@@ -14,6 +14,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Added keyboard shortcuts for search, creating notes, view switching, navigation, opening, pinning, archiving, and deleting.
 
 ### Changed
+- Reworked the app into a persistent sidebar and editor layout on desktop.
 - Local notes now require an explicit save after sign-in instead of auto-syncing.
 - Gave the top bar a more colorful sage-tinted background.
 - Replaced the always-visible search field with a shortcut-driven overlay.
