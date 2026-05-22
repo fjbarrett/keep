@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Note, Tint } from "@/lib/types";
 import { TINT_HEX_SOLID, TintPicker } from "./TintPicker";
 import {
@@ -24,32 +24,48 @@ function formatDate(t: number): string {
   });
 }
 
-function bodyPreview(body: string): string {
-  const trimmed = body.replace(/\s+/g, " ").trim();
+function notePreview(note: Note): string {
+  const trimmed = (note.body || note.title).replace(/\s+/g, " ").trim();
   return trimmed.length > 0 ? trimmed : "(empty)";
 }
 
 export function NoteRow({
   note,
+  active,
   onOpen,
+  onSelect,
   onTogglePin,
   onToggleArchive,
   onRemove,
   onSetTint,
 }: {
   note: Note;
+  active?: boolean;
   onOpen: () => void;
+  onSelect?: () => void;
   onTogglePin: () => void;
   onToggleArchive: () => void;
   onRemove: () => void;
   onSetTint: (t: Tint) => void;
 }) {
   const [showPalette, setShowPalette] = useState(false);
+  const rowRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (active) rowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [active]);
 
   return (
-    <li className="group relative flex items-center justify-between gap-4 px-4 py-3 hover:bg-[var(--color-surface-hover)]">
+    <li
+      ref={rowRef}
+      className={`group relative flex items-center justify-between gap-4 px-4 py-3 ${
+        active ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
+      }`}
+      onMouseEnter={onSelect}
+    >
       <button
         onClick={onOpen}
+        onFocus={onSelect}
         className="flex min-w-0 flex-1 items-center gap-3 text-left focus-ring"
       >
         <span
@@ -58,18 +74,13 @@ export function NoteRow({
           style={{ background: TINT_HEX_SOLID[note.tint] }}
           title={note.tint}
         />
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="flex items-center gap-2">
-            <span className="truncate text-sm font-medium text-[var(--color-text)]">
-              {note.title || "Untitled"}
-            </span>
-            {note.pinned && (
-              <PinFilledIcon className="h-3 w-3 shrink-0 text-[var(--color-muted)]" />
-            )}
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="truncate text-sm font-medium text-[var(--color-text)]">
+            {notePreview(note)}
           </span>
-          <span className="truncate text-xs text-[var(--color-muted)]">
-            {bodyPreview(note.body)}
-          </span>
+          {note.pinned && (
+            <PinFilledIcon className="h-3 w-3 shrink-0 text-[var(--color-muted)]" />
+          )}
         </span>
       </button>
 
