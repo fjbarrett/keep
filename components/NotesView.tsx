@@ -310,8 +310,7 @@ export function NotesView() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, trash, view, visibleNotes]);
 
-  const mainTarget: EditorTarget =
-    target ?? (activeNote ? { mode: "edit", note: activeNote } : null);
+  const mainTarget: EditorTarget = target;
 
   return (
     <>
