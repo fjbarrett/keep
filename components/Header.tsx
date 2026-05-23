@@ -13,12 +13,6 @@ export async function Header() {
           <Logo />
         </a>
 
-        <nav className="hidden items-center gap-1 text-sm text-[var(--color-text)] md:flex">
-          <span className="rounded-md px-2.5 py-1 text-sm font-semibold">
-            Dashboard
-          </span>
-        </nav>
-
         <div className="flex-1" />
 
         {user ? (
