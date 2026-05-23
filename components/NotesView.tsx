@@ -193,7 +193,8 @@ export function NotesView() {
 
       if ((event.metaKey || event.ctrlKey) && key === "k") {
         event.preventDefault();
-        openSearch();
+        if (searchOpen) closeSearch();
+        else openSearch();
         return;
       }
 
@@ -277,7 +278,7 @@ export function NotesView() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, trash, visibleNotes]);
+  }, [activeNote, activeNoteId, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
 
   const mainTarget: EditorTarget = target;
 
@@ -296,7 +297,6 @@ export function NotesView() {
             setViewMode("active");
             setTarget({ mode: "new" });
           }}
-          onOpenSearch={openSearch}
           onOpenSettings={() => setSettingsOpen(true)}
           togglePin={togglePin}
           toggleArchive={toggleArchive}
@@ -616,7 +616,7 @@ function SearchOverlay({
   const hasQuery = query.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-40 px-4 pt-[14vh]">
+    <div data-search-overlay className="fixed inset-0 z-40 px-4 pt-[14vh]">
       <button
         type="button"
         aria-label="Close search"
@@ -752,7 +752,6 @@ function Sidebar({
   onExitFilteredView,
   onOpenNote,
   onNewNote,
-  onOpenSearch,
   onOpenSettings,
   togglePin,
   toggleArchive,
@@ -767,7 +766,6 @@ function Sidebar({
   onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
-  onOpenSearch: () => void;
   onOpenSettings: () => void;
   togglePin: (id: string) => void;
   toggleArchive: (id: string) => void;
@@ -791,16 +789,6 @@ function Sidebar({
             <PencilPlusIcon className="h-3.5 w-3.5" />
           </span>
           <span className="font-medium">New note</span>
-        </button>
-        <button
-          type="button"
-          onClick={onOpenSearch}
-          className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-        >
-          <span className="grid h-6 w-6 place-items-center rounded-md">
-            <SearchIcon className="h-3.5 w-3.5" />
-          </span>
-          <span>Search notes</span>
         </button>
       </div>
 
