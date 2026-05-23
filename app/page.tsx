@@ -7,7 +7,7 @@ export default function Page() {
   return (
     <>
       <Header />
-      <NotesView />
+      <NotesView initialNoteId={null} />
     </>
   );
 }
