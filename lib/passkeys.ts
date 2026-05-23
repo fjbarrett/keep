@@ -98,6 +98,23 @@ export async function deleteAuthenticator(credentialId: string, userId: string) 
   return result.rowCount ?? 0;
 }
 
+export async function upsertUser(input: {
+  id: string;
+  email: string | null;
+  name: string | null;
+}) {
+  await ready();
+  await pool().query(
+    `INSERT INTO users (id, email, name, updated_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (id) DO UPDATE
+       SET email = COALESCE(EXCLUDED.email, users.email),
+           name  = COALESCE(EXCLUDED.name, users.name),
+           updated_at = EXCLUDED.updated_at`,
+    [input.id, input.email, input.name, Date.now()],
+  );
+}
+
 export async function getUser(userId: string) {
   await ready();
   const { rows } = await pool().query<{

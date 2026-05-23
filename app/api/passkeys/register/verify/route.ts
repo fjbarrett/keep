@@ -3,7 +3,12 @@ import { cookies } from "next/headers";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import type { RegistrationResponseJSON } from "@simplewebauthn/types";
 import { auth } from "@/auth";
-import { bytesToB64url, insertAuthenticator, rpConfig } from "@/lib/passkeys";
+import {
+  bytesToB64url,
+  insertAuthenticator,
+  rpConfig,
+  upsertUser,
+} from "@/lib/passkeys";
 
 export const runtime = "nodejs";
 
@@ -36,6 +41,14 @@ export async function POST(req: Request) {
   if (!verification.verified || !verification.registrationInfo) {
     return NextResponse.json({ error: "verification failed" }, { status: 400 });
   }
+
+  // Ensure a users row exists for the FK on authenticators.user_id. Pre-existing
+  // sessions from before the Google signIn callback shipped won't have one.
+  await upsertUser({
+    id: userId,
+    email: session.user?.email ?? null,
+    name: session.user?.name ?? null,
+  });
 
   const info = verification.registrationInfo;
   await insertAuthenticator({
