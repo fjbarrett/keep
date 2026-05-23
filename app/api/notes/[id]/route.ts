@@ -13,6 +13,7 @@ const ALLOWED = new Set([
   "archived",
   "trashed",
   "markdown",
+  "tags",
 ]);
 
 export async function PATCH(
