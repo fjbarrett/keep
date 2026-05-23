@@ -80,13 +80,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/signin" },
   callbacks: {
-    // Pin the JWT sub to the user.id returned by the provider on the initial
-    // sign-in. Without this, Credentials sign-ins fall through to NextAuth's
-    // auto-generated sub, which doesn't match the Google sub the notes table
-    // is keyed by — so notes appear to "disappear" after signing in by
-    // passkey. Safe for Google too: user.id is already the Google sub.
-    jwt({ token, user }) {
-      if (user?.id) token.sub = user.id;
+    // Pin the JWT sub to the stable per-provider id on initial sign-in.
+    // NextAuth's OAuth callback intentionally generates a fresh randomUUID
+    // for user.id (claiming identity should be provider-independent) and
+    // parks the real Google sub on account.providerAccountId — so without
+    // this override, every Google sign-in would mint a new sub and notes
+    // saved under the previous one would look like they vanished. For the
+    // Credentials/passkey path user.id is already the Google sub.
+    jwt({ token, user, account }) {
+      if (account?.provider === "google" && account.providerAccountId) {
+        token.sub = account.providerAccountId;
+      } else if (user?.id) {
+        token.sub = user.id;
+      }
       return token;
     },
     // Surface the stable per-account id as session.user.id so API routes can
