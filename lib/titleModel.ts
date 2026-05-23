@@ -31,7 +31,7 @@ export async function generateNoteTitle(body: string) {
           {
             role: "system",
             content:
-              "Create a concise dashboard title for a note. Return only the title, 3 to 7 words. No quotes. No trailing punctuation.",
+              "Summarize the note in a short title. Return only the title, 3 to 7 words. No quotes. No trailing punctuation.",
           },
           {
             role: "user",
