@@ -9,4 +9,3 @@ export type Note = {
   updatedAt: number;
 };
 
-export type View = "all" | "pinned" | "archive" | "trash";

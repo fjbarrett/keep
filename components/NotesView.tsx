@@ -3,23 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
-import { Note, View } from "@/lib/types";
+import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import {
+  ArchiveIcon,
   DownloadIcon,
   PinFilledIcon,
   SearchIcon,
   SettingsIcon,
+  TrashIcon,
   UploadIcon,
   XIcon,
 } from "@/components/Icons";
-
-const VIEW_TITLES: Record<View, string> = {
-  all: "Your notes",
-  pinned: "Pinned",
-  archive: "Archive",
-  trash: "Trash",
-};
 
 function searchableText(note: { body: string; title: string }) {
   return note.body.trim() || note.title.trim();
@@ -62,20 +57,20 @@ export function NotesView() {
     toggleArchive,
   } = useNotes();
 
-  const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"active" | "archive" | "trash">(
+    "active",
+  );
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
 
   const counts = useMemo(
     () => ({
-      all: notes.filter((n) => !n.archived && !n.trashed).length,
-      pinned: notes.filter((n) => n.pinned && !n.archived && !n.trashed).length,
       archive: notes.filter((n) => n.archived && !n.trashed).length,
       trash: notes.filter((n) => n.trashed).length,
     }),
@@ -86,9 +81,8 @@ export function NotesView() {
     const q = searchOpen ? query.trim().toLowerCase() : "";
     return notes
       .filter((n) => {
-        if (view === "trash") return n.trashed;
-        if (view === "archive") return n.archived;
-        if (view === "pinned") return n.pinned && !n.archived && !n.trashed;
+        if (viewMode === "trash") return n.trashed;
+        if (viewMode === "archive") return n.archived && !n.trashed;
         return !n.archived && !n.trashed;
       })
       .filter((n) => {
@@ -96,14 +90,9 @@ export function NotesView() {
         return searchableText(n).toLowerCase().includes(q);
       })
       .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [notes, view, query, searchOpen]);
+  }, [notes, query, searchOpen, viewMode]);
 
-  const pinned = view === "all" ? filtered.filter((n) => n.pinned) : [];
-  const others = view === "all" ? filtered.filter((n) => !n.pinned) : filtered;
-  const visibleNotes = useMemo(
-    () => (view === "all" ? [...pinned, ...others] : filtered),
-    [filtered, others, pinned, view],
-  );
+  const visibleNotes = filtered;
   const activeNote =
     visibleNotes.find((note) => note.id === activeNoteId) ?? null;
   const editorTarget: EditorTarget = target;
@@ -129,7 +118,6 @@ export function NotesView() {
   async function handleCreate(partial: Partial<Note>) {
     const note = await create(partial);
     if (note) {
-      setView(note.trashed ? "trash" : note.archived ? "archive" : "all");
       setActiveNoteId(note.id);
     }
     return note ?? null;
@@ -248,23 +236,6 @@ export function NotesView() {
         return;
       }
 
-      if (event.key === "1") {
-        setView("all");
-        return;
-      }
-      if (event.key === "2") {
-        setView("pinned");
-        return;
-      }
-      if (event.key === "3") {
-        setView("archive");
-        return;
-      }
-      if (event.key === "4") {
-        setView("trash");
-        return;
-      }
-
       if (event.key === "ArrowDown" || key === "j") {
         event.preventDefault();
         selectByOffset(1);
@@ -296,7 +267,7 @@ export function NotesView() {
 
       if ((event.key === "Delete" || event.key === "Backspace") && activeNote) {
         event.preventDefault();
-        if (view === "trash") {
+        if (activeNote.trashed) {
           if (confirm("Permanently delete this note?")) remove(activeNote.id);
         } else {
           trash(activeNote.id);
@@ -306,7 +277,7 @@ export function NotesView() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, trash, view, visibleNotes]);
+  }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, trash, visibleNotes]);
 
   const mainTarget: EditorTarget = target;
 
@@ -314,15 +285,15 @@ export function NotesView() {
     <>
       <div className="flex min-h-0 flex-1">
         <Sidebar
-          view={view}
-          setView={setView}
-          counts={counts}
           hydrated={hydrated}
           filtered={filtered}
           activeNoteId={activeNoteId}
+          viewMode={viewMode}
+          onExitFilteredView={() => setViewMode("active")}
           onOpenNote={openNote}
           onNewNote={() => {
             setActiveNoteId(null);
+            setViewMode("active");
             setTarget({ mode: "new" });
           }}
           onOpenSearch={openSearch}
@@ -367,7 +338,6 @@ export function NotesView() {
               />
             ) : (
               <MainPlaceholder
-                view={view}
                 hasNotes={notes.length > 0}
                 onNewNote={() => setTarget({ mode: "new" })}
               />
@@ -395,6 +365,19 @@ export function NotesView() {
           importRef={importRef}
           notes={notes}
           isGuest={isGuest}
+          counts={counts}
+          onOpenArchive={() => {
+            setViewMode("archive");
+            setSettingsOpen(false);
+            setActiveNoteId(null);
+            setTarget(null);
+          }}
+          onOpenTrash={() => {
+            setViewMode("trash");
+            setSettingsOpen(false);
+            setActiveNoteId(null);
+            setTarget(null);
+          }}
           onImportClick={() => importRef.current?.click()}
           onImport={handleImport}
           onGuestExport={handleGuestExport}
@@ -485,6 +468,9 @@ function SettingsPane({
   importRef,
   notes,
   isGuest,
+  counts,
+  onOpenArchive,
+  onOpenTrash,
   onImportClick,
   onImport,
   onGuestExport,
@@ -494,6 +480,9 @@ function SettingsPane({
   importRef: React.RefObject<HTMLInputElement>;
   notes: Note[];
   isGuest: boolean;
+  counts: { archive: number; trash: number };
+  onOpenArchive: () => void;
+  onOpenTrash: () => void;
   onImportClick: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onGuestExport: () => void;
@@ -525,6 +514,35 @@ function SettingsPane({
         </div>
 
         <div className="space-y-3 p-4">
+          <button
+            type="button"
+            onClick={onOpenArchive}
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+          >
+            <span className="flex items-center gap-2">
+              <ArchiveIcon className="h-4 w-4 text-[var(--color-muted)]" />
+              Archive
+            </span>
+            <span className="text-xs text-[var(--color-muted)]">
+              {counts.archive}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onOpenTrash}
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+          >
+            <span className="flex items-center gap-2">
+              <TrashIcon className="h-4 w-4 text-[var(--color-muted)]" />
+              Trash
+            </span>
+            <span className="text-xs text-[var(--color-muted)]">
+              {counts.trash}
+            </span>
+          </button>
+
+          <div className="border-t border-[var(--color-border)]" />
+
           <input
             ref={importRef}
             type="file"
@@ -695,13 +713,6 @@ function DbError({
   );
 }
 
-const VIEW_LABELS: Record<View, string> = {
-  all: "All notes",
-  pinned: "Pinned",
-  archive: "Archive",
-  trash: "Trash",
-};
-
 type DateBucket = { label: string; notes: Note[] };
 
 function bucketByDate(notes: Note[]): DateBucket[] {
@@ -734,12 +745,11 @@ function bucketByDate(notes: Note[]): DateBucket[] {
 }
 
 function Sidebar({
-  view,
-  setView,
-  counts,
   hydrated,
   filtered,
   activeNoteId,
+  viewMode,
+  onExitFilteredView,
   onOpenNote,
   onNewNote,
   onOpenSearch,
@@ -750,12 +760,11 @@ function Sidebar({
   restore,
   remove,
 }: {
-  view: View;
-  setView: (v: View) => void;
-  counts: { all: number; pinned: number; archive: number; trash: number };
   hydrated: boolean;
   filtered: Note[];
   activeNoteId: string | null;
+  viewMode: "active" | "archive" | "trash";
+  onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
   onOpenSearch: () => void;
@@ -767,12 +776,8 @@ function Sidebar({
   remove: (id: string) => void;
 }) {
   const buckets = bucketByDate(filtered);
-  const viewItems: { key: View; label: string; count: number }[] = [
-    { key: "all", label: "All notes", count: counts.all },
-    { key: "pinned", label: "Pinned", count: counts.pinned },
-    { key: "archive", label: "Archive", count: counts.archive },
-    { key: "trash", label: "Trash", count: counts.trash },
-  ];
+  const filteredTitle =
+    viewMode === "archive" ? "Archive" : viewMode === "trash" ? "Trash" : null;
 
   return (
     <aside className="hidden h-full w-[260px] shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-canvas)] md:flex">
@@ -799,36 +804,25 @@ function Sidebar({
         </button>
       </div>
 
-      <div className="px-2 pb-2">
-        <ul className="flex flex-col">
-          {viewItems.map((item) => {
-            const active = view === item.key;
-            return (
-              <li key={item.key}>
-                <button
-                  type="button"
-                  onClick={() => setView(item.key)}
-                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm ${
-                    active
-                      ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]"
-                      : "text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  <span className="text-xs text-[var(--color-muted)]">
-                    {item.count}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      {filteredTitle && (
+        <div className="flex items-center justify-between border-t border-[var(--color-border)] px-3 py-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            {filteredTitle}
+          </span>
+          <button
+            type="button"
+            onClick={onExitFilteredView}
+            className="text-xs text-[var(--color-link)] hover:underline"
+          >
+            Back to notes
+          </button>
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {!hydrated ? null : filtered.length === 0 ? (
           <p className="px-2 py-6 text-xs text-[var(--color-muted)]">
-            No {VIEW_LABELS[view].toLowerCase()}.
+            {filteredTitle ? `${filteredTitle} is empty.` : "No notes."}
           </p>
         ) : (
           buckets.map((bucket) => (
@@ -843,7 +837,7 @@ function Sidebar({
                     note={note}
                     active={note.id === activeNoteId}
                     onOpen={() => onOpenNote(note)}
-                    trashMode={view === "trash"}
+                    trashMode={note.trashed}
                     togglePin={() => togglePin(note.id)}
                     toggleArchive={() => toggleArchive(note.id)}
                     trash={() => trash(note.id)}
@@ -1011,11 +1005,9 @@ function MenuItem({
 }
 
 function MainPlaceholder({
-  view,
   hasNotes,
   onNewNote,
 }: {
-  view: View;
   hasNotes: boolean;
   onNewNote: () => void;
 }) {
@@ -1027,7 +1019,7 @@ function MainPlaceholder({
         </p>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
           {hasNotes
-            ? `Open a ${VIEW_LABELS[view].toLowerCase()} from the sidebar, or create a new note.`
+            ? "Open a note from the sidebar, or create a new one."
             : "Start by creating your first note."}
         </p>
         <button
