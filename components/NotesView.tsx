@@ -68,6 +68,7 @@ export function NotesView() {
   );
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const didRestoreFromUrlRef = useRef(false);
 
   const counts = useMemo(
     () => ({
@@ -163,6 +164,34 @@ export function NotesView() {
     }, 20);
     return () => window.clearTimeout(focusTimer);
   }, [searchOpen]);
+
+  // Reopen the note named in ?note=<id> after a refresh — once the notes
+  // list has hydrated and the target note is actually present.
+  useEffect(() => {
+    if (didRestoreFromUrlRef.current || !hydrated) return;
+    const id = new URLSearchParams(window.location.search).get("note");
+    if (!id) {
+      didRestoreFromUrlRef.current = true;
+      return;
+    }
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+    didRestoreFromUrlRef.current = true;
+    setActiveNoteId(note.id);
+    setTarget({ mode: "edit", note });
+  }, [hydrated, notes]);
+
+  // Mirror the open note into ?note=<id> so refresh restores it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = target?.mode === "edit" ? target.note.id : null;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("note");
+    if (current === id) return;
+    if (id) url.searchParams.set("note", id);
+    else url.searchParams.delete("note");
+    window.history.replaceState(null, "", url);
+  }, [target]);
 
   useEffect(() => {
     if (visibleNotes.length === 0) {
