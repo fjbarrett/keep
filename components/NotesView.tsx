@@ -228,19 +228,19 @@ export function NotesView() {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
 
       if (typing || target) {
-        if (searchFocused && (event.key === "ArrowDown" || key === "j")) {
+        if (searchFocused && event.key === "ArrowDown") {
           event.preventDefault();
           selectByOffset(1);
           return;
         }
 
-        if (searchFocused && (event.key === "ArrowUp" || key === "k")) {
+        if (searchFocused && event.key === "ArrowUp") {
           event.preventDefault();
           selectByOffset(-1);
           return;
         }
 
-        if (searchFocused && (event.key === "Enter" || key === "o")) {
+        if (searchFocused && event.key === "Enter") {
           event.preventDefault();
           openNote(activeNote ?? visibleNotes[0] ?? null);
           return;
