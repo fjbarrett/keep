@@ -6,10 +6,12 @@ import { useNotes } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import {
+  ArchiveIcon,
   DownloadIcon,
   PinFilledIcon,
   SearchIcon,
   SettingsIcon,
+  TrashIcon,
   UploadIcon,
   XIcon,
 } from "@/components/Icons";
@@ -61,19 +63,34 @@ export function NotesView() {
   const [importing, setImporting] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"active" | "archive" | "trash">(
+    "active",
+  );
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
+
+  const counts = useMemo(
+    () => ({
+      archive: notes.filter((n) => n.archived && !n.trashed).length,
+      trash: notes.filter((n) => n.trashed).length,
+    }),
+    [notes],
+  );
 
   const filtered = useMemo(() => {
     const q = searchOpen ? query.trim().toLowerCase() : "";
     return notes
-      .filter((n) => !n.archived && !n.trashed)
+      .filter((n) => {
+        if (viewMode === "trash") return n.trashed;
+        if (viewMode === "archive") return n.archived && !n.trashed;
+        return !n.archived && !n.trashed;
+      })
       .filter((n) => {
         if (!q) return true;
         return searchableText(n).toLowerCase().includes(q);
       })
       .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [notes, query, searchOpen]);
+  }, [notes, query, searchOpen, viewMode]);
 
   const visibleNotes = filtered;
   const activeNote =
@@ -271,9 +288,12 @@ export function NotesView() {
           hydrated={hydrated}
           filtered={filtered}
           activeNoteId={activeNoteId}
+          viewMode={viewMode}
+          onExitFilteredView={() => setViewMode("active")}
           onOpenNote={openNote}
           onNewNote={() => {
             setActiveNoteId(null);
+            setViewMode("active");
             setTarget({ mode: "new" });
           }}
           onOpenSearch={openSearch}
@@ -345,6 +365,19 @@ export function NotesView() {
           importRef={importRef}
           notes={notes}
           isGuest={isGuest}
+          counts={counts}
+          onOpenArchive={() => {
+            setViewMode("archive");
+            setSettingsOpen(false);
+            setActiveNoteId(null);
+            setTarget(null);
+          }}
+          onOpenTrash={() => {
+            setViewMode("trash");
+            setSettingsOpen(false);
+            setActiveNoteId(null);
+            setTarget(null);
+          }}
           onImportClick={() => importRef.current?.click()}
           onImport={handleImport}
           onGuestExport={handleGuestExport}
@@ -435,6 +468,9 @@ function SettingsPane({
   importRef,
   notes,
   isGuest,
+  counts,
+  onOpenArchive,
+  onOpenTrash,
   onImportClick,
   onImport,
   onGuestExport,
@@ -444,6 +480,9 @@ function SettingsPane({
   importRef: React.RefObject<HTMLInputElement>;
   notes: Note[];
   isGuest: boolean;
+  counts: { archive: number; trash: number };
+  onOpenArchive: () => void;
+  onOpenTrash: () => void;
   onImportClick: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onGuestExport: () => void;
@@ -475,6 +514,35 @@ function SettingsPane({
         </div>
 
         <div className="space-y-3 p-4">
+          <button
+            type="button"
+            onClick={onOpenArchive}
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+          >
+            <span className="flex items-center gap-2">
+              <ArchiveIcon className="h-4 w-4 text-[var(--color-muted)]" />
+              Archive
+            </span>
+            <span className="text-xs text-[var(--color-muted)]">
+              {counts.archive}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onOpenTrash}
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+          >
+            <span className="flex items-center gap-2">
+              <TrashIcon className="h-4 w-4 text-[var(--color-muted)]" />
+              Trash
+            </span>
+            <span className="text-xs text-[var(--color-muted)]">
+              {counts.trash}
+            </span>
+          </button>
+
+          <div className="border-t border-[var(--color-border)]" />
+
           <input
             ref={importRef}
             type="file"
@@ -680,6 +748,8 @@ function Sidebar({
   hydrated,
   filtered,
   activeNoteId,
+  viewMode,
+  onExitFilteredView,
   onOpenNote,
   onNewNote,
   onOpenSearch,
@@ -693,6 +763,8 @@ function Sidebar({
   hydrated: boolean;
   filtered: Note[];
   activeNoteId: string | null;
+  viewMode: "active" | "archive" | "trash";
+  onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
   onOpenSearch: () => void;
@@ -704,6 +776,8 @@ function Sidebar({
   remove: (id: string) => void;
 }) {
   const buckets = bucketByDate(filtered);
+  const filteredTitle =
+    viewMode === "archive" ? "Archive" : viewMode === "trash" ? "Trash" : null;
 
   return (
     <aside className="hidden h-full w-[260px] shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-canvas)] md:flex">
@@ -730,10 +804,25 @@ function Sidebar({
         </button>
       </div>
 
+      {filteredTitle && (
+        <div className="flex items-center justify-between border-t border-[var(--color-border)] px-3 py-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            {filteredTitle}
+          </span>
+          <button
+            type="button"
+            onClick={onExitFilteredView}
+            className="text-xs text-[var(--color-link)] hover:underline"
+          >
+            Back to notes
+          </button>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {!hydrated ? null : filtered.length === 0 ? (
           <p className="px-2 py-6 text-xs text-[var(--color-muted)]">
-            No notes.
+            {filteredTitle ? `${filteredTitle} is empty.` : "No notes."}
           </p>
         ) : (
           buckets.map((bucket) => (
