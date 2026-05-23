@@ -12,7 +12,22 @@ import {
   updateAuthenticatorCounter,
 } from "@/lib/passkeys";
 
-const PASSKEY_AUTH_CHALLENGE_COOKIE = "keep_passkey_auth_challenge";
+const challengeStore = new Map<string, { challenge: string; expires: number }>();
+
+export function storeChallenge(challenge: string) {
+  const now = Date.now();
+  for (const [k, v] of challengeStore) {
+    if (v.expires < now) challengeStore.delete(k);
+  }
+  challengeStore.set(challenge, { challenge, expires: now + 5 * 60_000 });
+}
+
+export function consumeChallenge(challenge: string): boolean {
+  const entry = challengeStore.get(challenge);
+  if (!entry || entry.expires < Date.now()) return false;
+  challengeStore.delete(challenge);
+  return true;
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -31,13 +46,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const challenge = request.headers
-          .get("cookie")
-          ?.split(/;\s*/)
-          .find((c) => c.startsWith(`${PASSKEY_AUTH_CHALLENGE_COOKIE}=`))
-          ?.slice(PASSKEY_AUTH_CHALLENGE_COOKIE.length + 1);
-        if (!challenge) return null;
-
         const stored = await getAuthenticator(assertion.id);
         if (!stored) return null;
 
@@ -47,6 +55,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (handle && Buffer.from(handle, "base64url").toString() !== stored.user_id) {
           return null;
         }
+
+        const clientData = JSON.parse(
+          Buffer.from(assertion.response.clientDataJSON, "base64url").toString(),
+        );
+        const challenge = clientData.challenge;
+        if (!challenge || !consumeChallenge(challenge)) return null;
 
         const { rpID, origin } = rpConfig();
         const verification = await verifyAuthenticationResponse({
