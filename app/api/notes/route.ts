@@ -39,8 +39,8 @@ export async function POST(req: Request) {
     const id = newId();
     const now = Date.now();
     const { rows } = await pool().query<NoteRow>(
-      `INSERT INTO notes (id, user_id, title, body, pinned, archived, trashed, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $7)
+      `INSERT INTO notes (id, user_id, title, body, pinned, archived, trashed, markdown, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $8)
        RETURNING *`,
       [
         id,
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         noteBody,
         Boolean(body.pinned ?? false),
         Boolean(body.archived ?? false),
+        Boolean(body.markdown ?? false),
         now,
       ],
     );

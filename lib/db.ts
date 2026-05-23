@@ -71,6 +71,7 @@ async function bootstrap(): Promise<void> {
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS trashed BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE notes DROP COLUMN IF EXISTS tint;
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS share_token TEXT;
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS markdown BOOLEAN NOT NULL DEFAULT false;
     CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at DESC);
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
     CREATE INDEX IF NOT EXISTS notes_trashed_idx ON notes (trashed);
@@ -110,6 +111,7 @@ export type NoteRow = {
   pinned: boolean;
   archived: boolean;
   trashed: boolean;
+  markdown: boolean;
   share_token: string | null;
   created_at: string; // bigint comes back as string from pg
   updated_at: string;
@@ -123,6 +125,7 @@ export function rowToNote(r: NoteRow) {
     pinned: r.pinned,
     archived: r.archived,
     trashed: r.trashed,
+    markdown: Boolean(r.markdown),
     shareToken: r.share_token,
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
