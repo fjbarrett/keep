@@ -1,6 +1,7 @@
 import { signIn, auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { PasskeySignIn } from "@/components/PasskeySignIn";
 
 export default async function SignInPage({
   searchParams,
@@ -33,6 +34,7 @@ export default async function SignInPage({
             Continue with Google
           </button>
         </form>
+        <PasskeySignIn redirectTo={searchParams.from ?? "/"} />
       </div>
     </main>
   );
