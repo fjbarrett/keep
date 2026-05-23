@@ -80,10 +80,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/signin" },
   callbacks: {
-    // Surface the Google `sub` (stable per-account ID) as session.user.id so
-    // API routes can use it as the owner key on notes without having to look
-    // anything up in the DB. The Credentials/passkey path returns the same
-    // id, so the JWT sub stays consistent across both sign-in methods.
+    // Pin the JWT sub to the user.id returned by the provider on the initial
+    // sign-in. Without this, Credentials sign-ins fall through to NextAuth's
+    // auto-generated sub, which doesn't match the Google sub the notes table
+    // is keyed by — so notes appear to "disappear" after signing in by
+    // passkey. Safe for Google too: user.id is already the Google sub.
+    jwt({ token, user }) {
+      if (user?.id) token.sub = user.id;
+      return token;
+    },
+    // Surface the stable per-account id as session.user.id so API routes can
+    // use it as the owner key on notes.
     session({ session, token }) {
       if (session.user && token.sub) session.user.id = token.sub;
       return session;
