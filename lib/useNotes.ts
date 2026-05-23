@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { inferNoteTitle, needsInferredTitle } from "./inferTitle";
-import { Note, Tint } from "./types";
+import { Note } from "./types";
 
 const GUEST_NOTES_KEY = "keep.guestNotes.v1";
 
@@ -142,7 +142,6 @@ export function useNotes() {
         id: localId(),
         title,
         body,
-        tint: partial.tint ?? "natural",
         pinned: partial.pinned ?? false,
         archived: partial.archived ?? false,
         trashed: false,
@@ -160,7 +159,6 @@ export function useNotes() {
         json: {
           title,
           body,
-          tint: partial.tint ?? "natural",
           pinned: partial.pinned ?? false,
           archived: partial.archived ?? false,
           trashed: false,
@@ -248,7 +246,6 @@ export function useNotes() {
           id: `${localId()}${index.toString(36).toUpperCase()}`,
           title: await titleForBody(note.body),
           body: note.body,
-          tint: note.tint,
           pinned: note.pinned,
           archived: note.archived,
           trashed: false,
@@ -301,7 +298,6 @@ export function useNotes() {
           json: {
             title: "",
             body: note.body,
-            tint: note.tint,
             pinned: note.pinned,
             archived: note.archived,
             trashed: false,
@@ -341,13 +337,6 @@ export function useNotes() {
     [notes, update],
   );
 
-  const setTint = useCallback(
-    (id: string, tint: Tint) => {
-      update(id, { tint });
-    },
-    [update],
-  );
-
   return {
     notes,
     hydrated,
@@ -364,6 +353,5 @@ export function useNotes() {
     saveLocalNotes,
     togglePin,
     toggleArchive,
-    setTint,
   };
 }

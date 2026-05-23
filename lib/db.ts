@@ -58,7 +58,6 @@ async function bootstrap(): Promise<void> {
       user_id     TEXT,
       title       TEXT   NOT NULL DEFAULT '',
       body        TEXT   NOT NULL DEFAULT '',
-      tint        TEXT   NOT NULL DEFAULT 'natural',
       pinned      BOOLEAN NOT NULL DEFAULT false,
       archived    BOOLEAN NOT NULL DEFAULT false,
       trashed     BOOLEAN NOT NULL DEFAULT false,
@@ -70,6 +69,7 @@ async function bootstrap(): Promise<void> {
     -- — they simply won't match any user_id filter.
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS user_id TEXT;
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS trashed BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE notes DROP COLUMN IF EXISTS tint;
     CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at DESC);
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
     CREATE INDEX IF NOT EXISTS notes_trashed_idx ON notes (trashed);
@@ -86,7 +86,6 @@ export type NoteRow = {
   id: string;
   title: string;
   body: string;
-  tint: string;
   pinned: boolean;
   archived: boolean;
   trashed: boolean;
@@ -99,14 +98,6 @@ export function rowToNote(r: NoteRow) {
     id: r.id,
     title: r.title,
     body: r.body,
-    tint: r.tint as
-      | "natural"
-      | "clay"
-      | "rose"
-      | "mist"
-      | "sage"
-      | "sun"
-      | "violet",
     pinned: r.pinned,
     archived: r.archived,
     trashed: r.trashed,

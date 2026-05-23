@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
-import { Note, Tint } from "@/lib/types";
+import { Note } from "@/lib/types";
 import {
   ArchiveIcon,
   PinFilledIcon,
@@ -11,7 +11,6 @@ import {
   UnarchiveIcon,
   XIcon,
 } from "./Icons";
-import { TintPicker } from "./TintPicker";
 
 export type EditorTarget =
   | { mode: "new" }
@@ -38,7 +37,6 @@ export function NoteEditor({
   presentation?: "modal" | "panel";
 }) {
   const [body, setBody] = useState("");
-  const [tint, setTint] = useState<Tint>("natural");
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -53,12 +51,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "edit") {
       setBody(target.note.body);
-      setTint(target.note.tint);
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
     } else {
       setBody("");
-      setTint("natural");
       setPinned(false);
       setArchived(false);
     }
@@ -79,13 +75,13 @@ export function NoteEditor({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, body, tint, pinned, archived]);
+  }, [target, body, pinned, archived]);
 
   useEffect(() => {
     if (!target || !dirty) return;
     if (target.mode === "edit") {
       const timer = window.setTimeout(() => {
-        onUpdate(target.note.id, { body, tint, pinned, archived });
+        onUpdate(target.note.id, { body, pinned, archived });
         setDirty(false);
       }, 550);
       return () => window.clearTimeout(timer);
@@ -94,7 +90,7 @@ export function NoteEditor({
       if (createdIdRef.current) {
         const id = createdIdRef.current;
         const timer = window.setTimeout(() => {
-          onUpdate(id, { body, tint, pinned, archived });
+          onUpdate(id, { body, pinned, archived });
           setDirty(false);
         }, 550);
         return () => window.clearTimeout(timer);
@@ -103,7 +99,7 @@ export function NoteEditor({
       const timer = window.setTimeout(async () => {
         if (createdIdRef.current || creatingRef.current) return;
         creatingRef.current = true;
-        const note = await onCreate({ body, tint, pinned, archived });
+        const note = await onCreate({ body, pinned, archived });
         creatingRef.current = false;
         if (note) {
           createdIdRef.current = note.id;
@@ -112,7 +108,7 @@ export function NoteEditor({
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, onCreate, onUpdate, pinned, target, tint]);
+  }, [archived, body, dirty, onCreate, onUpdate, pinned, target]);
 
   const displayTitle = useMemo(() => {
     if (!target || target.mode !== "edit") return "New note";
@@ -124,11 +120,6 @@ export function NoteEditor({
 
   function markBody(value: string) {
     setBody(value);
-    setDirty(true);
-  }
-
-  function markTint(value: Tint) {
-    setTint(value);
     setDirty(true);
   }
 
@@ -144,7 +135,7 @@ export function NoteEditor({
 
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
-    onUpdate(target.note.id, { body, tint, pinned, archived });
+    onUpdate(target.note.id, { body, pinned, archived });
     setDirty(false);
   }
 
@@ -152,10 +143,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "new") {
       if (createdIdRef.current) {
-        onUpdate(createdIdRef.current, { body, tint, pinned, archived });
+        onUpdate(createdIdRef.current, { body, pinned, archived });
       } else if (body.trim() && !creatingRef.current) {
         creatingRef.current = true;
-        onCreate({ body, tint, pinned, archived });
+        onCreate({ body, pinned, archived });
       }
     } else {
       flushEdit();
@@ -222,14 +213,9 @@ export function NoteEditor({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2.5">
-          {target.mode !== "edit" || !target.note.trashed ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-[var(--color-muted)]">Tint</span>
-              <TintPicker value={tint} onChange={markTint} />
-            </div>
-          ) : (
-            <span className="text-xs text-[var(--color-muted)]">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2.5">
+          {target.mode === "edit" && target.note.trashed && (
+            <span className="mr-auto text-xs text-[var(--color-muted)]">
               In Trash
             </span>
           )}

@@ -83,24 +83,6 @@ export const TrashIcon = ({ className }: IconProps) => (
   </svg>
 );
 
-export const PaletteIcon = ({ className }: IconProps) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2s-1-1-1-2 1-2 3-2h2a4 4 0 0 0 4-4c0-5-4-8-10-8z" />
-    <circle cx="7.5" cy="11" r="1" />
-    <circle cx="11" cy="7.5" r="1" />
-    <circle cx="15.5" cy="8" r="1" />
-    <circle cx="17.5" cy="12" r="1" />
-  </svg>
-);
-
 export const PlusIcon = ({ className }: IconProps) => (
   <svg
     viewBox="0 0 24 24"
