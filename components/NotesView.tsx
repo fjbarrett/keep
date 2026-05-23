@@ -148,7 +148,7 @@ export function NotesView() {
       setView(note.trashed ? "trash" : note.archived ? "archive" : "all");
       setActiveNoteId(note.id);
     }
-    setTarget(null);
+    return note ?? null;
   }
 
   async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {

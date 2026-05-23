@@ -30,7 +30,7 @@ export function NoteEditor({
 }: {
   target: EditorTarget;
   onClose: () => void;
-  onCreate: (n: Partial<Note>) => void;
+  onCreate: (n: Partial<Note>) => Promise<Note | null>;
   onUpdate: (id: string, patch: Partial<Note>) => void;
   onTrash: (id: string) => void;
   onRestore: (id: string) => void;
@@ -43,6 +43,8 @@ export function NoteEditor({
   const [archived, setArchived] = useState(false);
   const [dirty, setDirty] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const createdIdRef = useRef<string | null>(null);
+  const creatingRef = useRef(false);
   const targetKey =
     target?.mode === "edit" ? target.note.id : target?.mode ?? "closed";
   const isPanel = presentation === "panel";
@@ -61,6 +63,8 @@ export function NoteEditor({
       setArchived(false);
     }
     setDirty(false);
+    createdIdRef.current = null;
+    creatingRef.current = false;
     setTimeout(() => {
       bodyRef.current?.focus();
     }, 30);
@@ -78,13 +82,37 @@ export function NoteEditor({
   }, [target, body, tint, pinned, archived]);
 
   useEffect(() => {
-    if (!target || target.mode !== "edit" || !dirty) return;
-    const timer = window.setTimeout(() => {
-      onUpdate(target.note.id, { body, tint, pinned, archived });
-      setDirty(false);
-    }, 550);
-    return () => window.clearTimeout(timer);
-  }, [archived, body, dirty, onUpdate, pinned, target, tint]);
+    if (!target || !dirty) return;
+    if (target.mode === "edit") {
+      const timer = window.setTimeout(() => {
+        onUpdate(target.note.id, { body, tint, pinned, archived });
+        setDirty(false);
+      }, 550);
+      return () => window.clearTimeout(timer);
+    }
+    if (target.mode === "new") {
+      if (createdIdRef.current) {
+        const id = createdIdRef.current;
+        const timer = window.setTimeout(() => {
+          onUpdate(id, { body, tint, pinned, archived });
+          setDirty(false);
+        }, 550);
+        return () => window.clearTimeout(timer);
+      }
+      if (!body.trim() || creatingRef.current) return;
+      const timer = window.setTimeout(async () => {
+        if (createdIdRef.current || creatingRef.current) return;
+        creatingRef.current = true;
+        const note = await onCreate({ body, tint, pinned, archived });
+        creatingRef.current = false;
+        if (note) {
+          createdIdRef.current = note.id;
+          setDirty(false);
+        }
+      }, 550);
+      return () => window.clearTimeout(timer);
+    }
+  }, [archived, body, dirty, onCreate, onUpdate, pinned, target, tint]);
 
   const displayTitle = useMemo(() => {
     if (!target || target.mode !== "edit") return "New note";
@@ -123,7 +151,10 @@ export function NoteEditor({
   function close() {
     if (!target) return;
     if (target.mode === "new") {
-      if (body.trim()) {
+      if (createdIdRef.current) {
+        onUpdate(createdIdRef.current, { body, tint, pinned, archived });
+      } else if (body.trim() && !creatingRef.current) {
+        creatingRef.current = true;
         onCreate({ body, tint, pinned, archived });
       }
     } else {
@@ -262,15 +293,6 @@ export function NoteEditor({
                 </button>
               </>
             )}
-            {target.mode === "new" && (
-              <button
-                type="button"
-                onClick={close}
-                className="rounded-md bg-[var(--color-accent)] px-3 py-1 text-xs font-medium text-[var(--color-accent-fg)] transition-colors hover:bg-[var(--color-accent-hover)]"
-              >
-                Create
-              </button>
-              )}
           </div>
         </div>
     </>
