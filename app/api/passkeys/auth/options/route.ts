@@ -4,7 +4,7 @@ import { rpConfig } from "@/lib/passkeys";
 
 export const runtime = "nodejs";
 
-export const PASSKEY_AUTH_CHALLENGE_COOKIE = "keep_passkey_auth_challenge";
+const PASSKEY_AUTH_CHALLENGE_COOKIE = "keep_passkey_auth_challenge";
 
 export async function POST() {
   const { rpID } = rpConfig();
