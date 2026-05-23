@@ -38,6 +38,7 @@ function normalizeStoredNote(value: unknown): Note | null {
     body,
     trashed: Boolean(note.trashed),
     markdown: Boolean(note.markdown),
+    tags: Array.isArray(note.tags) ? note.tags : [],
     shareToken: note.shareToken ?? null,
   };
 }
@@ -186,6 +187,7 @@ export function useNotes() {
         archived: partial.archived ?? false,
         trashed: false,
         markdown: partial.markdown ?? false,
+        tags: partial.tags ?? [],
         shareToken: null,
         createdAt: now,
         updatedAt: now,
@@ -205,6 +207,7 @@ export function useNotes() {
           archived: partial.archived ?? false,
           trashed: false,
           markdown: partial.markdown ?? false,
+          tags: partial.tags ?? [],
         },
       }));
       setNotes((prev) => [data.note, ...prev]);
@@ -293,6 +296,7 @@ export function useNotes() {
           archived: note.archived,
           trashed: false,
           markdown: false,
+          tags: [],
           shareToken: null,
           createdAt: note.createdAt || now,
           updatedAt: note.updatedAt || now,
@@ -347,6 +351,7 @@ export function useNotes() {
             archived: note.archived,
             trashed: false,
             markdown: note.markdown,
+            tags: note.tags,
           },
         }),
       ),

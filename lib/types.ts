@@ -6,6 +6,7 @@ export type Note = {
   archived: boolean;
   trashed: boolean;
   markdown: boolean;
+  tags: string[];
   shareToken: string | null;
   createdAt: number;
   updatedAt: number;
