@@ -19,11 +19,11 @@ export function CopyNoteButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={onCopy}
-      aria-label="Copy note"
-      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+      aria-label={copied ? "Copied" : "Copy note"}
+      title={copied ? "Copied" : "Copy note"}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
     >
-      <CopyMark />
-      {copied ? "Copied" : "Copy"}
+      {copied ? <CheckMark /> : <CopyMark />}
     </button>
   );
 }
@@ -31,8 +31,8 @@ export function CopyNoteButton({ text }: { text: string }) {
 function CopyMark() {
   return (
     <svg
-      width="12"
-      height="12"
+      width="14"
+      height="14"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -43,6 +43,24 @@ function CopyMark() {
     >
       <rect x="5" y="5" width="9" height="9" rx="1.5" />
       <path d="M3 11V3.5A1.5 1.5 0 0 1 4.5 2H11" />
+    </svg>
+  );
+}
+
+function CheckMark() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3.5 8.5l3 3 6-6.5" />
     </svg>
   );
 }
