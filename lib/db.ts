@@ -76,6 +76,25 @@ async function bootstrap(): Promise<void> {
     CREATE INDEX IF NOT EXISTS notes_trashed_idx ON notes (trashed);
     CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS notes_share_token_idx ON notes (share_token) WHERE share_token IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS users (
+      id         TEXT PRIMARY KEY,
+      email      TEXT,
+      name       TEXT,
+      updated_at BIGINT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS authenticators (
+      credential_id TEXT PRIMARY KEY,
+      user_id       TEXT   NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      public_key    BYTEA  NOT NULL,
+      counter       BIGINT NOT NULL DEFAULT 0,
+      transports    TEXT   NOT NULL DEFAULT '[]',
+      name          TEXT   NOT NULL DEFAULT '',
+      created_at    BIGINT NOT NULL,
+      last_used_at  BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS authenticators_user_idx ON authenticators (user_id);
   `);
 }
 
