@@ -25,6 +25,25 @@ function displayTitle(title: string, body: string) {
   return title || "Untitled";
 }
 
+function DownloadMark() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M8 2v8.5M4.5 7l3.5 3.5L11.5 7" />
+      <path d="M3 13.5h10" />
+    </svg>
+  );
+}
+
 function formatDate(t: number) {
   return new Date(t).toLocaleDateString("en-US", {
     month: "long",
@@ -62,7 +81,18 @@ export default async function SharedNotePage({
                 <dd>{formatDate(note.updatedAt)}</dd>
               </div>
             </dl>
-            <CopyNoteButton text={note.body} />
+            <div className="flex shrink-0 items-center gap-2">
+              <a
+                href={`/p/${params.token}.txt`}
+                download
+                aria-label="Download as .txt"
+                title="Download as .txt"
+                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              >
+                <DownloadMark />
+              </a>
+              <CopyNoteButton text={note.body} />
+            </div>
           </div>
         </header>
         {isMarkdown ? (
