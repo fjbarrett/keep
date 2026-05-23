@@ -326,8 +326,9 @@ export function NotesView() {
               <NoteEditor
                 target={mainTarget}
                 onClose={() => {
+                  // Keep activeNoteId so the closed note stays highlighted
+                  // in the sidebar — lets j/k resume from where you left off.
                   setTarget(null);
-                  setActiveNoteId(null);
                 }}
                 onCreate={handleCreate}
                 onUpdate={update}
