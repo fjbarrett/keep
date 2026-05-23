@@ -123,6 +123,12 @@ export function NotesView() {
     const note = await create(partial);
     if (note) {
       setActiveNoteId(note.id);
+      // Promote the open editor from "new" to "edit" so its header picks up
+      // the saved id and saving indicator (and any later updates flow through
+      // the edit-mode autosave path).
+      setTarget((current) =>
+        current?.mode === "new" ? { mode: "edit", note } : current,
+      );
     }
     return note ?? null;
   }
