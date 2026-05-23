@@ -47,6 +47,7 @@ function normalizeStoredNote(value: unknown): Note | null {
     body,
     trashed: Boolean(note.trashed),
     markdown: Boolean(note.markdown),
+    tags: Array.isArray(note.tags) ? note.tags : [],
     shareToken: note.shareToken ?? null,
   };
 }
@@ -98,12 +99,50 @@ async function titleForBody(body: string) {
   }
 }
 
+export type SyncStatus = "idle" | "syncing" | "saved" | "error" | "offline";
+
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [localNoteIds, setLocalNoteIds] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const inflightRef = useRef(0);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    function goOffline() { setSyncStatus("offline"); }
+    function goOnline() { setSyncStatus("idle"); }
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    if (!navigator.onLine) setSyncStatus("offline");
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
+
+  function trackSync<T>(promise: Promise<T>): Promise<T> {
+    inflightRef.current++;
+    setSyncStatus("syncing");
+    return promise.then(
+      (result) => {
+        inflightRef.current--;
+        if (inflightRef.current === 0) {
+          setSyncStatus("saved");
+          clearTimeout(savedTimerRef.current);
+          savedTimerRef.current = setTimeout(() => setSyncStatus("idle"), 2000);
+        }
+        return result;
+      },
+      (err) => {
+        inflightRef.current--;
+        setSyncStatus("error");
+        throw err;
+      },
+    );
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -194,6 +233,7 @@ export function useNotes() {
         archived: partial.archived ?? false,
         trashed: false,
         markdown: partial.markdown ?? false,
+        tags: partial.tags ?? [],
         shareToken: null,
         createdAt: now,
         updatedAt: now,
@@ -204,7 +244,7 @@ export function useNotes() {
     }
 
     try {
-      const data = await api<{ note: Note }>("/api/notes", {
+      const data = await trackSync(api<{ note: Note }>("/api/notes", {
         method: "POST",
         json: {
           title,
@@ -213,8 +253,9 @@ export function useNotes() {
           archived: partial.archived ?? false,
           trashed: false,
           markdown: partial.markdown ?? false,
+          tags: partial.tags ?? [],
         },
-      });
+      }));
       setNotes((prev) => [data.note, ...prev]);
       return data.note;
     } catch (e) {
@@ -242,10 +283,10 @@ export function useNotes() {
     if (updated) cacheNote(updated).catch(() => {});
 
     try {
-      const data = await api<{ note: Note }>(`/api/notes/${id}`, {
+      const data = await trackSync(api<{ note: Note }>(`/api/notes/${id}`, {
         method: "PATCH",
         json: nextPatch,
-      });
+      }));
       setNotes((prev) => prev.map((n) => (n.id === id ? data.note : n)));
       cacheNote(data.note).catch(() => {});
     } catch (e) {
@@ -283,7 +324,7 @@ export function useNotes() {
     }
 
     try {
-      await api(`/api/notes/${id}`, { method: "DELETE" });
+      await trackSync(api(`/api/notes/${id}`, { method: "DELETE" }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
       setNotes(prev);
@@ -309,6 +350,7 @@ export function useNotes() {
           archived: note.archived,
           trashed: false,
           markdown: false,
+          tags: [],
           shareToken: null,
           createdAt: note.createdAt || now,
           updatedAt: note.updatedAt || now,
@@ -363,6 +405,7 @@ export function useNotes() {
             archived: note.archived,
             trashed: false,
             markdown: note.markdown,
+            tags: note.tags,
           },
         }),
       ),
@@ -437,6 +480,7 @@ export function useNotes() {
     isGuest,
     hasLocalNotes: localNoteIds.size > 0,
     error,
+    syncStatus,
     refresh,
     create,
     update,
