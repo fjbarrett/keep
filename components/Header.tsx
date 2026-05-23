@@ -8,7 +8,7 @@ export async function Header() {
 
   return (
     <header className="border-b border-[var(--color-border)] bg-[var(--color-canvas)]">
-      <div className="mx-auto flex w-full max-w-[1280px] items-center gap-4 px-4 py-2.5 sm:px-6">
+      <div className="flex w-full items-center gap-4 px-6 py-4">
         <a href="/" className="flex items-center gap-2">
           <Logo />
         </a>
@@ -27,17 +27,17 @@ export async function Header() {
               <Image
                 src={user.image}
                 alt={user.name ?? "You"}
-                width={24}
-                height={24}
+                width={28}
+                height={28}
                 className="rounded-full border border-[var(--color-border)]"
               />
             )}
-            <span className="hidden text-xs text-[var(--color-muted)] sm:block">
+            <span className="hidden text-sm text-[var(--color-muted)] sm:block">
               {user.name ?? user.email}
             </span>
             <button
               type="submit"
-              className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+              className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
             >
               Sign out
             </button>
@@ -45,7 +45,7 @@ export async function Header() {
         ) : (
           <a
             href="/signin?from=/"
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
           >
             Sign in
           </a>
