@@ -1,24 +1,29 @@
 # Keep
 
-A small, opinionated notes app — pinning, archiving, tinted cards, full-text search across title and body, and a slide-in editor. Built as a single-page Next.js app backed by Postgres.
+A small, opinionated notes app — autosave, pin/archive/trash, full-text search across title and body, and a date-grouped ChatGPT-style sidebar. Built as a single-page Next.js app backed by Postgres, with a guest mode that stores notes in `localStorage` until you sign in.
 
-![screenshot placeholder](./docs/screenshot.png)
+![Keep — sidebar with date-grouped notes and an open note editor](./docs/screenshot.png)
 
 ## Stack
 
-- **Next.js 14** (App Router, React Server Components where useful, route handlers for the API)
+- **Next.js 14** (App Router, route handlers for the API)
 - **TypeScript** end to end
-- **Tailwind CSS** with CSS variables driving a tint-aware color system
+- **Tailwind CSS** with CSS variables for the GitHub-dark color tokens
+- **NextAuth** for sign-in (guest mode works without auth)
 - **Postgres** via `pg`, with a pooled client cached across hot reloads and a self-healing schema bootstrap
-- **Framer Motion** (`motion`) for the editor transition
 
 ## Features
 
-- Create, edit, pin, archive, delete, and recolor notes
-- Three views (All / Pinned / Archive) with live counts
-- Search across title and body
-- Sectioned layout — pinned notes float to the top of the All view
-- Graceful DB-error banner with a retry affordance — the app stays usable even when Postgres is unreachable
+- Autosaving editor — no Save button; new notes persist as soon as you start typing
+- LLM-generated note titles (falls back to local inference when no API key is set)
+- Pin, archive, move-to-trash, restore, delete-forever
+- Full-text search via a `⌘K` / `/` / `f` modal with `↑` `↓` and `Enter` navigation
+- Date-grouped sidebar (Today / Yesterday / Previous 7 days / Previous 30 days / Older)
+- Archive and Trash reachable from the Settings pane with a one-click "Back to notes"
+- Guest mode: notes live in `localStorage`; signing in migrates them to your account
+- Google Keep Takeout import (Takeout ZIP or single `.json`)
+- Plain-text export — single `.txt` per note, or a ZIP of everything
+- Graceful DB-error banner with retry — the app stays usable even when Postgres is unreachable
 - SSL-aware Postgres connection that works against both self-hosted (self-signed cert) and managed providers
 
 ## Getting started
@@ -29,26 +34,35 @@ npm install
 
 # 2. Point at a Postgres instance
 cp .env.example .env.local
-# edit DATABASE_URL
+# edit DATABASE_URL (and OPENAI_API_KEY if you want LLM titles)
 
 # 3. Run
 npm run dev
 ```
 
-The schema (one `notes` table + two indexes) is created on first request — no separate migration step.
+The schema (one `notes` table + a few indexes) is created on first request — no separate migration step. Migrations are expressed idempotently in `lib/db.ts` so dropped columns and added indexes apply on next boot.
 
 ## Project layout
 
 ```
 app/
-  api/notes/         CRUD route handlers
-  layout.tsx         Root layout + fonts
-  page.tsx           The single page — view state, search, editor wiring
-components/          Header, NoteList, NoteRow, NoteEditor, TintPicker, …
+  api/notes/         CRUD + import + export + title route handlers
+  layout.tsx         Root layout
+  page.tsx           Header + NotesView
+  signin/            NextAuth sign-in page
+components/
+  Header.tsx         Top bar (wordmark + auth chip)
+  NotesView.tsx      Sidebar, search overlay, settings pane, editor wiring
+  NoteEditor.tsx     Autosaving editor (new + edit modes both autosave)
+  Icons.tsx          Inline SVG icons
 lib/
-  db.ts              pg Pool + SSL handling + schema bootstrap
-  types.ts           Note shape and tint palette
-  useNotes.ts        Client hook: fetch + optimistic mutations
+  db.ts              pg Pool + SSL handling + idempotent schema bootstrap
+  types.ts           Note shape
+  useNotes.ts        Client hook: fetch + optimistic mutations + guest sync
+  inferTitle.ts      Local zero-token title fallback
+  titleModel.ts      OpenAI-backed title generation
+  googleKeepImport.ts  Takeout parser
+auth.ts              NextAuth config
 ```
 
 ## Deployment
