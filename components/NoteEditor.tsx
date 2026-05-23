@@ -8,6 +8,7 @@ import {
   PinFilledIcon,
   PinIcon,
   ShareIcon,
+  TagIcon,
   TrashIcon,
   UnarchiveIcon,
   XIcon,
@@ -47,6 +48,9 @@ export function NoteEditor({
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
   const [markdown, setMarkdown] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagOpen, setTagOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -70,12 +74,16 @@ export function NoteEditor({
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
       setMarkdown(Boolean(target.note.markdown));
+      setTags(target.note.tags ?? []);
     } else {
       setBody("");
       setPinned(false);
       setArchived(false);
       setMarkdown(false);
+      setTags([]);
     }
+    setTagInput("");
+    setTagOpen(false);
     setDirty(false);
     createdIdRef.current = null;
     creatingRef.current = false;
@@ -101,7 +109,7 @@ export function NoteEditor({
     if (!target || !dirty) return;
     if (target.mode === "edit") {
       const timer = window.setTimeout(() => {
-        onUpdate(target.note.id, { body, pinned, archived, markdown });
+        onUpdate(target.note.id, { body, pinned, archived, markdown, tags });
         setDirty(false);
       }, 550);
       return () => window.clearTimeout(timer);
@@ -110,7 +118,7 @@ export function NoteEditor({
       if (createdIdRef.current) {
         const id = createdIdRef.current;
         const timer = window.setTimeout(() => {
-          onUpdate(id, { body, pinned, archived, markdown });
+          onUpdate(id, { body, pinned, archived, markdown, tags });
           setDirty(false);
         }, 550);
         return () => window.clearTimeout(timer);
@@ -119,7 +127,7 @@ export function NoteEditor({
       const timer = window.setTimeout(async () => {
         if (createdIdRef.current || creatingRef.current) return;
         creatingRef.current = true;
-        const note = await onCreate({ body, pinned, archived, markdown });
+        const note = await onCreate({ body, pinned, archived, markdown, tags });
         creatingRef.current = false;
         if (note) {
           createdIdRef.current = note.id;
@@ -128,7 +136,7 @@ export function NoteEditor({
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, markdown, onCreate, onUpdate, pinned, target]);
+  }, [archived, body, dirty, markdown, onCreate, onUpdate, pinned, tags, target]);
 
   const displayTitle = useMemo(() => {
     // Mirror the sidebar so the two never drift: prefer the saved title,
@@ -165,6 +173,19 @@ export function NoteEditor({
 
   function toggleMarkdown() {
     setMarkdown((value) => !value);
+    setDirty(true);
+  }
+
+  function addTag(tag: string) {
+    const t = tag.trim().toLowerCase();
+    if (!t || tags.includes(t)) return;
+    setTags((prev) => [...prev, t]);
+    setTagInput("");
+    setDirty(true);
+  }
+
+  function removeTag(tag: string) {
+    setTags((prev) => prev.filter((t) => t !== tag));
     setDirty(true);
   }
 
@@ -224,7 +245,7 @@ export function NoteEditor({
 
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
-    onUpdate(target.note.id, { body, pinned, archived, markdown });
+    onUpdate(target.note.id, { body, pinned, archived, markdown, tags });
     setDirty(false);
   }
 
@@ -232,10 +253,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "new") {
       if (createdIdRef.current) {
-        onUpdate(createdIdRef.current, { body, pinned, archived, markdown });
+        onUpdate(createdIdRef.current, { body, pinned, archived, markdown, tags });
       } else if (body.trim() && !creatingRef.current) {
         creatingRef.current = true;
-        onCreate({ body, pinned, archived, markdown });
+        onCreate({ body, pinned, archived, markdown, tags });
       }
     } else {
       flushEdit();
@@ -261,6 +282,18 @@ export function NoteEditor({
           <div className="flex items-center gap-1">
             {target.mode !== "edit" || !target.note.trashed ? (
               <>
+                <button
+                  type="button"
+                  onClick={() => setTagOpen((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+                    tags.length > 0 || tagOpen
+                      ? "text-[var(--color-text)]"
+                      : "text-[var(--color-muted)]"
+                  }`}
+                  title="Tags"
+                >
+                  <TagIcon className="h-3.5 w-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={toggleMarkdown}
@@ -307,6 +340,53 @@ export function NoteEditor({
             )}
           </div>
         </div>
+
+        {(tags.length > 0 || tagOpen) && (
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] px-4 py-2">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-hover)] px-2 py-0.5 text-xs text-[var(--color-text)]"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="ml-0.5 text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                  aria-label={`Remove tag ${tag}`}
+                >
+                  <XIcon className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            ))}
+            {tagOpen && (
+              <input
+                autoFocus
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault();
+                    addTag(tagInput);
+                  }
+                  if (e.key === "Backspace" && !tagInput && tags.length > 0) {
+                    removeTag(tags[tags.length - 1]);
+                  }
+                  if (e.key === "Escape") {
+                    setTagOpen(false);
+                    setTagInput("");
+                  }
+                }}
+                onBlur={() => {
+                  if (tagInput.trim()) addTag(tagInput);
+                  setTagOpen(false);
+                }}
+                placeholder="Add tag..."
+                className="min-w-[80px] flex-1 border-0 bg-transparent text-xs text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+              />
+            )}
+          </div>
+        )}
 
         <div className="relative flex min-h-0 flex-1 px-4 py-4">
           <textarea
