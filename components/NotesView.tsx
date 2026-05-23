@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Fuse from "fuse.js";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
-import { useNotes } from "@/lib/useNotes";
+import { useNotes, SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { PasskeysSection } from "@/components/PasskeysSection";
@@ -12,13 +13,16 @@ import {
   PinFilledIcon,
   SearchIcon,
   SettingsIcon,
+  TagIcon,
   TrashIcon,
   UploadIcon,
   XIcon,
 } from "@/components/Icons";
 
-function searchableText(note: { body: string; title: string }) {
-  return note.body.trim() || note.title.trim();
+function searchableText(note: { body: string; title: string; tags?: string[] }) {
+  const base = note.body.trim() || note.title.trim();
+  if (note.tags?.length) return base + " " + note.tags.join(" ");
+  return base;
 }
 
 function previewText(note: Note) {
@@ -62,17 +66,20 @@ export function NotesView({
     toggleArchive,
     share,
     unshare,
+    syncStatus,
   } = useNotes();
 
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"active" | "archive" | "trash">(
     "active",
   );
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
@@ -85,20 +92,32 @@ export function NotesView({
     [notes],
   );
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const n of notes) {
+      if (!n.trashed) for (const t of n.tags) set.add(t);
+    }
+    return [...set].sort();
+  }, [notes]);
+
   const filtered = useMemo(() => {
-    const q = searchOpen ? query.trim().toLowerCase() : "";
-    return notes
+    const q = searchOpen ? query.trim() : "";
+    const viewFiltered = notes
       .filter((n) => {
         if (viewMode === "trash") return n.trashed;
         if (viewMode === "archive") return n.archived && !n.trashed;
         return !n.archived && !n.trashed;
       })
-      .filter((n) => {
-        if (!q) return true;
-        return searchableText(n).toLowerCase().includes(q);
-      })
-      .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [notes, query, searchOpen, viewMode]);
+      .filter((n) => !tagFilter || n.tags.includes(tagFilter));
+    if (!q) return viewFiltered.sort((a, b) => b.updatedAt - a.updatedAt);
+    const fuse = new Fuse(viewFiltered, {
+      keys: ["title", "body"],
+      threshold: 0.35,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+    });
+    return fuse.search(q).map((r) => r.item);
+  }, [notes, query, searchOpen, tagFilter, viewMode]);
 
   const visibleNotes = filtered;
   const activeNote =
@@ -263,6 +282,12 @@ export function NotesView({
         return;
       }
 
+      if (event.key === "?" || (event.shiftKey && key === "/")) {
+        event.preventDefault();
+        setShortcutsOpen((v) => !v);
+        return;
+      }
+
       if (event.key === "/" || key === "f") {
         event.preventDefault();
         openSearch();
@@ -337,7 +362,11 @@ export function NotesView({
           filtered={filtered}
           activeNoteId={activeNoteId}
           viewMode={viewMode}
-          onExitFilteredView={() => setViewMode("active")}
+          allTags={allTags}
+          tagFilter={tagFilter}
+          onTagFilter={setTagFilter}
+          syncStatus={syncStatus}
+          onExitFilteredView={() => { setViewMode("active"); setTagFilter(null); }}
           onOpenNote={openNote}
           onNewNote={() => {
             setActiveNoteId(null);
@@ -434,6 +463,10 @@ export function NotesView({
           onGuestExport={handleGuestExport}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
+
+      {shortcutsOpen && (
+        <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />
       )}
     </>
   );
@@ -807,6 +840,10 @@ function Sidebar({
   filtered,
   activeNoteId,
   viewMode,
+  allTags,
+  tagFilter,
+  onTagFilter,
+  syncStatus,
   onExitFilteredView,
   onOpenNote,
   onNewNote,
@@ -821,6 +858,10 @@ function Sidebar({
   filtered: Note[];
   activeNoteId: string | null;
   viewMode: "active" | "archive" | "trash";
+  allTags: string[];
+  tagFilter: string | null;
+  onTagFilter: (tag: string | null) => void;
+  syncStatus: SyncStatus;
   onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
@@ -849,6 +890,25 @@ function Sidebar({
           <span className="font-medium">New note</span>
         </button>
       </div>
+
+      {allTags.length > 0 && viewMode === "active" && (
+        <div className="flex flex-wrap gap-1 border-t border-[var(--color-border)] px-3 py-2">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => onTagFilter(tagFilter === tag ? null : tag)}
+              className={`rounded-full px-2 py-0.5 text-xs transition-colors ${
+                tagFilter === tag
+                  ? "bg-[var(--color-accent)] text-[var(--color-accent-fg)]"
+                  : "bg-[var(--color-surface-hover)] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {filteredTitle && (
         <div className="flex items-center justify-between border-t border-[var(--color-border)] px-3 py-2">
@@ -898,16 +958,41 @@ function Sidebar({
       </div>
 
       <div className="border-t border-[var(--color-border)] p-2">
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-        >
-          <SettingsIcon className="h-4 w-4" />
-          Settings
-        </button>
+        <div className="flex items-center justify-between px-2.5 py-1">
+          <SyncIndicator status={syncStatus} />
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            title="Settings"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </aside>
+  );
+}
+
+function SyncIndicator({ status }: { status: SyncStatus }) {
+  if (status === "idle") return null;
+
+  const config = {
+    syncing: { color: "text-[var(--color-link)]", label: "Saving..." },
+    saved: { color: "text-[var(--color-accent)]", label: "Saved" },
+    error: { color: "text-[var(--color-danger)]", label: "Sync error" },
+    offline: { color: "text-[var(--color-attention)]", label: "Offline" },
+  }[status];
+
+  return (
+    <span className={`flex items-center gap-1.5 text-xs ${config.color}`}>
+      <span
+        className={`inline-block h-1.5 w-1.5 rounded-full bg-current ${
+          status === "syncing" ? "animate-pulse" : ""
+        }`}
+      />
+      {config.label}
+    </span>
   );
 }
 
@@ -1047,6 +1132,103 @@ function MenuItem({
     >
       {children}
     </button>
+  );
+}
+
+const SHORTCUT_GROUPS = [
+  {
+    title: "Navigation",
+    items: [
+      { keys: ["j", "↓"], label: "Next note" },
+      { keys: ["k", "↑"], label: "Previous note" },
+      { keys: ["Enter", "o"], label: "Open note" },
+      { keys: ["Esc"], label: "Close editor" },
+    ],
+  },
+  {
+    title: "Actions",
+    items: [
+      { keys: ["n", "c"], label: "New note" },
+      { keys: ["p"], label: "Toggle pin" },
+      { keys: ["a"], label: "Toggle archive" },
+      { keys: ["Del"], label: "Move to trash" },
+    ],
+  },
+  {
+    title: "Global",
+    items: [
+      { keys: ["⌘K"], label: "Search" },
+      { keys: ["/", "f"], label: "Search" },
+      { keys: ["?"], label: "Shortcuts" },
+      { keys: ["⌘Enter"], label: "Close editor" },
+    ],
+  },
+];
+
+function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" || e.key === "?") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+      <button
+        type="button"
+        aria-label="Close shortcuts"
+        className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+            Keyboard shortcuts
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="grid gap-5 p-4 sm:grid-cols-2">
+          {SHORTCUT_GROUPS.map((group) => (
+            <div key={group.title}>
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                {group.title}
+              </h3>
+              <ul className="space-y-1.5">
+                {group.items.map((item) => (
+                  <li
+                    key={item.label}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="text-sm text-[var(--color-text)]">
+                      {item.label}
+                    </span>
+                    <span className="flex gap-1">
+                      {item.keys.map((k) => (
+                        <kbd
+                          key={k}
+                          className="inline-block min-w-[22px] rounded border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 text-center font-mono text-[11px] text-[var(--color-muted)]"
+                        >
+                          {k}
+                        </kbd>
+                      ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
