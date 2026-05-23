@@ -103,12 +103,18 @@ export default async function SharedNotePage({
               >
                 <DownloadMark />
               </a>
-              <CopyNoteButton text={note.body} />
+              <CopyNoteButton
+                text={note.body}
+                contentSelector={isMarkdown ? "[data-note-content]" : undefined}
+              />
             </div>
           </div>
         </header>
         {isMarkdown ? (
-          <div className="prose prose-invert prose-lg max-w-none prose-headings:tracking-tight prose-headings:text-[var(--color-text)] prose-p:text-[var(--color-text)] prose-strong:text-[var(--color-text)] prose-a:text-[var(--color-link)] prose-code:text-[var(--color-text)] prose-code:before:content-none prose-code:after:content-none prose-pre:bg-[var(--color-surface)] prose-blockquote:border-[var(--color-border)] prose-blockquote:text-[var(--color-muted)] prose-hr:border-[var(--color-border)]">
+          <div
+            data-note-content
+            className="prose prose-invert prose-lg max-w-none prose-headings:tracking-tight prose-headings:text-[var(--color-text)] prose-p:text-[var(--color-text)] prose-strong:text-[var(--color-text)] prose-a:text-[var(--color-link)] prose-code:text-[var(--color-text)] prose-code:before:content-none prose-code:after:content-none prose-pre:bg-[var(--color-surface)] prose-blockquote:border-[var(--color-border)] prose-blockquote:text-[var(--color-muted)] prose-hr:border-[var(--color-border)]"
+          >
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {note.body}
             </ReactMarkdown>
