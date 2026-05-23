@@ -9,9 +9,19 @@ const { auth } = NextAuth(authConfig);
 // Keep the API private, but allow the app shell to load for guests. Guest notes
 // live in localStorage until the user signs in and the client syncs them.
 export default auth((req) => {
+  const { pathname } = req.nextUrl;
+
+  // /p/<token>.txt → /p/<token>/raw.txt — keeps the public-facing URL short
+  // and gives the browser a real .txt extension to download against.
+  const txt = pathname.match(/^\/p\/([^/]+)\.txt$/);
+  if (txt) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/p/${txt[1]}/raw.txt`;
+    return NextResponse.rewrite(url);
+  }
+
   if (req.auth) return;
 
-  const { pathname } = req.nextUrl;
   if (pathname === "/api/notes/title") return;
   // Passkey sign-in runs before the session exists.
   if (pathname.startsWith("/api/passkeys/auth/")) return;
