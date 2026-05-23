@@ -37,8 +37,9 @@ export type Note = {
   tint: Tint;
   pinned: boolean;
   archived: boolean;
+  trashed: boolean;
   createdAt: number;
   updatedAt: number;
 };
 
-export type View = "all" | "pinned" | "archive";
+export type View = "all" | "pinned" | "archive" | "trash";

@@ -7,7 +7,7 @@ export async function Header() {
   const user = session?.user;
 
   return (
-    <header className="border-b border-[var(--color-header-border)] bg-[var(--color-header)]">
+    <header className="bg-[var(--color-background)]">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
         <a href="/" className="flex items-baseline gap-2">
           <Logo />

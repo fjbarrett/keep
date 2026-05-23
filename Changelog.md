@@ -6,6 +6,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 ### Added
+- Added a Trash view with restore and permanent delete actions.
 - Added low-cost LLM-generated dashboard titles with local fallback.
 - Added inferred dashboard titles for notes.
 - Added guest notes with local browser storage and sign-in sync.
@@ -14,6 +15,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Added keyboard shortcuts for search, creating notes, view switching, navigation, opening, pinning, archiving, and deleting.
 
 ### Changed
+- Moved import and export actions into a settings pane.
+- Removed the edit Done button in favor of autosaving the open note.
 - Reworked the app into a persistent sidebar and editor layout on desktop.
 - Local notes now require an explicit save after sign-in instead of auto-syncing.
 - Gave the top bar a more colorful sage-tinted background.
@@ -22,6 +25,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Made notes body-first by removing title entry from creation and editing.
 
 ### Fixed
+- Restored visible note titles and fixed crowded pinned indicators in the sidebar.
 - Normalized stale guest note titles so dashboard rows stay abbreviated.
 - Prevented row color palettes from being clipped by the notes list container.
 

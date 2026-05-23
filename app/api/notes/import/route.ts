@@ -44,8 +44,8 @@ export async function POST(req: Request) {
     let imported = 0;
     for (const note of importable) {
       const result = await pool().query(
-        `INSERT INTO notes (id, user_id, title, body, tint, pinned, archived, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO notes (id, user_id, title, body, tint, pinned, archived, trashed, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9)
          ON CONFLICT (id) DO NOTHING`,
         [
           googleKeepImportId(session.user.id, note),

@@ -41,7 +41,10 @@ export function NoteRow({
   onTogglePin,
   onToggleArchive,
   onRemove,
+  onRestore,
+  onDestroy,
   onSetTint,
+  trashMode = false,
 }: {
   note: Note;
   active?: boolean;
@@ -50,7 +53,10 @@ export function NoteRow({
   onTogglePin: () => void;
   onToggleArchive: () => void;
   onRemove: () => void;
+  onRestore: () => void;
+  onDestroy: () => void;
   onSetTint: (t: Tint) => void;
+  trashMode?: boolean;
 }) {
   const [showPalette, setShowPalette] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
@@ -62,7 +68,7 @@ export function NoteRow({
   return (
     <li
       ref={rowRef}
-      className={`group relative flex items-center justify-between gap-4 px-4 py-3 first:rounded-t-[7px] last:rounded-b-[7px] ${
+      className={`group relative flex items-start justify-between gap-2 px-3 py-3 first:rounded-t-[7px] last:rounded-b-[7px] ${
         active ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
       }`}
       onMouseEnter={onSelect}
@@ -70,104 +76,127 @@ export function NoteRow({
       <button
         onClick={onOpen}
         onFocus={onSelect}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left focus-ring"
+        className="min-w-0 flex-1 text-left focus-ring"
       >
-        <span
-          aria-hidden
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: TINT_HEX_SOLID[note.tint] }}
-          title={note.tint}
-        />
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate text-sm font-medium text-[var(--color-text)]">
-            {notePreview(note)}
-          </span>
+        <span className="block truncate text-sm font-medium leading-5 text-[var(--color-text)]">
+          {notePreview(note)}
+        </span>
+        <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--color-muted)]">
+          <span
+            aria-hidden
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: TINT_HEX_SOLID[note.tint] }}
+            title={note.tint}
+          />
+          <span className="truncate">{formatDate(note.updatedAt)}</span>
           {note.pinned && (
             <PinFilledIcon className="h-3 w-3 shrink-0 text-[var(--color-muted)]" />
           )}
         </span>
       </button>
 
-      <div className="flex shrink-0 items-center gap-3 text-xs text-[var(--color-muted)]">
-        <span className="hidden font-mono sm:inline">
-          {formatDate(note.updatedAt)}
-        </span>
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-          <IconBtn
-            label={note.pinned ? "Unpin" : "Pin"}
-            onClick={(e) => {
-              e.stopPropagation();
-              onTogglePin();
-            }}
-          >
-            {note.pinned ? (
-              <PinFilledIcon className="h-3.5 w-3.5" />
-            ) : (
-              <PinIcon className="h-3.5 w-3.5" />
-            )}
-          </IconBtn>
-
-          <div className="relative">
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        {trashMode ? (
+          <>
             <IconBtn
-              label="Color"
+              label="Restore"
               onClick={(e) => {
                 e.stopPropagation();
-                setShowPalette((v) => !v);
+                onRestore();
               }}
-              active={showPalette}
             >
-              <PaletteIcon className="h-3.5 w-3.5" />
+              <UnarchiveIcon className="h-3.5 w-3.5" />
             </IconBtn>
-            {showPalette && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPalette(false);
-                  }}
-                />
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute right-0 top-full z-20 mt-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 shadow-sm"
-                >
-                  <TintPicker
-                    value={note.tint}
-                    onChange={(t) => {
-                      onSetTint(t);
+
+            <IconBtn
+              label="Delete forever"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm("Permanently delete this note?")) onDestroy();
+              }}
+              danger
+            >
+              <TrashIcon className="h-3.5 w-3.5" />
+            </IconBtn>
+          </>
+        ) : (
+          <>
+            <IconBtn
+              label={note.pinned ? "Unpin" : "Pin"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin();
+              }}
+            >
+              {note.pinned ? (
+                <PinFilledIcon className="h-3.5 w-3.5" />
+              ) : (
+                <PinIcon className="h-3.5 w-3.5" />
+              )}
+            </IconBtn>
+
+            <div className="relative">
+              <IconBtn
+                label="Color"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPalette((v) => !v);
+                }}
+                active={showPalette}
+              >
+                <PaletteIcon className="h-3.5 w-3.5" />
+              </IconBtn>
+              {showPalette && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setShowPalette(false);
                     }}
                   />
-                </div>
-              </>
-            )}
-          </div>
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full z-20 mt-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 shadow-sm"
+                  >
+                    <TintPicker
+                      value={note.tint}
+                      onChange={(t) => {
+                        onSetTint(t);
+                        setShowPalette(false);
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
 
-          <IconBtn
-            label={note.archived ? "Unarchive" : "Archive"}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleArchive();
-            }}
-          >
-            {note.archived ? (
-              <UnarchiveIcon className="h-3.5 w-3.5" />
-            ) : (
-              <ArchiveIcon className="h-3.5 w-3.5" />
-            )}
-          </IconBtn>
+            <IconBtn
+              label={note.archived ? "Unarchive" : "Archive"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleArchive();
+              }}
+            >
+              {note.archived ? (
+                <UnarchiveIcon className="h-3.5 w-3.5" />
+              ) : (
+                <ArchiveIcon className="h-3.5 w-3.5" />
+              )}
+            </IconBtn>
 
-          <IconBtn
-            label="Delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirm("Delete this note for good?")) onRemove();
-            }}
-            danger
-          >
-            <TrashIcon className="h-3.5 w-3.5" />
-          </IconBtn>
-        </div>
+            <IconBtn
+              label="Move to Trash"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              danger
+            >
+              <TrashIcon className="h-3.5 w-3.5" />
+            </IconBtn>
+          </>
+        )}
       </div>
     </li>
   );

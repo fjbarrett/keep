@@ -15,7 +15,9 @@ export async function GET() {
   try {
     await ready();
     const { rows } = await pool().query<NoteRow>(
-      `SELECT * FROM notes WHERE user_id = $1 ORDER BY updated_at DESC`,
+      `SELECT * FROM notes
+        WHERE user_id = $1 AND trashed = false
+        ORDER BY updated_at DESC`,
       [session.user.id],
     );
     const notes = rows.map(rowToNote);

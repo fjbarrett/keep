@@ -36,6 +36,7 @@ function normalizeStoredNote(value: unknown): Note | null {
     ...note,
     title: needsInferredTitle(title, body) ? inferNoteTitle(body || title) : title,
     body,
+    trashed: Boolean(note.trashed),
   };
 }
 
@@ -144,6 +145,7 @@ export function useNotes() {
         tint: partial.tint ?? "natural",
         pinned: partial.pinned ?? false,
         archived: partial.archived ?? false,
+        trashed: false,
         createdAt: now,
         updatedAt: now,
       };
@@ -161,6 +163,7 @@ export function useNotes() {
           tint: partial.tint ?? "natural",
           pinned: partial.pinned ?? false,
           archived: partial.archived ?? false,
+          trashed: false,
         },
       });
       setNotes((prev) => [data.note, ...prev]);
@@ -197,6 +200,18 @@ export function useNotes() {
       refresh();
     }
   }, [isGuest, localNoteIds, notes, refresh]);
+
+  const trash = useCallback(async (id: string) => {
+    const n = notes.find((note) => note.id === id);
+    if (!n) return;
+    update(id, { trashed: true, pinned: false, archived: false });
+  }, [notes, update]);
+
+  const restore = useCallback(async (id: string) => {
+    const n = notes.find((note) => note.id === id);
+    if (!n) return;
+    update(id, { trashed: false, archived: false });
+  }, [notes, update]);
 
   const remove = useCallback(async (id: string) => {
     const prev = notes;
@@ -236,6 +251,7 @@ export function useNotes() {
           tint: note.tint,
           pinned: note.pinned,
           archived: note.archived,
+          trashed: false,
           createdAt: note.createdAt || now,
           updatedAt: note.updatedAt || now,
         });
@@ -273,7 +289,9 @@ export function useNotes() {
   }, [isGuest, refresh]);
 
   const saveLocalNotes = useCallback(async () => {
-    const localNotes = notes.filter((note) => localNoteIds.has(note.id));
+    const localNotes = notes.filter(
+      (note) => localNoteIds.has(note.id) && !note.trashed,
+    );
     if (localNotes.length === 0) return { saved: 0 };
 
     const imported = await Promise.all(
@@ -286,6 +304,7 @@ export function useNotes() {
             tint: note.tint,
             pinned: note.pinned,
             archived: note.archived,
+            trashed: false,
           },
         }),
       ),
@@ -316,6 +335,7 @@ export function useNotes() {
       update(id, {
         archived: becomingArchived,
         pinned: becomingArchived ? false : n.pinned,
+        trashed: false,
       });
     },
     [notes, update],
@@ -338,6 +358,8 @@ export function useNotes() {
     create,
     update,
     remove,
+    trash,
+    restore,
     importKeepFile,
     saveLocalNotes,
     togglePin,
