@@ -12,13 +12,16 @@ import {
   PinFilledIcon,
   SearchIcon,
   SettingsIcon,
+  TagIcon,
   TrashIcon,
   UploadIcon,
   XIcon,
 } from "@/components/Icons";
 
-function searchableText(note: { body: string; title: string }) {
-  return note.body.trim() || note.title.trim();
+function searchableText(note: { body: string; title: string; tags?: string[] }) {
+  const base = note.body.trim() || note.title.trim();
+  if (note.tags?.length) return base + " " + note.tags.join(" ");
+  return base;
 }
 
 function previewText(note: Note) {
@@ -73,6 +76,7 @@ export function NotesView({
   const [viewMode, setViewMode] = useState<"active" | "archive" | "trash">(
     "active",
   );
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
@@ -85,6 +89,14 @@ export function NotesView({
     [notes],
   );
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const n of notes) {
+      if (!n.trashed) for (const t of n.tags) set.add(t);
+    }
+    return [...set].sort();
+  }, [notes]);
+
   const filtered = useMemo(() => {
     const q = searchOpen ? query.trim().toLowerCase() : "";
     return notes
@@ -94,11 +106,12 @@ export function NotesView({
         return !n.archived && !n.trashed;
       })
       .filter((n) => {
+        if (tagFilter && !n.tags.includes(tagFilter)) return false;
         if (!q) return true;
         return searchableText(n).toLowerCase().includes(q);
       })
       .sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [notes, query, searchOpen, viewMode]);
+  }, [notes, query, searchOpen, tagFilter, viewMode]);
 
   const visibleNotes = filtered;
   const activeNote =
@@ -337,7 +350,10 @@ export function NotesView({
           filtered={filtered}
           activeNoteId={activeNoteId}
           viewMode={viewMode}
-          onExitFilteredView={() => setViewMode("active")}
+          allTags={allTags}
+          tagFilter={tagFilter}
+          onTagFilter={setTagFilter}
+          onExitFilteredView={() => { setViewMode("active"); setTagFilter(null); }}
           onOpenNote={openNote}
           onNewNote={() => {
             setActiveNoteId(null);
@@ -807,6 +823,9 @@ function Sidebar({
   filtered,
   activeNoteId,
   viewMode,
+  allTags,
+  tagFilter,
+  onTagFilter,
   onExitFilteredView,
   onOpenNote,
   onNewNote,
@@ -821,6 +840,9 @@ function Sidebar({
   filtered: Note[];
   activeNoteId: string | null;
   viewMode: "active" | "archive" | "trash";
+  allTags: string[];
+  tagFilter: string | null;
+  onTagFilter: (tag: string | null) => void;
   onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
@@ -849,6 +871,25 @@ function Sidebar({
           <span className="font-medium">New note</span>
         </button>
       </div>
+
+      {allTags.length > 0 && viewMode === "active" && (
+        <div className="flex flex-wrap gap-1 border-t border-[var(--color-border)] px-3 py-2">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => onTagFilter(tagFilter === tag ? null : tag)}
+              className={`rounded-full px-2 py-0.5 text-xs transition-colors ${
+                tagFilter === tag
+                  ? "bg-[var(--color-accent)] text-[var(--color-accent-fg)]"
+                  : "bg-[var(--color-surface-hover)] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {filteredTitle && (
         <div className="flex items-center justify-between border-t border-[var(--color-border)] px-3 py-2">
