@@ -7,6 +7,7 @@ import {
   ArchiveIcon,
   PinFilledIcon,
   PinIcon,
+  ShareIcon,
   TrashIcon,
   UnarchiveIcon,
   XIcon,
@@ -25,6 +26,9 @@ export function NoteEditor({
   onTrash,
   onRestore,
   onRemove,
+  onShare,
+  onUnshare,
+  canShare,
   presentation = "modal",
 }: {
   target: EditorTarget;
@@ -34,6 +38,9 @@ export function NoteEditor({
   onTrash: (id: string) => void;
   onRestore: (id: string) => void;
   onRemove: (id: string) => void;
+  onShare: (id: string) => Promise<string | null>;
+  onUnshare: (id: string) => Promise<void>;
+  canShare: boolean;
   presentation?: "modal" | "panel";
 }) {
   const [body, setBody] = useState("");
@@ -255,6 +262,13 @@ export function NoteEditor({
                 </button>
               </>
             )}
+            {target.mode === "edit" && !target.note.trashed && canShare && (
+              <SharePopover
+                note={target.note}
+                onShare={() => onShare(target.note.id)}
+                onUnshare={() => onUnshare(target.note.id)}
+              />
+            )}
             {target.mode === "edit" && !target.note.trashed && (
               <>
                 <button
@@ -307,6 +321,112 @@ export function NoteEditor({
       <div className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         {editor}
       </div>
+    </div>
+  );
+}
+
+function SharePopover({
+  note,
+  onShare,
+  onUnshare,
+}: {
+  note: Note;
+  onShare: () => Promise<string | null>;
+  onUnshare: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const isShared = !!note.shareToken;
+  const url =
+    note.shareToken && typeof window !== "undefined"
+      ? `${window.location.origin}/p/${note.shareToken}`
+      : "";
+
+  async function handleClick() {
+    setOpen((v) => !v);
+    if (!isShared && !busy) {
+      setBusy(true);
+      await onShare();
+      setBusy(false);
+    }
+  }
+
+  async function handleCopy() {
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function handleUnshare() {
+    setBusy(true);
+    await onUnshare();
+    setBusy(false);
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={handleClick}
+        className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors ${
+          isShared
+            ? "border-[var(--color-accent-border)] bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+            : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+        }`}
+      >
+        <ShareIcon className="h-3.5 w-3.5" />
+        {isShared ? "Shared" : "Share"}
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute bottom-full right-0 z-20 mb-1 w-80 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg">
+            <p className="text-xs font-medium text-[var(--color-text)]">
+              Public link
+            </p>
+            <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+              Anyone with the link can read this note.
+            </p>
+            {url ? (
+              <div className="mt-2 flex items-center gap-1.5">
+                <input
+                  readOnly
+                  value={url}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 font-mono text-xs text-[var(--color-text)] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-[var(--color-muted)]">
+                {busy ? "Generating link..." : "No link yet."}
+              </p>
+            )}
+            {isShared && (
+              <button
+                type="button"
+                onClick={handleUnshare}
+                disabled={busy}
+                className="mt-2 text-xs text-[var(--color-danger)] hover:underline disabled:opacity-50"
+              >
+                Stop sharing
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

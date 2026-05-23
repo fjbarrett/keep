@@ -70,10 +70,12 @@ async function bootstrap(): Promise<void> {
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS user_id TEXT;
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS trashed BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE notes DROP COLUMN IF EXISTS tint;
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS share_token TEXT;
     CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at DESC);
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
     CREATE INDEX IF NOT EXISTS notes_trashed_idx ON notes (trashed);
     CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS notes_share_token_idx ON notes (share_token) WHERE share_token IS NOT NULL;
   `);
 }
 
@@ -89,6 +91,7 @@ export type NoteRow = {
   pinned: boolean;
   archived: boolean;
   trashed: boolean;
+  share_token: string | null;
   created_at: string; // bigint comes back as string from pg
   updated_at: string;
 };
@@ -101,6 +104,7 @@ export function rowToNote(r: NoteRow) {
     pinned: r.pinned,
     archived: r.archived,
     trashed: r.trashed,
+    shareToken: r.share_token,
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
   };

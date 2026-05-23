@@ -171,6 +171,23 @@ export const XIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+export const ShareIcon = ({ className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <circle cx="18" cy="5" r="2.5" />
+    <circle cx="6" cy="12" r="2.5" />
+    <circle cx="18" cy="19" r="2.5" />
+    <path d="M8.2 10.7l7.6-4.4M8.2 13.3l7.6 4.4" />
+  </svg>
+);
+
 export const LockIcon = ({ className }: IconProps) => (
   <svg
     viewBox="0 0 24 24"

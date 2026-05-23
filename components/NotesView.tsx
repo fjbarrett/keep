@@ -55,6 +55,8 @@ export function NotesView() {
     saveLocalNotes,
     togglePin,
     toggleArchive,
+    share,
+    unshare,
   } = useNotes();
 
   const [query, setQuery] = useState("");
@@ -373,6 +375,9 @@ export function NotesView() {
                 onTrash={trash}
                 onRestore={restore}
                 onRemove={remove}
+                onShare={share}
+                onUnshare={unshare}
+                canShare={!isGuest}
                 presentation="panel"
               />
             ) : (

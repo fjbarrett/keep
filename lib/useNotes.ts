@@ -37,6 +37,7 @@ function normalizeStoredNote(value: unknown): Note | null {
     title: needsInferredTitle(title, body) ? inferNoteTitle(body || title) : title,
     body,
     trashed: Boolean(note.trashed),
+    shareToken: note.shareToken ?? null,
   };
 }
 
@@ -145,6 +146,7 @@ export function useNotes() {
         pinned: partial.pinned ?? false,
         archived: partial.archived ?? false,
         trashed: false,
+        shareToken: null,
         createdAt: now,
         updatedAt: now,
       };
@@ -249,6 +251,7 @@ export function useNotes() {
           pinned: note.pinned,
           archived: note.archived,
           trashed: false,
+          shareToken: null,
           createdAt: note.createdAt || now,
           updatedAt: note.updatedAt || now,
         });
@@ -337,6 +340,38 @@ export function useNotes() {
     [notes, update],
   );
 
+  const share = useCallback(
+    async (id: string) => {
+      if (isGuest || localNoteIds.has(id)) return null;
+      try {
+        const data = await api<{ note: Note }>(`/api/notes/${id}/share`, {
+          method: "POST",
+        });
+        setNotes((prev) => prev.map((n) => (n.id === id ? data.note : n)));
+        return data.note.shareToken;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to share");
+        return null;
+      }
+    },
+    [isGuest, localNoteIds],
+  );
+
+  const unshare = useCallback(
+    async (id: string) => {
+      if (isGuest || localNoteIds.has(id)) return;
+      try {
+        const data = await api<{ note: Note }>(`/api/notes/${id}/share`, {
+          method: "DELETE",
+        });
+        setNotes((prev) => prev.map((n) => (n.id === id ? data.note : n)));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to unshare");
+      }
+    },
+    [isGuest, localNoteIds],
+  );
+
   return {
     notes,
     hydrated,
@@ -349,6 +384,8 @@ export function useNotes() {
     remove,
     trash,
     restore,
+    share,
+    unshare,
     importKeepFile,
     saveLocalNotes,
     togglePin,
