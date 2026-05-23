@@ -5,6 +5,7 @@ import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { Note } from "@/lib/types";
 import {
   ArchiveIcon,
+  HistoryIcon,
   PinFilledIcon,
   PinIcon,
   ShareIcon,
@@ -48,6 +49,8 @@ export function NoteEditor({
   const [archived, setArchived] = useState(false);
   const [markdown, setMarkdown] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
@@ -76,6 +79,8 @@ export function NoteEditor({
       setMarkdown(false);
     }
     setDirty(false);
+    setHistoryOpen(false);
+    setVersions([]);
     createdIdRef.current = null;
     creatingRef.current = false;
     setTimeout(() => {
@@ -167,6 +172,23 @@ export function NoteEditor({
     setDirty(true);
   }
 
+  async function loadHistory() {
+    if (!target || target.mode !== "edit") return;
+    try {
+      const res = await fetch(`/api/notes/${target.note.id}/versions`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setVersions(data.versions ?? []);
+      setHistoryOpen(true);
+    } catch { /* ignore */ }
+  }
+
+  function restoreVersion(versionBody: string) {
+    setBody(versionBody);
+    setDirty(true);
+    setHistoryOpen(false);
+  }
+
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
     onUpdate(target.note.id, { body, pinned, archived, markdown });
@@ -221,6 +243,20 @@ export function NoteEditor({
                     md
                   </span>
                 </button>
+                {target.mode === "edit" && (
+                  <button
+                    type="button"
+                    onClick={loadHistory}
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+                      historyOpen
+                        ? "text-[var(--color-text)]"
+                        : "text-[var(--color-muted)]"
+                    }`}
+                    title="Version history"
+                  >
+                    <HistoryIcon className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={togglePinned}
@@ -253,16 +289,53 @@ export function NoteEditor({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 px-4 py-4">
-          <textarea
-            ref={bodyRef}
-            value={body}
-            onChange={(e) => markBody(e.target.value)}
-            placeholder="Start writing..."
-            rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
-            className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
-          />
-        </div>
+        {historyOpen ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            {versions.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-[var(--color-muted)]">
+                No previous versions yet
+              </p>
+            ) : (
+              <ul className="divide-y divide-[var(--color-border)]">
+                {versions.map((v) => (
+                  <li key={v.id} className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[var(--color-text)]">
+                          {v.title || "Untitled"}
+                        </p>
+                        <p className="text-xs text-[var(--color-muted)]">
+                          {new Date(v.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => restoreVersion(v.body)}
+                        className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--color-muted)]">
+                      {v.body.slice(0, 200)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 px-4 py-4">
+            <textarea
+              ref={bodyRef}
+              value={body}
+              onChange={(e) => markBody(e.target.value)}
+              placeholder="Start writing..."
+              rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
+              className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+            />
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2.5">
           {target.mode === "edit" && target.note.trashed && (

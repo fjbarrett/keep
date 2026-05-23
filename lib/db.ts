@@ -78,6 +78,15 @@ async function bootstrap(): Promise<void> {
     CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS notes_share_token_idx ON notes (share_token) WHERE share_token IS NOT NULL;
 
+    CREATE TABLE IF NOT EXISTS note_versions (
+      id          TEXT PRIMARY KEY,
+      note_id     TEXT NOT NULL,
+      body        TEXT NOT NULL DEFAULT '',
+      title       TEXT NOT NULL DEFAULT '',
+      created_at  BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS note_versions_note_idx ON note_versions (note_id, created_at DESC);
+
     CREATE TABLE IF NOT EXISTS users (
       id         TEXT PRIMARY KEY,
       email      TEXT,
