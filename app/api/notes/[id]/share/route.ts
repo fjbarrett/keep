@@ -7,8 +7,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function newShareToken() {
-  // 12 random bytes → 16-char URL-safe string. Unguessable in practice.
-  return crypto.randomBytes(12).toString("base64url");
+  // 4 random bytes → 8-char uppercase hex (~4.3B keyspace). Short and pretty
+  // in URLs; existing longer tokens still work because they're opaque strings.
+  return crypto.randomBytes(4).toString("hex").toUpperCase();
 }
 
 export async function POST(

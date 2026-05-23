@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
+import { CopyNoteButton } from "@/components/CopyNoteButton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,9 +47,12 @@ export default async function SharedNotePage({
           <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight text-[var(--color-text)] sm:text-4xl">
             {title}
           </h1>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Updated {formatDate(note.updatedAt)}
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-sm text-[var(--color-muted)]">
+              Updated {formatDate(note.updatedAt)}
+            </p>
+            <CopyNoteButton text={note.body} />
+          </div>
         </header>
         <div className="whitespace-pre-wrap text-[17px] leading-[1.75] text-[var(--color-text)] sm:text-lg sm:leading-[1.8]">
           {note.body}
