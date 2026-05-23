@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 
-export function CopyNoteButton({ text }: { text: string }) {
+export function CopyNoteButton({
+  text,
+  contentSelector,
+}: {
+  text: string;
+  contentSelector?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function onCopy() {
     try {
-      await navigator.clipboard.writeText(text);
+      let content = text;
+      if (contentSelector) {
+        const el = document.querySelector(contentSelector);
+        if (el) content = (el as HTMLElement).innerText;
+      }
+      await navigator.clipboard.writeText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
