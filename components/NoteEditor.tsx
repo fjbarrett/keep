@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
+import { inferNoteTitle } from "@/lib/inferTitle";
 import { Note } from "@/lib/types";
 import {
   ArchiveIcon,
@@ -113,11 +113,11 @@ export function NoteEditor({
   }, [archived, body, dirty, onCreate, onUpdate, pinned, target]);
 
   const displayTitle = useMemo(() => {
-    if (!target || target.mode !== "edit") return "New note";
-    const title = needsInferredTitle(target.note.title, body)
-      ? inferNoteTitle(body || target.note.title)
-      : target.note.title;
-    return title || "Untitled";
+    // Track the current body so the editor header updates while typing,
+    // even when the persisted title is fresh and wouldn't normally re-infer.
+    if (body.trim()) return inferNoteTitle(body);
+    if (target?.mode === "edit") return target.note.title || "Untitled";
+    return "New note";
   }, [body, target]);
 
   function markBody(value: string) {
