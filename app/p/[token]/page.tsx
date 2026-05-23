@@ -41,7 +41,7 @@ export default async function SharedNotePage({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <article className="w-full max-w-2xl text-center">
+      <article className="w-full max-w-2xl">
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">
           {title}
         </h1>
