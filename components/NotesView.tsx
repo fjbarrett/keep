@@ -280,7 +280,16 @@ export function NotesView() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeNote, activeNoteId, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
 
-  const mainTarget: EditorTarget = target;
+  // Re-resolve edit targets against the live notes list so saved-title
+  // updates from autosave reach the editor (otherwise target.note is the
+  // stale snapshot captured at click time).
+  const mainTarget: EditorTarget =
+    target?.mode === "edit"
+      ? {
+          mode: "edit",
+          note: notes.find((n) => n.id === target.note.id) ?? target.note,
+        }
+      : target;
 
   return (
     <>
