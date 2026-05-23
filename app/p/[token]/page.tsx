@@ -40,8 +40,8 @@ export default async function SharedNotePage({
   const title = displayTitle(note.title, note.body);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-12">
-      <article className="flex-1">
+    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+      <article className="w-full max-w-2xl text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">
           {title}
         </h1>
@@ -53,7 +53,7 @@ export default async function SharedNotePage({
         </div>
       </article>
 
-      <footer className="mt-12 border-t border-[var(--color-border)] pt-4 text-xs text-[var(--color-muted)]">
+      <footer className="mt-12 text-xs text-[var(--color-muted)]">
         Shared via{" "}
         <a href="/" className="text-[var(--color-link)] hover:underline">
           Keep
