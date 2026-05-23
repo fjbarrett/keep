@@ -115,13 +115,18 @@ export function NoteEditor({
   const displayTitle = useMemo(() => {
     // Mirror the sidebar so the two never drift: prefer the saved title,
     // fall back to local inference only when the saved one is stale.
-    if (!target || target.mode !== "edit") return "New note";
+    // In "new" mode there's no saved row yet, so infer straight from the
+    // editor's local body so the header tracks each keystroke just like
+    // the sidebar preview does.
+    if (!target || target.mode !== "edit") {
+      return body.trim() ? inferNoteTitle(body) : "New note";
+    }
     const saved = target.note.title;
     if (needsInferredTitle(saved, target.note.body)) {
       return inferNoteTitle(target.note.body || saved) || "Untitled";
     }
     return saved || "Untitled";
-  }, [target]);
+  }, [target, body]);
 
   function markBody(value: string) {
     setBody(value);
