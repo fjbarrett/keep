@@ -13,6 +13,6 @@ export async function POST() {
     allowCredentials: [],
   });
 
-  storeChallenge(options.challenge);
+  await storeChallenge(options.challenge);
   return NextResponse.json(options);
 }
