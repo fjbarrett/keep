@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
-import { useNotes } from "@/lib/useNotes";
+import { useNotes, SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { PasskeysSection } from "@/components/PasskeysSection";
@@ -62,6 +62,7 @@ export function NotesView({
     toggleArchive,
     share,
     unshare,
+    syncStatus,
   } = useNotes();
 
   const [query, setQuery] = useState("");
@@ -337,6 +338,7 @@ export function NotesView({
           filtered={filtered}
           activeNoteId={activeNoteId}
           viewMode={viewMode}
+          syncStatus={syncStatus}
           onExitFilteredView={() => setViewMode("active")}
           onOpenNote={openNote}
           onNewNote={() => {
@@ -807,6 +809,7 @@ function Sidebar({
   filtered,
   activeNoteId,
   viewMode,
+  syncStatus,
   onExitFilteredView,
   onOpenNote,
   onNewNote,
@@ -821,6 +824,7 @@ function Sidebar({
   filtered: Note[];
   activeNoteId: string | null;
   viewMode: "active" | "archive" | "trash";
+  syncStatus: SyncStatus;
   onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
@@ -898,16 +902,41 @@ function Sidebar({
       </div>
 
       <div className="border-t border-[var(--color-border)] p-2">
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-        >
-          <SettingsIcon className="h-4 w-4" />
-          Settings
-        </button>
+        <div className="flex items-center justify-between px-2.5 py-1">
+          <SyncIndicator status={syncStatus} />
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            title="Settings"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </aside>
+  );
+}
+
+function SyncIndicator({ status }: { status: SyncStatus }) {
+  if (status === "idle") return null;
+
+  const config = {
+    syncing: { color: "text-[var(--color-link)]", label: "Saving..." },
+    saved: { color: "text-[var(--color-accent)]", label: "Saved" },
+    error: { color: "text-[var(--color-danger)]", label: "Sync error" },
+    offline: { color: "text-[var(--color-attention)]", label: "Offline" },
+  }[status];
+
+  return (
+    <span className={`flex items-center gap-1.5 text-xs ${config.color}`}>
+      <span
+        className={`inline-block h-1.5 w-1.5 rounded-full bg-current ${
+          status === "syncing" ? "animate-pulse" : ""
+        }`}
+      />
+      {config.label}
+    </span>
   );
 }
 
