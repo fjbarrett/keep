@@ -5,6 +5,7 @@ import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
+import { PasskeysSection } from "@/components/PasskeysSection";
 import {
   ArchiveIcon,
   DownloadIcon,
@@ -631,6 +632,13 @@ function SettingsPane({
               <span>Export notes</span>
               <DownloadIcon className="h-4 w-4" />
             </button>
+          )}
+
+          {!isGuest && (
+            <>
+              <div className="border-t border-[var(--color-border)]" />
+              <PasskeysSection />
+            </>
           )}
         </div>
       </section>
