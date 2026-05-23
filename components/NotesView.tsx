@@ -39,7 +39,11 @@ function isEditableElement(target: EventTarget | null) {
   );
 }
 
-export function NotesView() {
+export function NotesView({
+  initialNoteId,
+}: {
+  initialNoteId: string | null;
+}) {
   const {
     notes,
     hydrated,
@@ -174,32 +178,28 @@ export function NotesView() {
     return () => window.clearTimeout(focusTimer);
   }, [searchOpen]);
 
-  // Reopen the note named in ?note=<id> after a refresh — once the notes
-  // list has hydrated and the target note is actually present.
+  // Reopen the note named in the URL path (/<noteId>) once the notes list
+  // has hydrated and that note is actually present.
   useEffect(() => {
     if (didRestoreFromUrlRef.current || !hydrated) return;
-    const id = new URLSearchParams(window.location.search).get("note");
-    if (!id) {
+    if (!initialNoteId) {
       didRestoreFromUrlRef.current = true;
       return;
     }
-    const note = notes.find((n) => n.id === id);
+    const note = notes.find((n) => n.id === initialNoteId);
     if (!note) return;
     didRestoreFromUrlRef.current = true;
     setActiveNoteId(note.id);
     setTarget({ mode: "edit", note });
-  }, [hydrated, notes]);
+  }, [hydrated, notes, initialNoteId]);
 
-  // Mirror the open note into ?note=<id> so refresh restores it.
+  // Mirror the open note into the URL path so refresh restores it.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const id = target?.mode === "edit" ? target.note.id : null;
-    const url = new URL(window.location.href);
-    const current = url.searchParams.get("note");
-    if (current === id) return;
-    if (id) url.searchParams.set("note", id);
-    else url.searchParams.delete("note");
-    window.history.replaceState(null, "", url);
+    const desired = id ? `/${id}` : "/";
+    if (window.location.pathname === desired) return;
+    window.history.replaceState(null, "", desired + window.location.search);
   }, [target]);
 
   useEffect(() => {

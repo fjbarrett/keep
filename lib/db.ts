@@ -129,8 +129,12 @@ export function rowToNote(r: NoteRow) {
   };
 }
 
+// 8 base36 chars (~2.8e12 keyspace) is plenty for a per-user notes app and
+// keeps the URL short. Existing longer IDs still work — they're opaque strings.
 export function newId(): string {
-  return (
-    Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-  ).toUpperCase();
+  let id = "";
+  while (id.length < 8) {
+    id += Math.random().toString(36).slice(2);
+  }
+  return id.slice(0, 8).toUpperCase();
 }
