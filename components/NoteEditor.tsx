@@ -69,6 +69,8 @@ export function NoteEditor({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!target) return;
+      // Defer to the search overlay when it's mounted — Escape and ⌘K belong to it.
+      if (document.querySelector("[data-search-overlay]")) return;
       if (e.key === "Escape") close();
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") close();
     }
