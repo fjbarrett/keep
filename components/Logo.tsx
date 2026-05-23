@@ -1,6 +1,6 @@
 export function Logo() {
   return (
-    <span className="text-sm font-semibold tracking-tight text-[var(--color-text)]">
+    <span className="text-xl font-semibold tracking-tight text-[var(--color-text)]">
       Keep
     </span>
   );
