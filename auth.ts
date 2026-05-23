@@ -12,21 +12,25 @@ import {
   updateAuthenticatorCounter,
 } from "@/lib/passkeys";
 
-const challengeStore = new Map<string, { challenge: string; expires: number }>();
-
-export function storeChallenge(challenge: string) {
-  const now = Date.now();
-  for (const [k, v] of challengeStore) {
-    if (v.expires < now) challengeStore.delete(k);
-  }
-  challengeStore.set(challenge, { challenge, expires: now + 5 * 60_000 });
+export async function storeChallenge(challenge: string) {
+  await ready();
+  await pool().query(
+    `DELETE FROM passkey_challenges WHERE expires_at < $1`,
+    [Date.now()],
+  );
+  await pool().query(
+    `INSERT INTO passkey_challenges (challenge, expires_at) VALUES ($1, $2)`,
+    [challenge, Date.now() + 5 * 60_000],
+  );
 }
 
-export function consumeChallenge(challenge: string): boolean {
-  const entry = challengeStore.get(challenge);
-  if (!entry || entry.expires < Date.now()) return false;
-  challengeStore.delete(challenge);
-  return true;
+export async function consumeChallenge(challenge: string): Promise<boolean> {
+  await ready();
+  const { rowCount } = await pool().query(
+    `DELETE FROM passkey_challenges WHERE challenge = $1 AND expires_at > $2`,
+    [challenge, Date.now()],
+  );
+  return (rowCount ?? 0) > 0;
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -60,7 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           Buffer.from(assertion.response.clientDataJSON, "base64url").toString(),
         );
         const challenge = clientData.challenge;
-        if (!challenge || !consumeChallenge(challenge)) return null;
+        if (!challenge || !(await consumeChallenge(challenge))) return null;
 
         const { rpID, origin } = rpConfig();
         const verification = await verifyAuthenticationResponse({

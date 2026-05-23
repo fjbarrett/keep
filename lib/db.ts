@@ -89,6 +89,11 @@ async function bootstrap(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS note_versions_note_idx ON note_versions (note_id, created_at DESC);
 
+    CREATE TABLE IF NOT EXISTS passkey_challenges (
+      challenge   TEXT PRIMARY KEY,
+      expires_at  BIGINT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS users (
       id         TEXT PRIMARY KEY,
       email      TEXT,
