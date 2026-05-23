@@ -40,20 +40,22 @@ export default async function SharedNotePage({
   const title = displayTitle(note.title, note.body);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <article className="w-full max-w-2xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">
-          {title}
-        </h1>
-        <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Updated {formatDate(note.updatedAt)}
-        </p>
-        <div className="mt-6 whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text)]">
+    <main className="mx-auto flex min-h-screen w-full max-w-[680px] flex-col px-5 py-10 sm:px-8 sm:py-16">
+      <article className="my-auto">
+        <header className="mb-8 sm:mb-10">
+          <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight text-[var(--color-text)] sm:text-4xl">
+            {title}
+          </h1>
+          <p className="mt-2 text-sm text-[var(--color-muted)]">
+            Updated {formatDate(note.updatedAt)}
+          </p>
+        </header>
+        <div className="whitespace-pre-wrap text-[17px] leading-[1.75] text-[var(--color-text)] sm:text-lg sm:leading-[1.8]">
           {note.body}
         </div>
       </article>
 
-      <footer className="mt-12 text-xs text-[var(--color-muted)]">
+      <footer className="mt-16 pt-6 text-xs text-[var(--color-muted)]">
         Shared via{" "}
         <a href="/" className="text-[var(--color-link)] hover:underline">
           Keep
