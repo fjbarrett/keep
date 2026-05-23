@@ -469,7 +469,7 @@ export function NoteEditor({
               onDrop={handleDrop}
               placeholder="Start writing..."
               rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
-              className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+              className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
             />
             {uploading && (
               <p className="absolute bottom-3 left-4 text-xs text-[var(--color-muted)] animate-pulse">

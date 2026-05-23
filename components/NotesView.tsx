@@ -353,76 +353,101 @@ export function NotesView({
         }
       : target;
 
+  const sidebarProps = {
+    hydrated,
+    filtered,
+    activeNoteId,
+    viewMode,
+    allTags,
+    tagFilter,
+    onTagFilter: setTagFilter,
+    syncStatus,
+    onExitFilteredView: () => { setViewMode("active"); setTagFilter(null); },
+    onOpenNote: openNote,
+    onNewNote: () => {
+      setActiveNoteId(null);
+      setViewMode("active");
+      setTarget({ mode: "new" });
+    },
+    onOpenSettings: () => setSettingsOpen(true),
+    togglePin,
+    toggleArchive,
+    trash,
+    restore,
+    remove,
+  };
+
+  const editorPanel = (
+    <>
+      {error && (
+        <div className="px-6 pt-4">
+          <DbError error={error} onRetry={refresh} />
+        </div>
+      )}
+      {(isGuest || hasLocalNotes) && notes.length > 0 && (
+        <div className="px-6 pt-4">
+          <GuestSaveBanner
+            isGuest={isGuest}
+            hasLocalNotes={hasLocalNotes}
+            onSave={saveLocalNotes}
+          />
+        </div>
+      )}
+
+      <div className="flex min-h-0 flex-1 flex-col p-6">
+        {mainTarget ? (
+          <NoteEditor
+            target={mainTarget}
+            onClose={() => setTarget(null)}
+            onCreate={handleCreate}
+            onUpdate={update}
+            onTrash={trash}
+            onRestore={restore}
+            onRemove={remove}
+            onShare={share}
+            onUnshare={unshare}
+            canShare={!isGuest}
+            presentation="panel"
+          />
+        ) : (
+          <MainPlaceholder
+            hasNotes={!hydrated || notes.length > 0}
+            onNewNote={() => setTarget({ mode: "new" })}
+          />
+        )}
+      </div>
+    </>
+  );
+
   return (
     <>
-      <div className="flex min-h-0 flex-1">
-        <Sidebar
-          hydrated={hydrated}
-          filtered={filtered}
-          activeNoteId={activeNoteId}
-          viewMode={viewMode}
-          allTags={allTags}
-          tagFilter={tagFilter}
-          onTagFilter={setTagFilter}
-          syncStatus={syncStatus}
-          onExitFilteredView={() => { setViewMode("active"); setTagFilter(null); }}
-          onOpenNote={openNote}
-          onNewNote={() => {
-            setActiveNoteId(null);
-            setViewMode("active");
-            setTarget({ mode: "new" });
-          }}
-          onOpenSettings={() => setSettingsOpen(true)}
-          togglePin={togglePin}
-          toggleArchive={toggleArchive}
-          trash={trash}
-          restore={restore}
-          remove={remove}
-        />
-
+      {/* Desktop: sidebar + editor side by side */}
+      <div className="hidden min-h-0 flex-1 md:flex">
+        <Sidebar {...sidebarProps} />
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
-          {error && (
-            <div className="px-6 pt-4">
-              <DbError error={error} onRetry={refresh} />
-            </div>
-          )}
-          {(isGuest || hasLocalNotes) && notes.length > 0 && (
-            <div className="px-6 pt-4">
-              <GuestSaveBanner
-                isGuest={isGuest}
-                hasLocalNotes={hasLocalNotes}
-                onSave={saveLocalNotes}
-              />
-            </div>
-          )}
-
-          <div className="flex min-h-0 flex-1 flex-col p-6">
-            {mainTarget ? (
-              <NoteEditor
-                target={mainTarget}
-                onClose={() => {
-                  // Keep activeNoteId so the closed note stays highlighted
-                  // in the sidebar — lets j/k resume from where you left off.
-                  setTarget(null);
-                }}
-                onCreate={handleCreate}
-                onUpdate={update}
-                onTrash={trash}
-                onRestore={restore}
-                onRemove={remove}
-                onShare={share}
-                onUnshare={unshare}
-                canShare={!isGuest}
-                presentation="panel"
-              />
-            ) : (
-              <MainPlaceholder
-                hasNotes={!hydrated || notes.length > 0}
-                onNewNote={() => setTarget({ mode: "new" })}
-              />
-            )}
-          </div>
+          {editorPanel}
         </main>
+      </div>
+
+      {/* Mobile: full-screen list or full-screen editor */}
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+        {mainTarget ? (
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
+            <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setTarget(null)}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+                Notes
+              </button>
+            </div>
+            {editorPanel}
+          </main>
+        ) : (
+          <Sidebar {...sidebarProps} mobile />
+        )}
       </div>
 
       {searchOpen && (
@@ -846,6 +871,7 @@ function Sidebar({
   trash,
   restore,
   remove,
+  mobile,
 }: {
   hydrated: boolean;
   filtered: Note[];
@@ -864,13 +890,18 @@ function Sidebar({
   trash: (id: string) => void;
   restore: (id: string) => void;
   remove: (id: string) => void;
+  mobile?: boolean;
 }) {
   const buckets = bucketByDate(filtered);
   const filteredTitle =
     viewMode === "archive" ? "Archive" : viewMode === "trash" ? "Trash" : null;
 
   return (
-    <aside className="hidden h-full w-[260px] shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-canvas)] md:flex">
+    <aside className={
+      mobile
+        ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
+        : "hidden h-full w-[260px] shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-canvas)] md:flex"
+    }>
       <div className="flex flex-col gap-1 p-2">
         <button
           type="button"
@@ -1279,6 +1310,22 @@ function PencilPlusIcon({ className }: { className?: string }) {
     >
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  );
+}
+
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M15 18l-6-6 6-6" />
     </svg>
   );
 }
