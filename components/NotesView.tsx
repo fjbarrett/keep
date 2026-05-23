@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
 import { Note, View } from "@/lib/types";
-import { NoteList, SectionLabel } from "@/components/NoteList";
+import { NoteList } from "@/components/NoteList";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { EmptyState } from "@/components/EmptyState";
+import { TINT_HEX_SOLID } from "@/components/TintPicker";
 import {
   DownloadIcon,
   PlusIcon,
@@ -109,16 +110,7 @@ export function NotesView() {
   );
   const activeNote =
     visibleNotes.find((note) => note.id === activeNoteId) ?? null;
-  const editorTarget: EditorTarget =
-    target?.mode === "new"
-      ? target
-      : target?.mode === "edit"
-        ? target
-        : activeNote
-          ? ({ mode: "edit", note: activeNote } as EditorTarget)
-          : notes.length === 0 && hydrated
-            ? { mode: "new" }
-            : null;
+  const editorTarget: EditorTarget = target;
 
   function openSearch() {
     setSearchOpen(true);
@@ -135,11 +127,7 @@ export function NotesView() {
     setSearchOpen(false);
     setQuery("");
     setActiveNoteId(note.id);
-    if (window.matchMedia("(max-width: 1023px)").matches) {
-      setTarget({ mode: "edit", note });
-    } else {
-      setTarget(null);
-    }
+    setTarget({ mode: "edit", note });
   }
 
   async function handleCreate(partial: Partial<Note>) {
@@ -324,151 +312,77 @@ export function NotesView() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, trash, view, visibleNotes]);
 
+  const allActive = notes.filter((n) => !n.trashed);
+  const recentEdits = [...allActive]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 5);
+  const topPinned = notes
+    .filter((n) => n.pinned && !n.archived && !n.trashed)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 6);
+
   return (
     <>
-      <main className="flex min-h-0 flex-1 px-4 py-4 sm:px-6">
-        <div className="flex min-h-0 w-full flex-col gap-4">
-          {error && <DbError error={error} onRetry={refresh} />}
-          {(isGuest || hasLocalNotes) && notes.length > 0 && (
-            <GuestSaveBanner
-              isGuest={isGuest}
-              hasLocalNotes={hasLocalNotes}
-              onSave={saveLocalNotes}
-            />
-          )}
+      <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-6 sm:px-6">
+        {error && <DbError error={error} onRetry={refresh} />}
+        {(isGuest || hasLocalNotes) && notes.length > 0 && (
+          <GuestSaveBanner
+            isGuest={isGuest}
+            hasLocalNotes={hasLocalNotes}
+            onSave={saveLocalNotes}
+          />
+        )}
 
-        <div className="grid min-h-0 w-full grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="flex min-h-[420px] flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] lg:h-[calc(100vh-112px)]">
-            <div className="border-b border-[var(--color-border)] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h1 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">
-                    {VIEW_TITLES[view]}
-                  </h1>
-                  <p className="text-sm text-[var(--color-muted)]">
-                    {hydrated
-                      ? `${filtered.length} ${filtered.length === 1 ? "note" : "notes"}`
-                      : "loading..."}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setSettingsOpen(true)}
-                    className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-                    aria-label="Settings"
-                    title="Settings"
-                  >
-                    <SettingsIcon className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTarget({ mode: "new" })}
-                    className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-                    aria-label="New note"
-                    title="New note"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[256px_minmax(0,1fr)_296px]">
+          <LeftRail
+            view={view}
+            setView={setView}
+            counts={counts}
+            topPinned={topPinned}
+            onOpenNote={openNote}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
 
-              <div className="mt-4">
-                <ViewTabs view={view} setView={setView} counts={counts} />
-              </div>
-            </div>
+          <CenterFeed
+            view={view}
+            setView={setView}
+            counts={counts}
+            hydrated={hydrated}
+            filtered={filtered}
+            pinned={pinned}
+            others={others}
+            activeNoteId={activeNoteId}
+            openNote={openNote}
+            setActiveNoteId={setActiveNoteId}
+            togglePin={togglePin}
+            toggleArchive={toggleArchive}
+            trash={trash}
+            restore={restore}
+            remove={remove}
+            setTint={setTint}
+            onNewNote={() => setTarget({ mode: "new" })}
+            onOpenSearch={openSearch}
+            query={searchOpen ? query : ""}
+          />
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              {!hydrated ? null : filtered.length === 0 ? (
-                query ? (
-                  <NoResults query={query} />
-                ) : (
-                  <EmptyState view={view} />
-                )
-              ) : (
-                <div className="flex flex-col gap-5">
-                  {view === "all" && pinned.length > 0 && (
-                    <section>
-                      <SectionLabel label="Pinned" count={pinned.length} />
-                      <NoteList
-                        notes={pinned}
-                        activeId={activeNoteId}
-                        onOpen={openNote}
-                        onSelect={setActiveNoteId}
-                        onTogglePin={togglePin}
-                        onToggleArchive={toggleArchive}
-                        onRemove={trash}
-                        onRestore={restore}
-                        onDestroy={remove}
-                        onSetTint={setTint}
-                        trashMode={false}
-                      />
-                    </section>
-                  )}
-
-                  <section>
-                    {view === "all" && pinned.length > 0 && others.length > 0 && (
-                      <SectionLabel label="Others" count={others.length} />
-                    )}
-                    <NoteList
-                      notes={others}
-                      activeId={activeNoteId}
-                      onOpen={openNote}
-                      onSelect={setActiveNoteId}
-                      onTogglePin={togglePin}
-                      onToggleArchive={toggleArchive}
-                      onRemove={trash}
-                      onRestore={restore}
-                      onDestroy={remove}
-                      onSetTint={setTint}
-                      trashMode={view === "trash"}
-                    />
-                  </section>
-                </div>
-              )}
-            </div>
-          </aside>
-
-          <section className="hidden min-h-[420px] min-w-0 lg:block lg:h-[calc(100vh-112px)]">
-            {editorTarget ? (
-              <NoteEditor
-                target={editorTarget}
-                onClose={() => setTarget(null)}
-                onCreate={handleCreate}
-                onUpdate={update}
-                onTrash={trash}
-                onRestore={restore}
-                onRemove={remove}
-                presentation="panel"
-              />
-            ) : (
-              <div className="grid h-full place-items-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="px-8 text-center">
-                  <p className="text-sm font-medium text-[var(--color-text)]">
-                    Select a note
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--color-muted)]">
-                    Open a note from the sidebar or create a new one.
-                  </p>
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
+          <RightRail
+            recentEdits={recentEdits}
+            totalCount={allActive.length}
+            counts={counts}
+            onOpenNote={openNote}
+          />
         </div>
       </main>
 
-      <div className="lg:hidden">
-        <NoteEditor
-          target={target}
-          onClose={() => setTarget(null)}
-          onCreate={handleCreate}
-          onUpdate={update}
-          onTrash={trash}
-          onRestore={restore}
-          onRemove={remove}
-        />
-      </div>
+      <NoteEditor
+        target={editorTarget}
+        onClose={() => setTarget(null)}
+        onCreate={handleCreate}
+        onUpdate={update}
+        onTrash={trash}
+        onRestore={restore}
+        onRemove={remove}
+      />
 
       {searchOpen && (
         <SearchOverlay
@@ -770,32 +684,322 @@ function ViewTabs({
     { key: "trash", label: "Trash", count: counts.trash },
   ];
   return (
-    <div className="flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-1 self-start">
-      {tabs.map((t) => {
-        const active = view === t.key;
-        return (
+    <div className="-mb-px flex items-end gap-1 border-b border-[var(--color-border)]">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          data-active={view === t.key}
+          onClick={() => setView(t.key)}
+          className="gh-tab"
+        >
+          {t.label}
+          <span className="gh-counter">{t.count}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LeftRail({
+  view,
+  setView,
+  counts,
+  topPinned,
+  onOpenNote,
+  onOpenSettings,
+}: {
+  view: View;
+  setView: (v: View) => void;
+  counts: { all: number; pinned: number; archive: number; trash: number };
+  topPinned: Note[];
+  onOpenNote: (note: Note) => void;
+  onOpenSettings: () => void;
+}) {
+  const navItems: { key: View; label: string; count: number }[] = [
+    { key: "all", label: "All notes", count: counts.all },
+    { key: "pinned", label: "Pinned", count: counts.pinned },
+    { key: "archive", label: "Archive", count: counts.archive },
+    { key: "trash", label: "Trash", count: counts.trash },
+  ];
+
+  return (
+    <aside className="hidden flex-col gap-6 lg:flex">
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="gh-section-label">Top notes</h2>
           <button
-            key={t.key}
             type="button"
-            onClick={() => setView(t.key)}
-            className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium transition-colors ${
-              active
-                ? "bg-[var(--color-background)] text-[var(--color-text)]"
-                : "text-[var(--color-muted)] hover:text-[var(--color-text)]"
-            }`}
+            onClick={onOpenSettings}
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            aria-label="Settings"
+            title="Settings"
           >
-            {t.label}
-            <span
-              className={`font-mono text-[10px] ${
-                active ? "text-[var(--color-muted)]" : "text-[var(--color-muted)]"
-              }`}
-            >
-              {t.count}
+            <SettingsIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {topPinned.length === 0 ? (
+          <p className="text-xs text-[var(--color-muted)]">
+            Pinned notes will show here.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {topPinned.map((note) => (
+              <li key={note.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenNote(note)}
+                  className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                >
+                  <span
+                    aria-hidden
+                    className="h-4 w-4 shrink-0 rounded-full border border-[var(--color-border)]"
+                    style={{ background: TINT_HEX_SOLID[note.tint] }}
+                  />
+                  <span className="truncate text-[var(--color-link)] hover:underline">
+                    {previewText(note)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h2 className="gh-section-label mb-3">Views</h2>
+        <ul className="flex flex-col">
+          {navItems.map((item) => {
+            const active = view === item.key;
+            return (
+              <li key={item.key}>
+                <button
+                  type="button"
+                  onClick={() => setView(item.key)}
+                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm ${
+                    active
+                      ? "bg-[var(--color-surface-hover)] font-semibold text-[var(--color-text)]"
+                      : "text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className="gh-counter">{item.count}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </aside>
+  );
+}
+
+function CenterFeed({
+  view,
+  setView,
+  counts,
+  hydrated,
+  filtered,
+  pinned,
+  others,
+  activeNoteId,
+  openNote,
+  setActiveNoteId,
+  togglePin,
+  toggleArchive,
+  trash,
+  restore,
+  remove,
+  setTint,
+  onNewNote,
+  onOpenSearch,
+  query,
+}: {
+  view: View;
+  setView: (v: View) => void;
+  counts: { all: number; pinned: number; archive: number; trash: number };
+  hydrated: boolean;
+  filtered: Note[];
+  pinned: Note[];
+  others: Note[];
+  activeNoteId: string | null;
+  openNote: (note: Note) => void;
+  setActiveNoteId: (id: string) => void;
+  togglePin: (id: string) => void;
+  toggleArchive: (id: string) => void;
+  trash: (id: string) => void;
+  restore: (id: string) => void;
+  remove: (id: string) => void;
+  setTint: (id: string, tint: import("@/lib/types").Tint) => void;
+  onNewNote: () => void;
+  onOpenSearch: () => void;
+  query: string;
+}) {
+  return (
+    <section className="min-w-0">
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-[var(--color-text)]">
+          {VIEW_TITLES[view]}
+        </h1>
+        <button
+          type="button"
+          onClick={onNewNote}
+          className="flex items-center gap-1.5 rounded-md border border-[var(--color-accent-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+        >
+          <PlusIcon className="h-3.5 w-3.5" />
+          New note
+        </button>
+      </div>
+
+      <ViewTabs view={view} setView={setView} counts={counts} />
+
+      <div className="rounded-b-md rounded-tr-md border border-[var(--color-border)] border-t-0 bg-[var(--color-background)]">
+        <div className="flex items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            className="flex flex-1 items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-left text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)]"
+          >
+            <SearchIcon className="h-3.5 w-3.5" />
+            <span>Search notes...</span>
+            <span className="ml-auto rounded border border-[var(--color-border)] px-1 py-0.5 font-mono text-[10px]">
+              /
             </span>
           </button>
-        );
-      })}
-    </div>
+          <span className="text-xs text-[var(--color-muted)]">
+            {hydrated
+              ? `${filtered.length} ${filtered.length === 1 ? "note" : "notes"}`
+              : "loading..."}
+          </span>
+        </div>
+
+        <div className="min-h-[240px]">
+          {!hydrated ? null : filtered.length === 0 ? (
+            <div className="p-6">
+              {query ? <NoResults query={query} /> : <EmptyState view={view} />}
+            </div>
+          ) : (
+            <div>
+              {view === "all" && pinned.length > 0 && (
+                <NoteList
+                  notes={pinned}
+                  activeId={activeNoteId}
+                  onOpen={openNote}
+                  onSelect={setActiveNoteId}
+                  onTogglePin={togglePin}
+                  onToggleArchive={toggleArchive}
+                  onRemove={trash}
+                  onRestore={restore}
+                  onDestroy={remove}
+                  onSetTint={setTint}
+                  trashMode={false}
+                />
+              )}
+              <NoteList
+                notes={others}
+                activeId={activeNoteId}
+                onOpen={openNote}
+                onSelect={setActiveNoteId}
+                onTogglePin={togglePin}
+                onToggleArchive={toggleArchive}
+                onRemove={trash}
+                onRestore={restore}
+                onDestroy={remove}
+                onSetTint={setTint}
+                trashMode={view === "trash"}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RightRail({
+  recentEdits,
+  totalCount,
+  counts,
+  onOpenNote,
+}: {
+  recentEdits: Note[];
+  totalCount: number;
+  counts: { all: number; pinned: number; archive: number; trash: number };
+  onOpenNote: (note: Note) => void;
+}) {
+  return (
+    <aside className="hidden flex-col gap-6 lg:flex">
+      <section className="rounded-md border border-[var(--color-border)] bg-[var(--color-background)]">
+        <div className="border-b border-[var(--color-border)] px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+            Latest changes
+          </h2>
+        </div>
+        {recentEdits.length === 0 ? (
+          <p className="px-4 py-4 text-xs text-[var(--color-muted)]">
+            No recent edits yet.
+          </p>
+        ) : (
+          <ul>
+            {recentEdits.map((note) => (
+              <li
+                key={note.id}
+                className="border-t border-[var(--color-border-muted)] first:border-t-0"
+              >
+                <button
+                  type="button"
+                  onClick={() => onOpenNote(note)}
+                  className="flex w-full items-start gap-2 px-4 py-2.5 text-left hover:bg-[var(--color-surface-hover)]"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: TINT_HEX_SOLID[note.tint] }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-[var(--color-link)] hover:underline">
+                      {previewText(note)}
+                    </p>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      {new Date(note.updatedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-md border border-[var(--color-border)] bg-[var(--color-background)]">
+        <div className="border-b border-[var(--color-border)] px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+            Stats
+          </h2>
+        </div>
+        <dl className="divide-y divide-[var(--color-border-muted)]">
+          {[
+            { label: "Active notes", value: totalCount },
+            { label: "Pinned", value: counts.pinned },
+            { label: "Archived", value: counts.archive },
+            { label: "In Trash", value: counts.trash },
+          ].map((row) => (
+            <div
+              key={row.label}
+              className="flex items-center justify-between px-4 py-2 text-sm"
+            >
+              <dt className="text-[var(--color-muted)]">{row.label}</dt>
+              <dd className="font-mono text-[var(--color-text)]">
+                {row.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    </aside>
   );
 }
 

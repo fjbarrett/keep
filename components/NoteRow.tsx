@@ -13,24 +13,35 @@ import {
   UnarchiveIcon,
 } from "./Icons";
 
-function formatDate(t: number): string {
-  const d = new Date(t);
-  return d.toLocaleString("en-US", {
+function relativeTime(t: number): string {
+  const diff = (Date.now() - t) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(t).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
+    year: diff > 86400 * 365 ? "numeric" : undefined,
   });
 }
 
-function notePreview(note: Note): string {
+function noteTitle(note: Note): string {
   const title = needsInferredTitle(note.title, note.body)
     ? inferNoteTitle(note.body || note.title)
     : note.title;
   const trimmed = title.replace(/\s+/g, " ").trim();
-  return trimmed.length > 0 ? trimmed : "(empty)";
+  return trimmed.length > 0 ? trimmed : "Untitled";
+}
+
+function notePreview(note: Note): string {
+  const body = note.body.replace(/\s+/g, " ").trim();
+  if (!body) return "";
+  const title = noteTitle(note);
+  if (body.startsWith(title)) {
+    return body.slice(title.length).trim();
+  }
+  return body;
 }
 
 export function NoteRow({
@@ -60,6 +71,7 @@ export function NoteRow({
 }) {
   const [showPalette, setShowPalette] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
+  const preview = notePreview(note);
 
   useEffect(() => {
     if (active) rowRef.current?.scrollIntoView({ block: "nearest" });
@@ -68,34 +80,42 @@ export function NoteRow({
   return (
     <li
       ref={rowRef}
-      className={`group relative flex items-start justify-between gap-2 px-3 py-3 first:rounded-t-[7px] last:rounded-b-[7px] ${
+      className={`group relative flex gap-3 border-t border-[var(--color-border-muted)] px-4 py-3 first:border-t-0 ${
         active ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
       }`}
       onMouseEnter={onSelect}
     >
+      <span
+        aria-hidden
+        className="mt-1 h-8 w-8 shrink-0 rounded-full border border-[var(--color-border)]"
+        style={{ background: TINT_HEX_SOLID[note.tint] }}
+        title={note.tint}
+      />
+
       <button
         onClick={onOpen}
         onFocus={onSelect}
         className="min-w-0 flex-1 text-left focus-ring"
       >
-        <span className="block truncate text-sm font-medium leading-5 text-[var(--color-text)]">
-          {notePreview(note)}
-        </span>
-        <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--color-muted)]">
-          <span
-            aria-hidden
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: TINT_HEX_SOLID[note.tint] }}
-            title={note.tint}
-          />
-          <span className="truncate">{formatDate(note.updatedAt)}</span>
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold text-[var(--color-link)] hover:underline">
+            {noteTitle(note)}
+          </span>
           {note.pinned && (
-            <PinFilledIcon className="h-3 w-3 shrink-0 text-[var(--color-muted)]" />
+            <PinFilledIcon className="h-3 w-3 shrink-0 text-[var(--color-attention)]" />
           )}
-        </span>
+        </div>
+        {preview && (
+          <p className="mt-0.5 line-clamp-2 text-sm text-[var(--color-muted)]">
+            {preview}
+          </p>
+        )}
+        <p className="mt-1 text-xs text-[var(--color-muted)]">
+          Updated {relativeTime(note.updatedAt)}
+        </p>
       </button>
 
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="flex shrink-0 items-start gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         {trashMode ? (
           <>
             <IconBtn
@@ -157,7 +177,7 @@ export function NoteRow({
                   />
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-full z-20 mt-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 shadow-sm"
+                    className="absolute right-0 top-full z-20 mt-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 shadow-lg"
                   >
                     <TintPicker
                       value={note.tint}

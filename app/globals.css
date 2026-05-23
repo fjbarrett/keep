@@ -3,16 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --color-background: #1f1f1d;
-  --color-surface: #2a2a27;
-  --color-surface-hover: #33332f;
-  --color-border: #3a3a36;
-  --color-text: #ededea;
-  --color-muted: #9c9a93;
-  --color-accent: #ededea;
-  --color-accent-fg: #1f1f1d;
-  --color-accent-hover: #ffffff;
-  --color-danger: #d76f5f;
+  /* GitHub dark palette */
+  --color-canvas: #010409;
+  --color-background: #0d1117;
+  --color-surface: #161b22;
+  --color-surface-hover: #21262d;
+  --color-border: #30363d;
+  --color-border-muted: #21262d;
+  --color-text: #e6edf3;
+  --color-muted: #7d8590;
+  --color-subtle: #6e7681;
+  --color-link: #2f81f7;
+  --color-link-hover: #58a6ff;
+  --color-accent: #238636;
+  --color-accent-fg: #ffffff;
+  --color-accent-hover: #2ea043;
+  --color-danger: #f85149;
+  --color-attention: #d29922;
+  --color-done: #a371f7;
 }
 
 html,
@@ -22,8 +30,10 @@ body {
 }
 
 body {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-feature-settings: "ss01", "cv11";
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 *::-webkit-scrollbar {
@@ -43,11 +53,76 @@ body {
 }
 
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-accent-fg);
+  background: rgba(56, 139, 253, 0.4);
+  color: var(--color-text);
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+  outline: 2px solid var(--color-link);
+  outline-offset: -2px;
+}
+
+/* GitHub-style underlined tabs */
+.gh-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--color-text);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  background: transparent;
+}
+.gh-tab:hover {
+  background: var(--color-surface-hover);
+}
+.gh-tab[data-active="true"] {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  font-weight: 600;
+}
+.gh-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: #f78166;
+  border-radius: 6px 6px 0 0;
+}
+
+/* GitHub-style counter badge */
+.gh-counter {
+  display: inline-block;
+  padding: 0 7px;
+  min-width: 20px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--color-text);
+  background: rgba(110, 118, 129, 0.4);
+  border-radius: 999px;
+}
+
+/* GitHub-style link */
+.gh-link {
+  color: var(--color-link);
+  text-decoration: none;
+}
+.gh-link:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+/* Section heading (small caps muted) */
+.gh-section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
 }
