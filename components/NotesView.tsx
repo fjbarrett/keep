@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Fuse from "fuse.js";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
@@ -98,19 +99,22 @@ export function NotesView({
   }, [notes]);
 
   const filtered = useMemo(() => {
-    const q = searchOpen ? query.trim().toLowerCase() : "";
-    return notes
+    const q = searchOpen ? query.trim() : "";
+    const viewFiltered = notes
       .filter((n) => {
         if (viewMode === "trash") return n.trashed;
         if (viewMode === "archive") return n.archived && !n.trashed;
         return !n.archived && !n.trashed;
       })
-      .filter((n) => {
-        if (tagFilter && !n.tags.includes(tagFilter)) return false;
-        if (!q) return true;
-        return searchableText(n).toLowerCase().includes(q);
-      })
-      .sort((a, b) => b.updatedAt - a.updatedAt);
+      .filter((n) => !tagFilter || n.tags.includes(tagFilter));
+    if (!q) return viewFiltered.sort((a, b) => b.updatedAt - a.updatedAt);
+    const fuse = new Fuse(viewFiltered, {
+      keys: ["title", "body"],
+      threshold: 0.35,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+    });
+    return fuse.search(q).map((r) => r.item);
   }, [notes, query, searchOpen, tagFilter, viewMode]);
 
   const visibleNotes = filtered;
