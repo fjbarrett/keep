@@ -1,5 +1,4 @@
 import JSZip from "jszip";
-import { Tint } from "./types";
 
 type KeepListItem = {
   text?: unknown;
@@ -10,7 +9,6 @@ type KeepJson = {
   title?: unknown;
   textContent?: unknown;
   listContent?: unknown;
-  color?: unknown;
   isArchived?: unknown;
   isPinned?: unknown;
   isTrashed?: unknown;
@@ -21,7 +19,6 @@ type KeepJson = {
 export type KeepImportNote = {
   sourceName: string;
   body: string;
-  tint: Tint;
   pinned: boolean;
   archived: boolean;
   trashed: boolean;
@@ -32,21 +29,6 @@ export type KeepImportNote = {
 export type KeepImportParseResult = {
   notes: KeepImportNote[];
   skipped: number;
-};
-
-const COLOR_TINT: Record<string, Tint> = {
-  DEFAULT: "natural",
-  RED: "rose",
-  ORANGE: "clay",
-  YELLOW: "sun",
-  GREEN: "sage",
-  TEAL: "sage",
-  BLUE: "mist",
-  CERULEAN: "mist",
-  PURPLE: "violet",
-  PINK: "rose",
-  BROWN: "clay",
-  GRAY: "natural",
 };
 
 function stringValue(value: unknown) {
@@ -92,7 +74,6 @@ function noteFromJson(sourceName: string, raw: string): KeepImportNote | null {
   return {
     sourceName,
     body,
-    tint: COLOR_TINT[String(json.color ?? "DEFAULT")] ?? "natural",
     pinned: Boolean(json.isPinned) && !archived,
     archived,
     trashed: Boolean(json.isTrashed),

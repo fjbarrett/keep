@@ -6,7 +6,7 @@ import { generateNoteTitle } from "@/lib/titleModel";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ALLOWED = new Set(["title", "body", "tint", "pinned", "archived", "trashed"]);
+const ALLOWED = new Set(["title", "body", "pinned", "archived", "trashed"]);
 
 export async function PATCH(
   req: Request,

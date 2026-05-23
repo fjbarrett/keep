@@ -5,7 +5,6 @@ import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
 import { Note, View } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
-import { TINT_HEX_SOLID, TintPicker } from "@/components/TintPicker";
 import {
   DownloadIcon,
   PinFilledIcon,
@@ -61,7 +60,6 @@ export function NotesView() {
     saveLocalNotes,
     togglePin,
     toggleArchive,
-    setTint,
   } = useNotes();
 
   const [view, setView] = useState<View>("all");
@@ -335,7 +333,6 @@ export function NotesView() {
           trash={trash}
           restore={restore}
           remove={remove}
-          setTint={setTint}
         />
 
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
@@ -753,7 +750,6 @@ function Sidebar({
   trash,
   restore,
   remove,
-  setTint,
 }: {
   view: View;
   setView: (v: View) => void;
@@ -770,7 +766,6 @@ function Sidebar({
   trash: (id: string) => void;
   restore: (id: string) => void;
   remove: (id: string) => void;
-  setTint: (id: string, tint: import("@/lib/types").Tint) => void;
 }) {
   const buckets = bucketByDate(filtered);
   const viewItems: { key: View; label: string; count: number }[] = [
@@ -855,7 +850,6 @@ function Sidebar({
                     trash={() => trash(note.id)}
                     restore={() => restore(note.id)}
                     remove={() => remove(note.id)}
-                    setTint={(t) => setTint(note.id, t)}
                   />
                 ))}
               </ul>
@@ -888,7 +882,6 @@ function SidebarNoteRow({
   trash,
   restore,
   remove,
-  setTint,
 }: {
   note: Note;
   active: boolean;
@@ -899,7 +892,6 @@ function SidebarNoteRow({
   trash: () => void;
   restore: () => void;
   remove: () => void;
-  setTint: (t: import("@/lib/types").Tint) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
@@ -913,11 +905,6 @@ function SidebarNoteRow({
         onClick={onOpen}
         className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm text-[var(--color-text)]"
       >
-        <span
-          aria-hidden
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ background: TINT_HEX_SOLID[note.tint] }}
-        />
         <span className="truncate">{previewText(note)}</span>
         {note.pinned && !trashMode && (
           <PinFilledIcon className="ml-auto h-3 w-3 shrink-0 text-[var(--color-muted)]" />
@@ -981,19 +968,6 @@ function SidebarNoteRow({
                 >
                   {note.archived ? "Unarchive" : "Archive"}
                 </MenuItem>
-                <div className="my-1 border-t border-[var(--color-border)]" />
-                <div className="px-3 py-1.5 text-xs text-[var(--color-muted)]">
-                  Tint
-                </div>
-                <div className="px-3 pb-2">
-                  <TintPicker
-                    value={note.tint}
-                    onChange={(t) => {
-                      setTint(t);
-                      setMenuOpen(false);
-                    }}
-                  />
-                </div>
                 <div className="my-1 border-t border-[var(--color-border)]" />
                 <MenuItem
                   danger
