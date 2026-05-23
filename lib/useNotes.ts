@@ -180,7 +180,15 @@ export function useNotes() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    getCachedNotes()
+      .then((cached) => {
+        if (cached.length > 0) {
+          setNotes(cached);
+          setHydrated(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => refresh());
   }, [refresh]);
 
   useEffect(() => {

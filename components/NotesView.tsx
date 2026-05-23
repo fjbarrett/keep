@@ -418,7 +418,7 @@ export function NotesView({
               />
             ) : (
               <MainPlaceholder
-                hasNotes={notes.length > 0}
+                hasNotes={!hydrated || notes.length > 0}
                 onNewNote={() => setTarget({ mode: "new" })}
               />
             )}
@@ -926,7 +926,17 @@ function Sidebar({
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        {!hydrated ? null : filtered.length === 0 ? (
+        {!hydrated ? (
+          <div className="space-y-2 px-2 pt-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="h-8 animate-pulse rounded-md bg-[var(--color-surface-hover)]"
+                style={{ opacity: 1 - i * 0.15 }}
+              />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <p className="px-2 py-6 text-xs text-[var(--color-muted)]">
             {filteredTitle ? `${filteredTitle} is empty.` : "No notes."}
           </p>
