@@ -57,6 +57,13 @@ export function NoteEditor({
   useEffect(() => {
     if (!target) return;
     if (target.mode === "edit") {
+      // Bridging "new" → "edit" of the note we just autosaved: keep the local
+      // body/pinned/archived so any keystrokes the user kept making during
+      // the create round-trip aren't clobbered by the saved snapshot.
+      if (createdIdRef.current === target.note.id) {
+        createdIdRef.current = null;
+        return;
+      }
       setBody(target.note.body);
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
@@ -129,8 +136,10 @@ export function NoteEditor({
       return body.trim() ? inferNoteTitle(body) : "New note";
     }
     const saved = target.note.title;
-    if (needsInferredTitle(saved, target.note.body)) {
-      return inferNoteTitle(target.note.body || saved) || "Untitled";
+    // Prefer the live body so the header keeps pace with typing instead of
+    // lagging behind autosave.
+    if (needsInferredTitle(saved, body)) {
+      return inferNoteTitle(body || saved) || "Untitled";
     }
     return saved || "Untitled";
   }, [target, body]);
