@@ -1,73 +1,79 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { signIn } from "next-auth/react";
-import {
-  startAuthentication,
-  browserSupportsWebAuthnAutofill,
-} from "@simplewebauthn/browser";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 export function PasskeySignIn({ redirectTo }: { redirectTo: string }) {
-  const [supported, setSupported] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const startedRef = useRef(false);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-
-    let cancelled = false;
-    (async () => {
-      if (!(await browserSupportsWebAuthnAutofill())) return;
-      setSupported(true);
-      try {
-        const options = await fetch("/api/passkeys/auth/options", {
-          method: "POST",
-        }).then((r) => r.json());
-        // useBrowserAutofill=true: this resolves only when the user picks a
-        // passkey from the browser's autofill suggestion on the focused input.
-        const assertion = await startAuthentication(options, true);
-        if (cancelled) return;
-        const result = await signIn("passkey", {
-          assertion: JSON.stringify(assertion),
-          redirect: false,
-          redirectTo,
-        });
-        if (result?.ok) {
-          window.location.href = result.url ?? redirectTo;
-        } else {
-          setError("Sign-in failed. Try Google instead.");
-        }
-      } catch (e) {
-        if (cancelled) return;
-        const msg = e instanceof Error ? e.message : "";
-        if (!/AbortError|NotAllowed/i.test(msg)) {
-          setError("Couldn't sign in with passkey.");
-        }
+  async function handlePasskeySignIn() {
+    setError(null);
+    setBusy(true);
+    try {
+      const optionsRes = await fetch("/api/passkeys/auth/options", {
+        method: "POST",
+      });
+      if (!optionsRes.ok) {
+        setError("Couldn't start passkey authentication.");
+        setBusy(false);
+        return;
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [redirectTo]);
-
-  if (!supported) return null;
+      const options = await optionsRes.json();
+      const assertion = await startAuthentication(options);
+      const result = await signIn("passkey", {
+        assertion: JSON.stringify(assertion),
+        redirect: false,
+      });
+      if (result?.ok) {
+        window.location.href = result.url ?? redirectTo;
+      } else {
+        setError(result?.error === "CredentialsSignin"
+          ? "Passkey not recognized. Try signing in with Google first, then add a passkey."
+          : "Sign-in failed. Try Google instead.");
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (/AbortError|NotAllowed/i.test(msg)) {
+        setBusy(false);
+        return;
+      }
+      setError("Couldn't sign in with passkey.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
-    <div className="mt-4 space-y-2">
-      <label className="block text-xs text-[var(--color-muted)]">
-        Or sign in with a passkey
-        <input
-          type="text"
-          autoComplete="username webauthn"
-          placeholder="Tap to use a passkey"
-          className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-        />
-      </label>
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center gap-3 text-xs text-[var(--color-muted)]">
+        <div className="h-px flex-1 bg-[var(--color-border)]" />
+        or
+        <div className="h-px flex-1 bg-[var(--color-border)]" />
+      </div>
+      <button
+        type="button"
+        onClick={handlePasskeySignIn}
+        disabled={busy}
+        className="flex w-full items-center justify-center gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+      >
+        <PasskeyMark />
+        {busy ? "Waiting for passkey..." : "Sign in with a passkey"}
+      </button>
       {error && (
         <p className="text-xs text-[var(--color-danger)]">{error}</p>
       )}
     </div>
+  );
+}
+
+function PasskeyMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="10" cy="7" r="4" />
+      <path d="M10 13c-4 0-7 2-7 4v1h10" />
+      <path d="M17 14l2 2 3-3" />
+    </svg>
   );
 }
