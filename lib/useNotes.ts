@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { inferNoteTitle, needsInferredTitle } from "./inferTitle";
 import { Note } from "./types";
+import {
+  cacheNotes,
+  getCachedNotes,
+  cacheNote,
+  removeCachedNote,
+  addPendingOp,
+  getPendingOps,
+  clearPendingOps,
+} from "./offlineDb";
 
 const GUEST_NOTES_KEY = "keep.guestNotes.v1";
 
@@ -145,6 +154,7 @@ export function useNotes() {
       } else {
         setLocalNoteIds(new Set());
         setNotes(data.notes);
+        cacheNotes(data.notes).catch(() => {});
       }
       setIsGuest(false);
       setError(null);
@@ -156,7 +166,13 @@ export function useNotes() {
         setIsGuest(true);
         setError(null);
       } else {
-        setError(e instanceof Error ? e.message : "Failed to load");
+        const cached = await getCachedNotes().catch(() => []);
+        if (cached.length > 0) {
+          setNotes(cached);
+          setError(null);
+        } else {
+          setError(e instanceof Error ? e.message : "Failed to load");
+        }
       }
     } finally {
       setHydrated(true);
@@ -173,6 +189,36 @@ export function useNotes() {
       writeGuestNotes(notes.filter((note) => isGuest || localNoteIds.has(note.id)));
     }
   }, [hydrated, isGuest, localNoteIds, notes]);
+
+  const syncingRef = useRef(false);
+  useEffect(() => {
+    async function replayPending() {
+      if (syncingRef.current || isGuest) return;
+      syncingRef.current = true;
+      try {
+        const ops = await getPendingOps();
+        for (const op of ops) {
+          try {
+            if (op.type === "update" && op.payload) {
+              await api(`/api/notes/${op.noteId}`, { method: "PATCH", json: op.payload });
+            } else if (op.type === "delete") {
+              await api(`/api/notes/${op.noteId}`, { method: "DELETE" });
+            }
+          } catch { /* individual op failed, will retry next time */ }
+        }
+        if (ops.length > 0) {
+          await clearPendingOps();
+          refresh();
+        }
+      } finally {
+        syncingRef.current = false;
+      }
+    }
+    function onOnline() { replayPending(); }
+    window.addEventListener("online", onOnline);
+    if (hydrated && navigator.onLine) replayPending();
+    return () => window.removeEventListener("online", onOnline);
+  }, [hydrated, isGuest, refresh]);
 
   const create = useCallback(async (partial: Partial<Note>) => {
     const body = partial.body ?? "";
@@ -233,15 +279,23 @@ export function useNotes() {
     );
     if (isGuest || localNoteIds.has(id)) return;
 
+    const updated = current ? { ...current, ...nextPatch, updatedAt: Date.now() } : null;
+    if (updated) cacheNote(updated).catch(() => {});
+
     try {
       const data = await trackSync(api<{ note: Note }>(`/api/notes/${id}`, {
         method: "PATCH",
         json: nextPatch,
       }));
       setNotes((prev) => prev.map((n) => (n.id === id ? data.note : n)));
+      cacheNote(data.note).catch(() => {});
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save");
-      refresh();
+      if (!navigator.onLine) {
+        addPendingOp({ type: "update", noteId: id, payload: nextPatch }).catch(() => {});
+      } else {
+        setError(e instanceof Error ? e.message : "Failed to save");
+        refresh();
+      }
     }
   }, [isGuest, localNoteIds, notes, refresh]);
 
