@@ -53,6 +53,7 @@ export function NoteEditor({
   const [tagInput, setTagInput] = useState("");
   const [tagOpen, setTagOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -208,6 +209,60 @@ export function NoteEditor({
     setBody(versionBody);
     setDirty(true);
     setHistoryOpen(false);
+  }
+
+  async function uploadImage(file: File) {
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Upload failed");
+      }
+      const { url } = await res.json();
+      const tag = `![${file.name}](${url})`;
+      const ta = bodyRef.current;
+      if (ta) {
+        const start = ta.selectionStart;
+        const before = body.slice(0, start);
+        const after = body.slice(ta.selectionEnd);
+        const sep = before && !before.endsWith("\n") ? "\n" : "";
+        markBody(before + sep + tag + "\n" + after);
+      } else {
+        markBody(body + (body ? "\n" : "") + tag + "\n");
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) uploadImage(file);
+        return;
+      }
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    const files = e.dataTransfer?.files;
+    if (!files?.length) return;
+    for (const file of files) {
+      if (file.type.startsWith("image/")) {
+        e.preventDefault();
+        uploadImage(file);
+        return;
+      }
+    }
   }
 
   function flushEdit() {
@@ -405,15 +460,22 @@ export function NoteEditor({
             )}
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 px-4 py-4">
+          <div className="relative flex min-h-0 flex-1 px-4 py-4">
             <textarea
               ref={bodyRef}
               value={body}
               onChange={(e) => markBody(e.target.value)}
+              onPaste={handlePaste}
+              onDrop={handleDrop}
               placeholder="Start writing..."
               rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
               className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
             />
+            {uploading && (
+              <p className="absolute bottom-3 left-4 text-xs text-[var(--color-muted)] animate-pulse">
+                Uploading image...
+              </p>
+            )}
           </div>
         )}
 
