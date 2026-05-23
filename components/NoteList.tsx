@@ -11,7 +11,10 @@ export function NoteList({
   onTogglePin,
   onToggleArchive,
   onRemove,
+  onRestore,
+  onDestroy,
   onSetTint,
+  trashMode = false,
 }: {
   notes: Note[];
   activeId?: string | null;
@@ -20,7 +23,10 @@ export function NoteList({
   onTogglePin: (id: string) => void;
   onToggleArchive: (id: string) => void;
   onRemove: (id: string) => void;
+  onRestore: (id: string) => void;
+  onDestroy: (id: string) => void;
   onSetTint: (id: string, t: Tint) => void;
+  trashMode?: boolean;
 }) {
   if (notes.length === 0) return null;
   return (
@@ -35,7 +41,10 @@ export function NoteList({
           onTogglePin={() => onTogglePin(n.id)}
           onToggleArchive={() => onToggleArchive(n.id)}
           onRemove={() => onRemove(n.id)}
+          onRestore={() => onRestore(n.id)}
+          onDestroy={() => onDestroy(n.id)}
           onSetTint={(t) => onSetTint(n.id, t)}
+          trashMode={trashMode}
         />
       ))}
     </ul>

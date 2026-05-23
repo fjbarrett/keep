@@ -11,13 +11,16 @@ import {
   DownloadIcon,
   PlusIcon,
   SearchIcon,
+  SettingsIcon,
   UploadIcon,
+  XIcon,
 } from "@/components/Icons";
 
 const VIEW_TITLES: Record<View, string> = {
   all: "Your notes",
   pinned: "Pinned",
   archive: "Archive",
+  trash: "Trash",
 };
 
 function searchableText(note: { body: string; title: string }) {
@@ -53,6 +56,8 @@ export function NotesView() {
     create,
     update,
     remove,
+    trash,
+    restore,
     importKeepFile,
     saveLocalNotes,
     togglePin,
@@ -63,6 +68,7 @@ export function NotesView() {
   const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -71,9 +77,10 @@ export function NotesView() {
 
   const counts = useMemo(
     () => ({
-      all: notes.filter((n) => !n.archived).length,
-      pinned: notes.filter((n) => n.pinned && !n.archived).length,
-      archive: notes.filter((n) => n.archived).length,
+      all: notes.filter((n) => !n.archived && !n.trashed).length,
+      pinned: notes.filter((n) => n.pinned && !n.archived && !n.trashed).length,
+      archive: notes.filter((n) => n.archived && !n.trashed).length,
+      trash: notes.filter((n) => n.trashed).length,
     }),
     [notes],
   );
@@ -82,9 +89,10 @@ export function NotesView() {
     const q = searchOpen ? query.trim().toLowerCase() : "";
     return notes
       .filter((n) => {
+        if (view === "trash") return n.trashed;
         if (view === "archive") return n.archived;
-        if (view === "pinned") return n.pinned && !n.archived;
-        return !n.archived;
+        if (view === "pinned") return n.pinned && !n.archived && !n.trashed;
+        return !n.archived && !n.trashed;
       })
       .filter((n) => {
         if (!q) return true;
@@ -101,6 +109,16 @@ export function NotesView() {
   );
   const activeNote =
     visibleNotes.find((note) => note.id === activeNoteId) ?? null;
+  const editorTarget: EditorTarget =
+    target?.mode === "new"
+      ? target
+      : target?.mode === "edit"
+        ? target
+        : activeNote
+          ? ({ mode: "edit", note: activeNote } as EditorTarget)
+          : notes.length === 0 && hydrated
+            ? { mode: "new" }
+            : null;
 
   function openSearch() {
     setSearchOpen(true);
@@ -117,7 +135,20 @@ export function NotesView() {
     setSearchOpen(false);
     setQuery("");
     setActiveNoteId(note.id);
-    setTarget({ mode: "edit", note });
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      setTarget({ mode: "edit", note });
+    } else {
+      setTarget(null);
+    }
+  }
+
+  async function handleCreate(partial: Partial<Note>) {
+    const note = await create(partial);
+    if (note) {
+      setView(note.trashed ? "trash" : note.archived ? "archive" : "all");
+      setActiveNoteId(note.id);
+    }
+    setTarget(null);
   }
 
   async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
@@ -136,15 +167,16 @@ export function NotesView() {
   }
 
   async function handleGuestExport() {
-    if (notes.length === 0) return;
-    if (notes.length === 1) {
-      downloadBlob(noteFileName(notes[0]), noteFileContent(notes[0]), "text/plain");
+    const exportable = notes.filter((note) => !note.trashed);
+    if (exportable.length === 0) return;
+    if (exportable.length === 1) {
+      downloadBlob(noteFileName(exportable[0]), noteFileContent(exportable[0]), "text/plain");
       return;
     }
 
     const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
-    for (const note of notes) {
+    for (const note of exportable) {
       zip.file(noteFileName(note), noteFileContent(note));
     }
     const content = await zip.generateAsync({ type: "blob" });
@@ -244,6 +276,10 @@ export function NotesView() {
         setView("archive");
         return;
       }
+      if (event.key === "4") {
+        setView("trash");
+        return;
+      }
 
       if (event.key === "ArrowDown" || key === "j") {
         event.preventDefault();
@@ -276,29 +312,34 @@ export function NotesView() {
 
       if ((event.key === "Delete" || event.key === "Backspace") && activeNote) {
         event.preventDefault();
-        if (confirm("Delete this note for good?")) remove(activeNote.id);
+        if (view === "trash") {
+          if (confirm("Permanently delete this note?")) remove(activeNote.id);
+        } else {
+          trash(activeNote.id);
+        }
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, visibleNotes]);
+  }, [activeNote, activeNoteId, remove, target, toggleArchive, togglePin, trash, view, visibleNotes]);
 
   return (
     <>
       <main className="flex min-h-0 flex-1 px-4 py-4 sm:px-6">
+        <div className="flex min-h-0 w-full flex-col gap-4">
+          {error && <DbError error={error} onRetry={refresh} />}
+          {(isGuest || hasLocalNotes) && notes.length > 0 && (
+            <GuestSaveBanner
+              isGuest={isGuest}
+              hasLocalNotes={hasLocalNotes}
+              onSave={saveLocalNotes}
+            />
+          )}
+
         <div className="grid min-h-0 w-full grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="flex min-h-[420px] flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] lg:h-[calc(100vh-112px)]">
             <div className="border-b border-[var(--color-border)] p-4">
-              {error && <DbError error={error} onRetry={refresh} compact />}
-              {(isGuest || hasLocalNotes) && notes.length > 0 && (
-                <GuestSaveBanner
-                  isGuest={isGuest}
-                  hasLocalNotes={hasLocalNotes}
-                  onSave={saveLocalNotes}
-                  compact
-                />
-              )}
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h1 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">
@@ -310,61 +351,26 @@ export function NotesView() {
                       : "loading..."}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setTarget({ mode: "new" })}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-                  aria-label="New note"
-                  title="New note"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-              <input
-                ref={importRef}
-                type="file"
-                accept=".zip,.json,application/zip,application/json"
-                onChange={handleImport}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => importRef.current?.click()}
-                disabled={importing}
-                className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
-              >
-                <UploadIcon className="h-3.5 w-3.5" />
-                {importing ? "Importing" : "Import"}
-              </button>
-              {notes.length > 0 && isGuest ? (
-                <button
-                  type="button"
-                  onClick={handleGuestExport}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-                >
-                  <DownloadIcon className="h-3.5 w-3.5" />
-                  Export
-                </button>
-              ) : notes.length > 0 ? (
-                <a
-                  href="/api/notes/export"
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-                >
-                  <DownloadIcon className="h-3.5 w-3.5" />
-                  Export
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-muted)] opacity-60"
-                >
-                  <DownloadIcon className="h-3.5 w-3.5" />
-                  Export
-                </button>
-              )}
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                    aria-label="Settings"
+                    title="Settings"
+                  >
+                    <SettingsIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTarget({ mode: "new" })}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+                    aria-label="New note"
+                    title="New note"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="mt-4">
@@ -391,8 +397,11 @@ export function NotesView() {
                         onSelect={setActiveNoteId}
                         onTogglePin={togglePin}
                         onToggleArchive={toggleArchive}
-                        onRemove={remove}
+                        onRemove={trash}
+                        onRestore={restore}
+                        onDestroy={remove}
                         onSetTint={setTint}
+                        trashMode={false}
                       />
                     </section>
                   )}
@@ -408,8 +417,11 @@ export function NotesView() {
                       onSelect={setActiveNoteId}
                       onTogglePin={togglePin}
                       onToggleArchive={toggleArchive}
-                      onRemove={remove}
+                      onRemove={trash}
+                      onRestore={restore}
+                      onDestroy={remove}
                       onSetTint={setTint}
+                      trashMode={view === "trash"}
                     />
                   </section>
                 </div>
@@ -418,12 +430,14 @@ export function NotesView() {
           </aside>
 
           <section className="hidden min-h-[420px] min-w-0 lg:block lg:h-[calc(100vh-112px)]">
-            {target ? (
+            {editorTarget ? (
               <NoteEditor
-                target={target}
+                target={editorTarget}
                 onClose={() => setTarget(null)}
-                onCreate={create}
+                onCreate={handleCreate}
                 onUpdate={update}
+                onTrash={trash}
+                onRestore={restore}
                 onRemove={remove}
                 presentation="panel"
               />
@@ -441,14 +455,17 @@ export function NotesView() {
             )}
           </section>
         </div>
+        </div>
       </main>
 
       <div className="lg:hidden">
         <NoteEditor
           target={target}
           onClose={() => setTarget(null)}
-          onCreate={create}
+          onCreate={handleCreate}
           onUpdate={update}
+          onTrash={trash}
+          onRestore={restore}
           onRemove={remove}
         />
       </div>
@@ -463,6 +480,19 @@ export function NotesView() {
           setActiveId={setActiveNoteId}
           onOpen={openNote}
           onClose={closeSearch}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsPane
+          importing={importing}
+          importRef={importRef}
+          notes={notes}
+          isGuest={isGuest}
+          onImportClick={() => importRef.current?.click()}
+          onImport={handleImport}
+          onGuestExport={handleGuestExport}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </>
@@ -540,6 +570,102 @@ function GuestSaveBanner({
           Save to account
         </button>
       )}
+    </div>
+  );
+}
+
+function SettingsPane({
+  importing,
+  importRef,
+  notes,
+  isGuest,
+  onImportClick,
+  onImport,
+  onGuestExport,
+  onClose,
+}: {
+  importing: boolean;
+  importRef: React.RefObject<HTMLInputElement>;
+  notes: Note[];
+  isGuest: boolean;
+  onImportClick: () => void;
+  onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onGuestExport: () => void;
+  onClose: () => void;
+}) {
+  const exportableCount = notes.filter((note) => !note.trashed).length;
+
+  return (
+    <div className="fixed inset-0 z-40">
+      <button
+        type="button"
+        aria-label="Close settings"
+        className="absolute inset-0 cursor-default bg-black/35"
+        onClick={onClose}
+      />
+      <section className="absolute right-4 top-20 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl sm:right-6">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+            Settings
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close settings"
+            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-3 p-4">
+          <input
+            ref={importRef}
+            type="file"
+            accept=".zip,.json,application/zip,application/json"
+            onChange={onImport}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={onImportClick}
+            disabled={importing}
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
+          >
+            <span>{importing ? "Importing..." : "Import Google Keep"}</span>
+            <UploadIcon className="h-4 w-4" />
+          </button>
+
+          {exportableCount > 0 && isGuest ? (
+            <button
+              type="button"
+              onClick={onGuestExport}
+              className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+            >
+              <span>Export notes</span>
+              <DownloadIcon className="h-4 w-4" />
+            </button>
+          ) : exportableCount > 0 ? (
+            <a
+              href="/api/notes/export"
+              className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+              onClick={onClose}
+            >
+              <span>Export notes</span>
+              <DownloadIcon className="h-4 w-4" />
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-muted)] opacity-60"
+            >
+              <span>Export notes</span>
+              <DownloadIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
@@ -635,12 +761,13 @@ function ViewTabs({
 }: {
   view: View;
   setView: (v: View) => void;
-  counts: { all: number; pinned: number; archive: number };
+  counts: { all: number; pinned: number; archive: number; trash: number };
 }) {
   const tabs: { key: View; label: string; count: number }[] = [
     { key: "all", label: "All", count: counts.all },
     { key: "pinned", label: "Pinned", count: counts.pinned },
     { key: "archive", label: "Archive", count: counts.archive },
+    { key: "trash", label: "Trash", count: counts.trash },
   ];
   return (
     <div className="flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-1 self-start">

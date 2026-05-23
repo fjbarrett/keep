@@ -13,6 +13,10 @@ const copy: Record<View, { title: string; sub: string }> = {
     title: "Archive is empty",
     sub: "Archived notes will rest here. Unarchive them anytime.",
   },
+  trash: {
+    title: "Trash is empty",
+    sub: "Deleted notes will appear here before they are removed forever.",
+  },
 };
 
 export function EmptyState({ view }: { view: View }) {

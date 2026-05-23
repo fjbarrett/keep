@@ -61,6 +61,7 @@ async function bootstrap(): Promise<void> {
       tint        TEXT   NOT NULL DEFAULT 'natural',
       pinned      BOOLEAN NOT NULL DEFAULT false,
       archived    BOOLEAN NOT NULL DEFAULT false,
+      trashed     BOOLEAN NOT NULL DEFAULT false,
       created_at  BIGINT NOT NULL,
       updated_at  BIGINT NOT NULL
     );
@@ -68,8 +69,10 @@ async function bootstrap(): Promise<void> {
     -- nullable so any orphaned rows from before auth don't block the migration
     -- — they simply won't match any user_id filter.
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS user_id TEXT;
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS trashed BOOLEAN NOT NULL DEFAULT false;
     CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at DESC);
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
+    CREATE INDEX IF NOT EXISTS notes_trashed_idx ON notes (trashed);
     CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
   `);
 }
@@ -86,6 +89,7 @@ export type NoteRow = {
   tint: string;
   pinned: boolean;
   archived: boolean;
+  trashed: boolean;
   created_at: string; // bigint comes back as string from pg
   updated_at: string;
 };
@@ -105,6 +109,7 @@ export function rowToNote(r: NoteRow) {
       | "violet",
     pinned: r.pinned,
     archived: r.archived,
+    trashed: r.trashed,
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
   };
