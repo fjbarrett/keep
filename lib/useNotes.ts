@@ -37,6 +37,7 @@ function normalizeStoredNote(value: unknown): Note | null {
     title: needsInferredTitle(title, body) ? inferNoteTitle(body || title) : title,
     body,
     trashed: Boolean(note.trashed),
+    markdown: Boolean(note.markdown),
     shareToken: note.shareToken ?? null,
   };
 }
@@ -146,6 +147,7 @@ export function useNotes() {
         pinned: partial.pinned ?? false,
         archived: partial.archived ?? false,
         trashed: false,
+        markdown: partial.markdown ?? false,
         shareToken: null,
         createdAt: now,
         updatedAt: now,
@@ -164,6 +166,7 @@ export function useNotes() {
           pinned: partial.pinned ?? false,
           archived: partial.archived ?? false,
           trashed: false,
+          markdown: partial.markdown ?? false,
         },
       });
       setNotes((prev) => [data.note, ...prev]);
@@ -251,6 +254,7 @@ export function useNotes() {
           pinned: note.pinned,
           archived: note.archived,
           trashed: false,
+          markdown: false,
           shareToken: null,
           createdAt: note.createdAt || now,
           updatedAt: note.updatedAt || now,
@@ -304,6 +308,7 @@ export function useNotes() {
             pinned: note.pinned,
             archived: note.archived,
             trashed: false,
+            markdown: note.markdown,
           },
         }),
       ),

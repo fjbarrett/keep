@@ -5,6 +5,7 @@ export type Note = {
   pinned: boolean;
   archived: boolean;
   trashed: boolean;
+  markdown: boolean;
   shareToken: string | null;
   createdAt: number;
   updatedAt: number;

@@ -46,6 +46,7 @@ export function NoteEditor({
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
+  const [markdown, setMarkdown] = useState(false);
   const [dirty, setDirty] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const createdIdRef = useRef<string | null>(null);
@@ -67,10 +68,12 @@ export function NoteEditor({
       setBody(target.note.body);
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
+      setMarkdown(Boolean(target.note.markdown));
     } else {
       setBody("");
       setPinned(false);
       setArchived(false);
+      setMarkdown(false);
     }
     setDirty(false);
     createdIdRef.current = null;
@@ -91,13 +94,13 @@ export function NoteEditor({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, body, pinned, archived]);
+  }, [target, body, pinned, archived, markdown]);
 
   useEffect(() => {
     if (!target || !dirty) return;
     if (target.mode === "edit") {
       const timer = window.setTimeout(() => {
-        onUpdate(target.note.id, { body, pinned, archived });
+        onUpdate(target.note.id, { body, pinned, archived, markdown });
         setDirty(false);
       }, 550);
       return () => window.clearTimeout(timer);
@@ -106,7 +109,7 @@ export function NoteEditor({
       if (createdIdRef.current) {
         const id = createdIdRef.current;
         const timer = window.setTimeout(() => {
-          onUpdate(id, { body, pinned, archived });
+          onUpdate(id, { body, pinned, archived, markdown });
           setDirty(false);
         }, 550);
         return () => window.clearTimeout(timer);
@@ -115,7 +118,7 @@ export function NoteEditor({
       const timer = window.setTimeout(async () => {
         if (createdIdRef.current || creatingRef.current) return;
         creatingRef.current = true;
-        const note = await onCreate({ body, pinned, archived });
+        const note = await onCreate({ body, pinned, archived, markdown });
         creatingRef.current = false;
         if (note) {
           createdIdRef.current = note.id;
@@ -124,7 +127,7 @@ export function NoteEditor({
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, onCreate, onUpdate, pinned, target]);
+  }, [archived, body, dirty, markdown, onCreate, onUpdate, pinned, target]);
 
   const displayTitle = useMemo(() => {
     // Mirror the sidebar so the two never drift: prefer the saved title,
@@ -159,9 +162,14 @@ export function NoteEditor({
     setDirty(true);
   }
 
+  function toggleMarkdown() {
+    setMarkdown((value) => !value);
+    setDirty(true);
+  }
+
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
-    onUpdate(target.note.id, { body, pinned, archived });
+    onUpdate(target.note.id, { body, pinned, archived, markdown });
     setDirty(false);
   }
 
@@ -169,10 +177,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "new") {
       if (createdIdRef.current) {
-        onUpdate(createdIdRef.current, { body, pinned, archived });
+        onUpdate(createdIdRef.current, { body, pinned, archived, markdown });
       } else if (body.trim() && !creatingRef.current) {
         creatingRef.current = true;
-        onCreate({ body, pinned, archived });
+        onCreate({ body, pinned, archived, markdown });
       }
     } else {
       flushEdit();
@@ -197,23 +205,40 @@ export function NoteEditor({
           </div>
           <div className="flex items-center gap-1">
             {target.mode !== "edit" || !target.note.trashed ? (
-              <button
-                type="button"
-                onClick={togglePinned}
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-                  pinned
-                    ? "text-[var(--color-text)]"
-                    : "text-[var(--color-muted)]"
-                }`}
-                title={pinned ? "Unpin" : "Pin"}
-              >
-                {pinned ? (
-                  <PinFilledIcon className="h-3.5 w-3.5" />
-                ) : (
-                  <PinIcon className="h-3.5 w-3.5" />
-                )}
-                {pinned ? "Pinned" : "Pin"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={toggleMarkdown}
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+                    markdown
+                      ? "text-[var(--color-text)]"
+                      : "text-[var(--color-muted)]"
+                  }`}
+                  title={markdown ? "Markdown on" : "Render this note as Markdown when shared"}
+                  aria-pressed={markdown}
+                >
+                  <span className="font-mono text-[11px] tracking-tight">
+                    md
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={togglePinned}
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+                    pinned
+                      ? "text-[var(--color-text)]"
+                      : "text-[var(--color-muted)]"
+                  }`}
+                  title={pinned ? "Unpin" : "Pin"}
+                >
+                  {pinned ? (
+                    <PinFilledIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <PinIcon className="h-3.5 w-3.5" />
+                  )}
+                  {pinned ? "Pinned" : "Pin"}
+                </button>
+              </>
             ) : null}
             {!isPanel && (
               <button

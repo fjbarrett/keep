@@ -3,7 +3,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
-import { looksLikeMarkdown } from "@/lib/markdown";
 import { CopyNoteButton } from "@/components/CopyNoteButton";
 
 export const runtime = "nodejs";
@@ -33,6 +32,16 @@ function formatDate(t: number) {
   });
 }
 
+function isSameDay(a: number, b: number) {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
 export default async function SharedNotePage({
   params,
 }: {
@@ -42,7 +51,8 @@ export default async function SharedNotePage({
   if (!note) notFound();
 
   const title = displayTitle(note.title, note.body);
-  const isMarkdown = looksLikeMarkdown(note.body);
+  const isMarkdown = Boolean(note.markdown);
+  const sameDay = isSameDay(note.createdAt, note.updatedAt);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[680px] flex-col px-5 py-10 sm:px-8 sm:py-16">
@@ -57,10 +67,12 @@ export default async function SharedNotePage({
                 <dt className="text-[var(--color-muted)]">Created</dt>
                 <dd>{formatDate(note.createdAt)}</dd>
               </div>
-              <div className="flex gap-1.5">
-                <dt className="text-[var(--color-muted)]">Updated</dt>
-                <dd>{formatDate(note.updatedAt)}</dd>
-              </div>
+              {!sameDay && (
+                <div className="flex gap-1.5">
+                  <dt className="text-[var(--color-muted)]">Updated</dt>
+                  <dd>{formatDate(note.updatedAt)}</dd>
+                </div>
+              )}
             </dl>
             <CopyNoteButton text={note.body} />
           </div>
