@@ -51,6 +51,16 @@ function formatDate(t: number) {
   });
 }
 
+function looksLikeMarkdown(text: string): boolean {
+  return /^#{1,6}\s/m.test(text)
+    || /\*\*\w/.test(text)
+    || /```/.test(text)
+    || /^\s*[-*+]\s/m.test(text)
+    || /^\s*\d+\.\s/m.test(text)
+    || /\[.*\]\(.*\)/.test(text)
+    || /^>\s/m.test(text);
+}
+
 function isSameDay(a: number, b: number) {
   const da = new Date(a);
   const db = new Date(b);
@@ -70,7 +80,7 @@ export default async function SharedNotePage({
   if (!note) notFound();
 
   const title = displayTitle(note.title, note.body);
-  const isMarkdown = Boolean(note.markdown);
+  const isMarkdown = looksLikeMarkdown(note.body);
   const sameDay = isSameDay(note.createdAt, note.updatedAt);
 
   return (
