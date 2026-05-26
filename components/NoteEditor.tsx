@@ -288,84 +288,85 @@ export function NoteEditor({
 
   if (!target) return null;
 
+  const toolbar = (
+    <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md bg-[var(--color-background)]/80 backdrop-blur-sm">
+      {target.mode !== "edit" || !target.note.trashed ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setTagOpen((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+              tags.length > 0 || tagOpen
+                ? "text-[var(--color-text)]"
+                : "text-[var(--color-muted)]"
+            }`}
+            title="Tags"
+          >
+            <TagIcon className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleMarkdown}
+            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+              markdown
+                ? "text-[var(--color-text)]"
+                : "text-[var(--color-muted)]"
+            }`}
+            title={markdown ? "Markdown on" : "Render this note as Markdown when shared"}
+            aria-pressed={markdown}
+          >
+            <span className="font-mono text-[11px] tracking-tight">
+              md
+            </span>
+          </button>
+          {target.mode === "edit" && (
+            <button
+              type="button"
+              onClick={loadHistory}
+              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+                historyOpen
+                  ? "text-[var(--color-text)]"
+                  : "text-[var(--color-muted)]"
+              }`}
+              title="Version history"
+            >
+              <HistoryIcon className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={togglePinned}
+            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+              pinned
+                ? "text-[var(--color-text)]"
+                : "text-[var(--color-muted)]"
+            }`}
+            title={pinned ? "Unpin" : "Pin"}
+          >
+            {pinned ? (
+              <PinFilledIcon className="h-3.5 w-3.5" />
+            ) : (
+              <PinIcon className="h-3.5 w-3.5" />
+            )}
+            {pinned ? "Pinned" : "Pin"}
+          </button>
+        </>
+      ) : null}
+      {!isPanel && (
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Close"
+          className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] focus-ring"
+        >
+          <XIcon className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+
   const editor = (
     <>
-        <div className="flex items-center justify-end gap-2 px-4 py-2.5">
-          <div className="flex items-center gap-1">
-            {target.mode !== "edit" || !target.note.trashed ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setTagOpen((v) => !v)}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-                    tags.length > 0 || tagOpen
-                      ? "text-[var(--color-text)]"
-                      : "text-[var(--color-muted)]"
-                  }`}
-                  title="Tags"
-                >
-                  <TagIcon className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleMarkdown}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-                    markdown
-                      ? "text-[var(--color-text)]"
-                      : "text-[var(--color-muted)]"
-                  }`}
-                  title={markdown ? "Markdown on" : "Render this note as Markdown when shared"}
-                  aria-pressed={markdown}
-                >
-                  <span className="font-mono text-[11px] tracking-tight">
-                    md
-                  </span>
-                </button>
-                {target.mode === "edit" && (
-                  <button
-                    type="button"
-                    onClick={loadHistory}
-                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-                      historyOpen
-                        ? "text-[var(--color-text)]"
-                        : "text-[var(--color-muted)]"
-                    }`}
-                    title="Version history"
-                  >
-                    <HistoryIcon className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={togglePinned}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-                    pinned
-                      ? "text-[var(--color-text)]"
-                      : "text-[var(--color-muted)]"
-                  }`}
-                  title={pinned ? "Unpin" : "Pin"}
-                >
-                  {pinned ? (
-                    <PinFilledIcon className="h-3.5 w-3.5" />
-                  ) : (
-                    <PinIcon className="h-3.5 w-3.5" />
-                  )}
-                  {pinned ? "Pinned" : "Pin"}
-                </button>
-              </>
-            ) : null}
-            {!isPanel && (
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Close"
-                className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] focus-ring"
-              >
-                <XIcon className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
 
         {(tags.length > 0 || tagOpen) && (
           <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
@@ -451,6 +452,7 @@ export function NoteEditor({
           </div>
         ) : (
           <div className="relative flex min-h-0 flex-1 px-4 py-4">
+            {toolbar}
             <textarea
               ref={bodyRef}
               value={body}
