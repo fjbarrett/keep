@@ -479,7 +479,7 @@ export function NoteEditor({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-end gap-3 bg-[var(--color-background)] px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-end gap-3 px-4 py-2.5">
           {target.mode === "edit" && target.note.trashed && (
             <span className="mr-auto text-xs text-[var(--color-muted)]">
               In Trash
@@ -559,7 +559,7 @@ export function NoteEditor({
 
   if (presentation === "panel") {
     return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {editor}
       </div>
     );

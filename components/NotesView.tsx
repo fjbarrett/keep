@@ -909,7 +909,7 @@ function Sidebar({
           className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
         >
           <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
-            <PencilPlusIcon className="h-3.5 w-3.5" />
+            <PlusIcon className="h-3.5 w-3.5" />
           </span>
           <span className="font-medium">New note</span>
         </button>
@@ -1289,7 +1289,7 @@ function MainPlaceholder({
           onClick={onNewNote}
           className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-accent-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
         >
-          <PencilPlusIcon className="h-3.5 w-3.5" />
+          <PlusIcon className="h-3.5 w-3.5" />
           New note
         </button>
       </div>
@@ -1297,19 +1297,19 @@ function MainPlaceholder({
   );
 }
 
-function PencilPlusIcon({ className }: { className?: string }) {
+function PlusIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
     >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
     </svg>
   );
 }
