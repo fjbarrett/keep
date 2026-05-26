@@ -290,17 +290,7 @@ export function NoteEditor({
 
   const editor = (
     <>
-        <div className="flex items-center justify-between gap-2 px-4 py-2.5">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-[var(--color-text)]">
-              {displayTitle}
-            </p>
-            {target.mode === "edit" && (
-              <p className="font-mono text-[10px] text-[var(--color-muted)]">
-                {dirty ? "Saving..." : `#${target.note.id.slice(-6)}`}
-              </p>
-            )}
-          </div>
+        <div className="flex items-center justify-end gap-2 px-4 py-2.5">
           <div className="flex items-center gap-1">
             {target.mode !== "edit" || !target.note.trashed ? (
               <>
@@ -559,7 +549,7 @@ export function NoteEditor({
 
   if (presentation === "panel") {
     return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg">
         {editor}
       </div>
     );
