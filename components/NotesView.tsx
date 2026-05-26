@@ -433,7 +433,7 @@ export function NotesView({
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
         {mainTarget ? (
           <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
-            <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
+            <div className="flex items-center gap-2 px-3 py-2">
               <button
                 type="button"
                 onClick={() => setTarget(null)}
@@ -649,7 +649,7 @@ function SettingsPane({
             </span>
           </button>
 
-          <div className="border-t border-[var(--color-border)]" />
+          <div className="h-px" />
 
           <input
             ref={importRef}
@@ -900,7 +900,7 @@ function Sidebar({
     <aside className={
       mobile
         ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
-        : "hidden h-full w-[260px] shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-canvas)] md:flex"
+        : "hidden h-full w-[260px] shrink-0 flex-col bg-[var(--color-canvas)] md:flex"
     }>
       <div className="flex flex-col gap-1 p-2">
         <button
@@ -916,7 +916,7 @@ function Sidebar({
       </div>
 
       {allTags.length > 0 && viewMode === "active" && (
-        <div className="flex flex-wrap gap-1 border-t border-[var(--color-border)] px-3 py-2">
+        <div className="flex flex-wrap gap-1 px-3 py-2">
           {allTags.map((tag) => (
             <button
               key={tag}
@@ -935,7 +935,7 @@ function Sidebar({
       )}
 
       {filteredTitle && (
-        <div className="flex items-center justify-between border-t border-[var(--color-border)] px-3 py-2">
+        <div className="flex items-center justify-between px-3 py-2">
           <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             {filteredTitle}
           </span>
@@ -991,7 +991,7 @@ function Sidebar({
         )}
       </div>
 
-      <div className="border-t border-[var(--color-border)] p-2">
+      <div className="p-2">
         <div className="flex items-center justify-between px-2.5 py-1">
           <SyncIndicator status={syncStatus} />
           <button
@@ -1274,7 +1274,7 @@ function MainPlaceholder({
   onNewNote: () => void;
 }) {
   return (
-    <div className="grid flex-1 place-items-center rounded-lg border border-dashed border-[var(--color-border)]">
+    <div className="grid flex-1 place-items-center">
       <div className="px-8 text-center">
         <p className="text-base font-medium text-[var(--color-text)]">
           {hasNotes ? "Select a note" : "No notes yet"}

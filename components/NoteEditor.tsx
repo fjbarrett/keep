@@ -290,7 +290,7 @@ export function NoteEditor({
 
   const editor = (
     <>
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-[var(--color-text)]">
               {displayTitle}
@@ -378,7 +378,7 @@ export function NoteEditor({
         </div>
 
         {(tags.length > 0 || tagOpen) && (
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] px-4 py-2">
+          <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
             {tags.map((tag) => (
               <span
                 key={tag}
@@ -479,7 +479,7 @@ export function NoteEditor({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-end gap-3 bg-[var(--color-background)] px-4 py-2.5">
           {target.mode === "edit" && target.note.trashed && (
             <span className="mr-auto text-xs text-[var(--color-muted)]">
               In Trash
