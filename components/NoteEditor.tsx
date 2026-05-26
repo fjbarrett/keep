@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { Note } from "@/lib/types";
+import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
 import {
   ArchiveIcon,
   HistoryIcon,
@@ -48,7 +49,6 @@ export function NoteEditor({
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
-  const [markdown, setMarkdown] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [tagOpen, setTagOpen] = useState(false);
@@ -56,7 +56,9 @@ export function NoteEditor({
   const [uploading, setUploading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<HighlightedEditorHandle>(null);
+  const [highlight, setHighlight] = useState(false);
+  const plainRef = useRef<HTMLTextAreaElement>(null);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
   const targetKey =
@@ -76,13 +78,11 @@ export function NoteEditor({
       setBody(target.note.body);
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
-      setMarkdown(Boolean(target.note.markdown));
       setTags(target.note.tags ?? []);
     } else {
       setBody("");
       setPinned(false);
       setArchived(false);
-      setMarkdown(false);
       setTags([]);
     }
     setTagInput("");
@@ -94,6 +94,7 @@ export function NoteEditor({
     creatingRef.current = false;
     setTimeout(() => {
       bodyRef.current?.focus();
+      plainRef.current?.focus();
     }, 30);
   }, [targetKey]);
 
@@ -108,13 +109,13 @@ export function NoteEditor({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, body, pinned, archived, markdown]);
+  }, [target, body, pinned, archived]);
 
   useEffect(() => {
     if (!target || !dirty) return;
     if (target.mode === "edit") {
       const timer = window.setTimeout(() => {
-        onUpdate(target.note.id, { body, pinned, archived, markdown, tags });
+        onUpdate(target.note.id, { body, pinned, archived, tags });
         setDirty(false);
       }, 550);
       return () => window.clearTimeout(timer);
@@ -123,7 +124,7 @@ export function NoteEditor({
       if (createdIdRef.current) {
         const id = createdIdRef.current;
         const timer = window.setTimeout(() => {
-          onUpdate(id, { body, pinned, archived, markdown, tags });
+          onUpdate(id, { body, pinned, archived, tags });
           setDirty(false);
         }, 550);
         return () => window.clearTimeout(timer);
@@ -132,7 +133,7 @@ export function NoteEditor({
       const timer = window.setTimeout(async () => {
         if (createdIdRef.current || creatingRef.current) return;
         creatingRef.current = true;
-        const note = await onCreate({ body, pinned, archived, markdown, tags });
+        const note = await onCreate({ body, pinned, archived, tags });
         creatingRef.current = false;
         if (note) {
           createdIdRef.current = note.id;
@@ -141,7 +142,7 @@ export function NoteEditor({
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, markdown, onCreate, onUpdate, pinned, tags, target]);
+  }, [archived, body, dirty, onCreate, onUpdate, pinned, tags, target]);
 
   const displayTitle = useMemo(() => {
     // Mirror the sidebar so the two never drift: prefer the saved title,
@@ -173,11 +174,6 @@ export function NoteEditor({
 
   function toggleArchived() {
     setArchived((value) => !value);
-    setDirty(true);
-  }
-
-  function toggleMarkdown() {
-    setMarkdown((value) => !value);
     setDirty(true);
   }
 
@@ -223,16 +219,11 @@ export function NoteEditor({
       }
       const { url } = await res.json();
       const tag = `![${file.name}](${url})`;
-      const ta = bodyRef.current;
-      if (ta) {
-        const start = ta.selectionStart;
-        const before = body.slice(0, start);
-        const after = body.slice(ta.selectionEnd);
-        const sep = before && !before.endsWith("\n") ? "\n" : "";
-        markBody(before + sep + tag + "\n" + after);
-      } else {
-        markBody(body + (body ? "\n" : "") + tag + "\n");
-      }
+      const cursor = bodyRef.current?.getCursor() ?? plainRef.current?.selectionStart ?? body.length;
+      const before = body.slice(0, cursor);
+      const after = body.slice(cursor);
+      const sep = before && !before.endsWith("\n") ? "\n" : "";
+      markBody(before + sep + tag + "\n" + after);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -240,7 +231,7 @@ export function NoteEditor({
     }
   }
 
-  function handlePaste(e: React.ClipboardEvent) {
+  function handlePlainPaste(e: React.ClipboardEvent) {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
@@ -253,7 +244,7 @@ export function NoteEditor({
     }
   }
 
-  function handleDrop(e: React.DragEvent) {
+  function handlePlainDrop(e: React.DragEvent) {
     const files = e.dataTransfer?.files;
     if (!files?.length) return;
     for (const file of files) {
@@ -267,7 +258,7 @@ export function NoteEditor({
 
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
-    onUpdate(target.note.id, { body, pinned, archived, markdown, tags });
+    onUpdate(target.note.id, { body, pinned, archived, tags });
     setDirty(false);
   }
 
@@ -275,10 +266,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "new") {
       if (createdIdRef.current) {
-        onUpdate(createdIdRef.current, { body, pinned, archived, markdown, tags });
+        onUpdate(createdIdRef.current, { body, pinned, archived, tags });
       } else if (body.trim() && !creatingRef.current) {
         creatingRef.current = true;
-        onCreate({ body, pinned, archived, markdown, tags });
+        onCreate({ body, pinned, archived, tags });
       }
     } else {
       flushEdit();
@@ -289,7 +280,7 @@ export function NoteEditor({
   if (!target) return null;
 
   const toolbar = (
-    <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md bg-[var(--color-background)]/80 backdrop-blur-sm">
+    <div className="absolute right-3 top-3 z-20 flex items-center gap-1 rounded-md bg-[var(--color-background)]/80 backdrop-blur-sm">
       {target.mode !== "edit" || !target.note.trashed ? (
         <>
           <button
@@ -306,17 +297,17 @@ export function NoteEditor({
           </button>
           <button
             type="button"
-            onClick={toggleMarkdown}
+            onClick={() => setHighlight((v) => !v)}
             className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-              markdown
+              highlight
                 ? "text-[var(--color-text)]"
                 : "text-[var(--color-muted)]"
             }`}
-            title={markdown ? "Markdown on" : "Render this note as Markdown when shared"}
-            aria-pressed={markdown}
+            title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
+            aria-pressed={highlight}
           >
             <span className="font-mono text-[11px] tracking-tight">
-              md
+              {"</>"}
             </span>
           </button>
           {target.mode === "edit" && (
@@ -453,16 +444,27 @@ export function NoteEditor({
         ) : (
           <div className="relative flex min-h-0 flex-1 px-4 py-4">
             {toolbar}
-            <textarea
-              ref={bodyRef}
-              value={body}
-              onChange={(e) => markBody(e.target.value)}
-              onPaste={handlePaste}
-              onDrop={handleDrop}
-              placeholder="Start writing..."
-              rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
-              className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
-            />
+            {highlight ? (
+              <HighlightedEditor
+                ref={bodyRef}
+                value={body}
+                onChange={markBody}
+                onPaste={handlePlainPaste}
+                onDrop={handlePlainDrop}
+                placeholderText="Start writing..."
+              />
+            ) : (
+              <textarea
+                ref={plainRef}
+                value={body}
+                onChange={(e) => markBody(e.target.value)}
+                onPaste={handlePlainPaste}
+                onDrop={handlePlainDrop}
+                placeholder="Start writing..."
+                rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
+                className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+              />
+            )}
             {uploading && (
               <p className="absolute bottom-3 left-4 text-xs text-[var(--color-muted)] animate-pulse">
                 Uploading image...
