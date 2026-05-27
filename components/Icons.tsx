@@ -234,6 +234,28 @@ export const HistoryIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+export const ChevronLeftIcon = ({ className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+);
+
+export const DotsIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <circle cx="5" cy="12" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="19" cy="12" r="1.6" />
+  </svg>
+);
+
 export const StackIcon = ({ className }: IconProps) => (
   <svg
     viewBox="0 0 24 24"
