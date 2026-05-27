@@ -63,7 +63,7 @@ export function SearchOverlay({
                     }`}
                   >
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                      {previewText(note)}
+                      <HighlightMatch text={previewText(note)} query={query} />
                     </span>
                     <span className="shrink-0 font-mono text-[10px] text-[var(--color-muted)]">
                       {new Date(note.updatedAt).toLocaleDateString("en-US", {
@@ -85,5 +85,21 @@ export function SearchOverlay({
         </div>
       </div>
     </div>
+  );
+}
+
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="rounded-sm bg-[var(--color-link)]/25 px-0.5 text-inherit">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+      {text.slice(idx + q.length)}
+    </>
   );
 }
