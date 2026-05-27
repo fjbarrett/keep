@@ -26,7 +26,7 @@ export function SearchOverlay({
   const hasQuery = query.trim().length > 0;
 
   return (
-    <div data-search-overlay className="fixed inset-0 z-40 px-4 pt-[14vh]">
+    <div data-search-overlay role="dialog" aria-label="Search notes" className="fixed inset-0 z-40 px-4 pt-[14vh]">
       <button
         type="button"
         aria-label="Close search"
