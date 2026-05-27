@@ -421,6 +421,7 @@ export function NoteEditor({
                   setTagOpen(false);
                 }}
                 placeholder="Add tag..."
+                autoComplete="off"
                 className="min-w-[80px] flex-1 border-0 bg-transparent text-xs text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
@@ -455,6 +456,7 @@ export function NoteEditor({
                 onPaste={handlePlainPaste}
                 onDrop={handlePlainDrop}
                 placeholder="Start writing..."
+                autoComplete="off"
                 className="min-h-[320px] w-full flex-1 resize-none overflow-y-auto border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
