@@ -153,7 +153,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     );
 
     return (
-      <div className="highlighted-editor relative min-h-[320px] w-full flex-1">
+      <div className="highlighted-editor relative min-h-[320px] w-full flex-1 flex flex-col">
         <pre
           ref={preRef}
           className="highlighted-editor-pre pointer-events-none absolute inset-0 overflow-hidden"
@@ -169,7 +169,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
           onScroll={syncScroll}
           onKeyDown={handleKeyDown}
           placeholder={placeholderText}
-          className="highlighted-editor-textarea relative z-10 min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent leading-relaxed caret-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+          className="highlighted-editor-textarea relative z-10 w-full flex-1 resize-none overflow-y-auto border-0 bg-transparent leading-relaxed caret-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
           spellCheck={false}
         />
       </div>
