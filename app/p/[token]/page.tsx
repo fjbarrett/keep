@@ -83,6 +83,8 @@ export default async function SharedNotePage({
   const isMarkdown = looksLikeMarkdown(note.body);
   const sameDay = isSameDay(note.createdAt, note.updatedAt);
 
+  const hasTags = note.tags && note.tags.length > 0;
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[680px] flex-col px-5 py-10 sm:px-8 sm:py-16">
       <article className="my-auto">
@@ -91,18 +93,32 @@ export default async function SharedNotePage({
             {title}
           </h1>
           <div className="mt-3 flex items-start justify-between gap-3">
-            <dl className="space-y-0.5 text-sm text-[var(--color-muted)]">
-              <div className="flex gap-1.5">
-                <dt className="text-[var(--color-muted)]">Created</dt>
-                <dd>{formatDate(note.createdAt)}</dd>
-              </div>
-              {!sameDay && (
+            <div className="space-y-2">
+              <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-[var(--color-muted)]">
                 <div className="flex gap-1.5">
-                  <dt className="text-[var(--color-muted)]">Updated</dt>
-                  <dd>{formatDate(note.updatedAt)}</dd>
+                  <dt>Created</dt>
+                  <dd>{formatDate(note.createdAt)}</dd>
+                </div>
+                {!sameDay && (
+                  <div className="flex gap-1.5">
+                    <dt>Updated</dt>
+                    <dd>{formatDate(note.updatedAt)}</dd>
+                  </div>
+                )}
+              </dl>
+              {hasTags && (
+                <div className="flex flex-wrap gap-1.5">
+                  {note.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-[var(--color-surface-hover)] px-2.5 py-0.5 text-xs text-[var(--color-muted)]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               )}
-            </dl>
+            </div>
             <div className="flex shrink-0 items-center gap-2">
               <a
                 href={`/p/${params.token}.txt`}
@@ -120,10 +136,13 @@ export default async function SharedNotePage({
             </div>
           </div>
         </header>
+
+        <div className="mb-8 border-t border-[var(--color-border)]" />
+
         {isMarkdown ? (
           <div
             data-note-content
-            className="prose prose-invert prose-lg max-w-none prose-headings:tracking-tight prose-headings:text-[var(--color-text)] prose-p:text-[var(--color-text)] prose-strong:text-[var(--color-text)] prose-a:text-[var(--color-link)] prose-code:text-[var(--color-text)] prose-code:before:content-none prose-code:after:content-none prose-pre:bg-[var(--color-surface)] prose-blockquote:border-[var(--color-border)] prose-blockquote:text-[var(--color-muted)] prose-hr:border-[var(--color-border)]"
+            className="prose-invert-auto max-w-none text-base leading-relaxed sm:text-[17px] sm:leading-[1.75]"
           >
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {note.body}
@@ -136,7 +155,7 @@ export default async function SharedNotePage({
         )}
       </article>
 
-      <footer className="mt-16 pt-6 text-xs text-[var(--color-muted)]">
+      <footer className="mt-16 border-t border-[var(--color-border)] pt-4 text-xs text-[var(--color-muted)]">
         Shared via{" "}
         <a href="/" className="text-[var(--color-link)] hover:underline">
           Keep
