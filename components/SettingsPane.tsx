@@ -37,7 +37,7 @@ export function SettingsPane({
   const exportableCount = notes.filter((note) => !note.trashed).length;
 
   return (
-    <div className="fixed inset-0 z-40">
+    <div className="fixed inset-0 z-40" role="dialog" aria-label="Settings">
       <button
         type="button"
         aria-label="Close settings"

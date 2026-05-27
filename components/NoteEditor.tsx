@@ -296,6 +296,7 @@ export function NoteEditor({
                 : "text-[var(--color-muted)]"
             }`}
             title="Tags"
+            aria-label="Tags"
           >
             <TagIcon className="h-3.5 w-3.5" />
           </button>
@@ -308,6 +309,7 @@ export function NoteEditor({
                 : "text-[var(--color-muted)]"
             }`}
             title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
+            aria-label="Syntax highlighting"
             aria-pressed={highlight}
           >
             <span className="font-mono text-[11px] tracking-tight">
@@ -323,6 +325,7 @@ export function NoteEditor({
                 : "text-[var(--color-muted)]"
             }`}
             title={previewOpen ? "Edit" : "Preview markdown"}
+            aria-label={previewOpen ? "Edit" : "Preview markdown"}
             aria-pressed={previewOpen}
           >
             <EyeIcon className="h-3.5 w-3.5" />
@@ -337,6 +340,7 @@ export function NoteEditor({
                   : "text-[var(--color-muted)]"
               }`}
               title="Version history"
+              aria-label="Version history"
             >
               <HistoryIcon className="h-3.5 w-3.5" />
             </button>
@@ -365,7 +369,7 @@ export function NoteEditor({
           type="button"
           onClick={close}
           aria-label="Close"
-          className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] focus-ring"
+          className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
         >
           <XIcon className="h-4 w-4" />
         </button>

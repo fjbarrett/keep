@@ -86,11 +86,14 @@ export function Sidebar({
     viewMode === "archive" ? "Archive" : viewMode === "trash" ? "Trash" : null;
 
   return (
-    <aside className={
-      mobile
-        ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
-        : "hidden h-full w-[260px] shrink-0 flex-col bg-[var(--color-canvas)] md:flex"
-    }>
+    <aside
+      aria-label="Notes sidebar"
+      className={
+        mobile
+          ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
+          : "hidden h-full w-[260px] shrink-0 flex-col bg-[var(--color-canvas)] md:flex"
+      }
+    >
       <div className="flex flex-col gap-1 p-2">
         <button
           type="button"
@@ -208,7 +211,7 @@ function SyncIndicator({ status }: { status: SyncStatus }) {
   }[status];
 
   return (
-    <span className={`flex items-center gap-1.5 text-xs ${config.color}`}>
+    <span className={`flex items-center gap-1.5 text-xs ${config.color}`} role="status" aria-live="polite">
       <span
         className={`inline-block h-1.5 w-1.5 rounded-full bg-current ${
           status === "syncing" ? "animate-pulse" : ""

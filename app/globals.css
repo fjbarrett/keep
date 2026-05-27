@@ -78,9 +78,14 @@ body {
   color: var(--color-text);
 }
 
-.focus-ring:focus-visible {
+:focus-visible {
   outline: 2px solid var(--color-link);
   outline-offset: -2px;
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
 }
 
 /* GitHub-style underlined tabs */
