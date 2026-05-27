@@ -424,40 +424,11 @@ export function NoteEditor({
         )}
 
         {historyOpen ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            {versions.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-[var(--color-muted)]">
-                No previous versions yet
-              </p>
-            ) : (
-              <ul className="divide-y divide-[var(--color-border)]">
-                {versions.map((v) => (
-                  <li key={v.id} className="px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[var(--color-text)]">
-                          {v.title || "Untitled"}
-                        </p>
-                        <p className="text-xs text-[var(--color-muted)]">
-                          {new Date(v.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => restoreVersion(v.body)}
-                        className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-                      >
-                        Restore
-                      </button>
-                    </div>
-                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--color-muted)]">
-                      {v.body.slice(0, 200)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <VersionHistory
+            versions={versions}
+            currentBody={body}
+            onRestore={restoreVersion}
+          />
         ) : (
           <div className="relative flex flex-col min-h-0 flex-1 px-4 py-4">
             {toolbar}
@@ -587,6 +558,120 @@ export function NoteEditor({
       <div className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         {editor}
       </div>
+    </div>
+  );
+}
+
+function VersionHistory({
+  versions,
+  currentBody,
+  onRestore,
+}: {
+  versions: { id: string; body: string; title: string; createdAt: number }[];
+  currentBody: string;
+  onRestore: (body: string) => void;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  if (versions.length === 0) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <p className="px-4 py-8 text-center text-sm text-[var(--color-muted)]">
+          No previous versions yet
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <ul className="divide-y divide-[var(--color-border)]">
+        {versions.map((v, i) => {
+          const expanded = expandedId === v.id;
+          const newerBody = i === 0 ? currentBody : versions[i - 1].body;
+          return (
+            <li key={v.id} className="px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expanded ? null : v.id)}
+                  className="min-w-0 text-left"
+                >
+                  <p className="truncate text-sm font-medium text-[var(--color-text)]">
+                    {v.title || "Untitled"}
+                  </p>
+                  <p className="text-xs text-[var(--color-muted)]">
+                    {new Date(v.createdAt).toLocaleString()}
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRestore(v.body)}
+                  className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                >
+                  Restore
+                </button>
+              </div>
+              {expanded ? (
+                <DiffView oldText={v.body} newText={newerBody} />
+              ) : (
+                <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--color-muted)]">
+                  {v.body.slice(0, 200)}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
+  const oldLines = oldText.split("\n");
+  const newLines = newText.split("\n");
+  const maxLen = Math.max(oldLines.length, newLines.length);
+  const diffLines: { type: "same" | "add" | "remove"; text: string }[] = [];
+
+  const oldSet = new Set(oldLines);
+  const newSet = new Set(newLines);
+
+  for (const line of oldLines) {
+    if (!newSet.has(line)) {
+      diffLines.push({ type: "remove", text: line });
+    }
+  }
+  for (const line of newLines) {
+    if (!oldSet.has(line)) {
+      diffLines.push({ type: "add", text: line });
+    }
+  }
+
+  if (diffLines.length === 0) {
+    return (
+      <p className="mt-2 text-xs text-[var(--color-muted)]">No changes</p>
+    );
+  }
+
+  return (
+    <div className="mt-2 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-background)] font-mono text-xs">
+      {diffLines.map((line, i) => (
+        <div
+          key={i}
+          className={`whitespace-pre-wrap px-3 py-0.5 ${
+            line.type === "add"
+              ? "bg-green-500/10 text-green-400"
+              : line.type === "remove"
+                ? "bg-red-500/10 text-red-400"
+                : "text-[var(--color-muted)]"
+          }`}
+        >
+          <span className="mr-2 inline-block w-3 select-none text-right opacity-60">
+            {line.type === "add" ? "+" : "−"}
+          </span>
+          {line.text || " "}
+        </div>
+      ))}
     </div>
   );
 }
