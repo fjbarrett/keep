@@ -190,3 +190,76 @@ body {
   color: transparent;
   -webkit-text-fill-color: transparent;
 }
+
+/* Markdown preview prose */
+.prose-invert-auto {
+  color: var(--color-text);
+}
+.prose-invert-auto h1,
+.prose-invert-auto h2,
+.prose-invert-auto h3,
+.prose-invert-auto h4 {
+  color: var(--color-text);
+  font-weight: 600;
+  margin: 1.25em 0 0.5em;
+}
+.prose-invert-auto h1 { font-size: 1.5em; }
+.prose-invert-auto h2 { font-size: 1.25em; border-bottom: 1px solid var(--color-border); padding-bottom: 0.3em; }
+.prose-invert-auto h3 { font-size: 1.1em; }
+.prose-invert-auto p { margin: 0.75em 0; }
+.prose-invert-auto a { color: var(--color-link); text-decoration: none; }
+.prose-invert-auto a:hover { text-decoration: underline; }
+.prose-invert-auto code {
+  background: var(--color-surface-hover);
+  border-radius: 4px;
+  padding: 0.15em 0.35em;
+  font-size: 0.85em;
+  font-family: var(--font-geist-mono), "SF Mono", Menlo, monospace;
+}
+.prose-invert-auto pre {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.prose-invert-auto pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.85em;
+}
+.prose-invert-auto blockquote {
+  border-left: 3px solid var(--color-border);
+  padding-left: 1em;
+  color: var(--color-muted);
+  margin: 0.75em 0;
+}
+.prose-invert-auto ul,
+.prose-invert-auto ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.prose-invert-auto li { margin: 0.25em 0; }
+.prose-invert-auto hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5em 0;
+}
+.prose-invert-auto table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75em 0;
+}
+.prose-invert-auto th,
+.prose-invert-auto td {
+  border: 1px solid var(--color-border);
+  padding: 0.4em 0.75em;
+  text-align: left;
+}
+.prose-invert-auto th {
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.prose-invert-auto img { max-width: 100%; border-radius: 6px; }
