@@ -444,7 +444,7 @@ export function NoteEditor({
             )}
           </div>
         ) : (
-          <div className="relative flex min-h-0 flex-1 px-4 py-4">
+          <div className="relative flex flex-col min-h-0 flex-1 px-4 py-4">
             {toolbar}
             {highlight ? (
               <HighlightedEditor
@@ -463,8 +463,7 @@ export function NoteEditor({
                 onPaste={handlePlainPaste}
                 onDrop={handlePlainDrop}
                 placeholder="Start writing..."
-                rows={Math.max(6, Math.min(20, body.split("\n").length + 2))}
-                className="min-h-[320px] w-full flex-1 resize-none border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                className="min-h-[320px] w-full flex-1 resize-none overflow-y-auto border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
             {uploading && (
