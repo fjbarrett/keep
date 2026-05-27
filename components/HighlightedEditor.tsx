@@ -121,7 +121,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
         } catch {
           setHtml("");
         }
-      }, 80);
+      }, 300);
       return () => clearTimeout(timer);
     }, [value, lang]);
 

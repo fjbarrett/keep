@@ -202,6 +202,7 @@ export function NotesView({
     if (didRestoreFromUrlRef.current || !hydrated) return;
     if (!initialNoteId) {
       didRestoreFromUrlRef.current = true;
+      setTarget({ mode: "new" });
       return;
     }
     const note = notes.find((n) => n.id === initialNoteId);
