@@ -90,6 +90,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     const [lang, setLang] = useState<string>(() => detectLanguage(value));
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const preRef = useRef<HTMLPreElement>(null);
+    const hlRef = useRef<Highlighter | null>(null);
 
     useImperativeHandle(ref, () => ({
       focus: () => textareaRef.current?.focus(),
@@ -108,21 +109,23 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
       }
     }, []);
 
-    // Re-highlight on content change using the cached language
     useEffect(() => {
-      const timer = setTimeout(async () => {
+      if (hlRef.current) {
         try {
-          const hl = await getHighlighter();
-          const result = hl.codeToHtml(value || " ", {
-            theme: "dark-plus",
-            lang,
-          });
-          setHtml(result);
-        } catch {
-          setHtml("");
+          setHtml(hlRef.current.codeToHtml(value || " ", { theme: "dark-plus", lang }));
+        } catch { /* lang not loaded */ }
+        return;
+      }
+      let cancelled = false;
+      getHighlighter().then((hl) => {
+        hlRef.current = hl;
+        if (!cancelled) {
+          try {
+            setHtml(hl.codeToHtml(value || " ", { theme: "dark-plus", lang }));
+          } catch { /* lang not loaded */ }
         }
-      }, 300);
-      return () => clearTimeout(timer);
+      });
+      return () => { cancelled = true; };
     }, [value, lang]);
 
     const handleChange = useCallback(
