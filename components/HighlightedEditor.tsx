@@ -87,6 +87,7 @@ interface Props {
 export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
   function HighlightedEditor({ value, onChange, onPaste, onDrop, placeholderText }, ref) {
     const [html, setHtml] = useState("");
+    const [lang, setLang] = useState<string>(() => detectLanguage(value));
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const preRef = useRef<HTMLPreElement>(null);
 
@@ -95,6 +96,11 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
       getCursor: () => textareaRef.current?.selectionStart ?? 0,
     }));
 
+    // Detect language once on mount (when toggle is pressed)
+    useEffect(() => {
+      setLang(detectLanguage(value));
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const syncScroll = useCallback(() => {
       if (preRef.current && textareaRef.current) {
         preRef.current.scrollTop = textareaRef.current.scrollTop;
@@ -102,11 +108,11 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
       }
     }, []);
 
+    // Re-highlight on content change using the cached language
     useEffect(() => {
       const timer = setTimeout(async () => {
         try {
           const hl = await getHighlighter();
-          const lang = detectLanguage(value);
           const result = hl.codeToHtml(value || " ", {
             theme: "dark-plus",
             lang,
@@ -117,7 +123,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
         }
       }, 80);
       return () => clearTimeout(timer);
-    }, [value]);
+    }, [value, lang]);
 
     const handleChange = useCallback(
       (e: React.ChangeEvent<HTMLTextAreaElement>) => {

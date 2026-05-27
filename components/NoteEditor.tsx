@@ -78,11 +78,13 @@ export function NoteEditor({
       setBody(target.note.body);
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
+      setHighlight(Boolean(target.note.highlight));
       setTags(target.note.tags ?? []);
     } else {
       setBody("");
       setPinned(false);
       setArchived(false);
+      setHighlight(false);
       setTags([]);
     }
     setTagInput("");
@@ -115,7 +117,7 @@ export function NoteEditor({
     if (!target || !dirty) return;
     if (target.mode === "edit") {
       const timer = window.setTimeout(() => {
-        onUpdate(target.note.id, { body, pinned, archived, tags });
+        onUpdate(target.note.id, { body, pinned, archived, highlight, tags });
         setDirty(false);
       }, 550);
       return () => window.clearTimeout(timer);
@@ -124,7 +126,7 @@ export function NoteEditor({
       if (createdIdRef.current) {
         const id = createdIdRef.current;
         const timer = window.setTimeout(() => {
-          onUpdate(id, { body, pinned, archived, tags });
+          onUpdate(id, { body, pinned, archived, highlight, tags });
           setDirty(false);
         }, 550);
         return () => window.clearTimeout(timer);
@@ -133,7 +135,7 @@ export function NoteEditor({
       const timer = window.setTimeout(async () => {
         if (createdIdRef.current || creatingRef.current) return;
         creatingRef.current = true;
-        const note = await onCreate({ body, pinned, archived, tags });
+        const note = await onCreate({ body, pinned, archived, highlight, tags });
         creatingRef.current = false;
         if (note) {
           createdIdRef.current = note.id;
@@ -142,7 +144,7 @@ export function NoteEditor({
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, onCreate, onUpdate, pinned, tags, target]);
+  }, [archived, body, dirty, highlight, onCreate, onUpdate, pinned, tags, target]);
 
   const displayTitle = useMemo(() => {
     // Mirror the sidebar so the two never drift: prefer the saved title,
@@ -258,7 +260,7 @@ export function NoteEditor({
 
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
-    onUpdate(target.note.id, { body, pinned, archived, tags });
+    onUpdate(target.note.id, { body, pinned, archived, highlight, tags });
     setDirty(false);
   }
 
@@ -266,10 +268,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "new") {
       if (createdIdRef.current) {
-        onUpdate(createdIdRef.current, { body, pinned, archived, tags });
+        onUpdate(createdIdRef.current, { body, pinned, archived, highlight, tags });
       } else if (body.trim() && !creatingRef.current) {
         creatingRef.current = true;
-        onCreate({ body, pinned, archived, tags });
+        onCreate({ body, pinned, archived, highlight, tags });
       }
     } else {
       flushEdit();
@@ -297,7 +299,7 @@ export function NoteEditor({
           </button>
           <button
             type="button"
-            onClick={() => setHighlight((v) => !v)}
+            onClick={() => { setHighlight((v) => !v); setDirty(true); }}
             className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
               highlight
                 ? "text-[var(--color-text)]"
