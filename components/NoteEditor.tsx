@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
+import { MarkdownPreview } from "./MarkdownPreview";
 import {
   ArchiveIcon,
   HistoryIcon,
@@ -54,6 +55,7 @@ export function NoteEditor({
   const [tagOpen, setTagOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
   const bodyRef = useRef<HighlightedEditorHandle>(null);
@@ -312,6 +314,19 @@ export function NoteEditor({
               {"</>"}
             </span>
           </button>
+          <button
+            type="button"
+            onClick={() => setPreviewOpen((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
+              previewOpen
+                ? "text-[var(--color-text)]"
+                : "text-[var(--color-muted)]"
+            }`}
+            title={previewOpen ? "Edit" : "Preview markdown"}
+            aria-pressed={previewOpen}
+          >
+            <EyeIcon className="h-3.5 w-3.5" />
+          </button>
           {target.mode === "edit" && (
             <button
               type="button"
@@ -446,7 +461,9 @@ export function NoteEditor({
         ) : (
           <div className="relative flex flex-col min-h-0 flex-1 px-4 py-4">
             {toolbar}
-            {highlight ? (
+            {previewOpen ? (
+              <MarkdownPreview body={body} />
+            ) : highlight ? (
               <HighlightedEditor
                 ref={bodyRef}
                 value={body}
@@ -677,5 +694,14 @@ function SharePopover({
         </>
       )}
     </div>
+  );
+}
+
+function EyeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
   );
 }
