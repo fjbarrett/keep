@@ -19,7 +19,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);else if(window.matchMedia("(prefers-color-scheme:light)").matches)document.documentElement.setAttribute("data-theme","light")})()`,
+          }}
+        />
+      </head>
       <body className="h-full flex flex-col bg-[var(--color-background)] text-[var(--color-text)]">
         {children}
         <ServiceWorkerRegistrar />
