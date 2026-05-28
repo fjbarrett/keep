@@ -169,7 +169,14 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
           onScroll={syncScroll}
           onKeyDown={handleKeyDown}
           placeholder={placeholderText}
+          name="note-body"
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          data-1p-ignore
+          data-lpignore="true"
+          data-bwignore
+          data-form-type="other"
           className="highlighted-editor-textarea relative z-10 w-full flex-1 resize-none overflow-y-auto border-0 bg-transparent leading-relaxed caret-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
           spellCheck={false}
         />
