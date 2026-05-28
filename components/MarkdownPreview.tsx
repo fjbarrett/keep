@@ -2,8 +2,17 @@
 
 import { useEffect, useState } from "react";
 import type { ComponentProps } from "react";
+import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 
-type MarkdownModule = { default: React.ComponentType<ComponentProps<"div"> & { children: string; remarkPlugins?: unknown[] }> };
+type MarkdownModule = {
+  default: React.ComponentType<
+    ComponentProps<"div"> & {
+      children: string;
+      remarkPlugins?: unknown[];
+      components?: unknown;
+    }
+  >;
+};
 type RemarkGfmModule = { default: unknown };
 
 let cachedMarkdown: MarkdownModule | null = null;
@@ -39,7 +48,9 @@ export function MarkdownPreview({ body }: { body: string }) {
 
   return (
     <div className="prose-invert-auto min-h-[320px] w-full flex-1 overflow-y-auto text-base md:text-sm leading-relaxed">
-      <Markdown remarkPlugins={[gfm]}>{body}</Markdown>
+      <Markdown remarkPlugins={[gfm]} components={{ pre: MarkdownCodeBlock }}>
+        {body}
+      </Markdown>
     </div>
   );
 }

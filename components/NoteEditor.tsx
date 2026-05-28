@@ -7,6 +7,8 @@ import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor"
 import { MarkdownPreview } from "./MarkdownPreview";
 import {
   ArchiveIcon,
+  CheckIcon,
+  CopyIcon,
   HistoryIcon,
   PinFilledIcon,
   PinIcon,
@@ -58,6 +60,7 @@ export function NoteEditor({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
+  const [copied, setCopied] = useState(false);
   const bodyRef = useRef<HighlightedEditorHandle>(null);
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
@@ -94,6 +97,7 @@ export function NoteEditor({
     setDirty(false);
     setHistoryOpen(false);
     setVersions([]);
+    setCopied(false);
     createdIdRef.current = null;
     creatingRef.current = false;
     setTimeout(() => {
@@ -257,6 +261,17 @@ export function NoteEditor({
         uploadImage(file);
         return;
       }
+    }
+  }
+
+  async function copyBody() {
+    if (!body.trim()) return;
+    try {
+      await navigator.clipboard.writeText(body);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard may be blocked (insecure context, etc.) — silently no-op.
     }
   }
 
@@ -490,6 +505,22 @@ export function NoteEditor({
           )}
 
           <div className="flex items-center gap-1.5">
+            {body.trim() && (
+              <button
+                type="button"
+                onClick={copyBody}
+                className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
+                title={copied ? "Copied" : "Copy note"}
+                aria-label={copied ? "Copied" : "Copy note"}
+              >
+                {copied ? (
+                  <CheckIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <CopyIcon className="h-3.5 w-3.5" />
+                )}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            )}
             {target.mode === "edit" && target.note.trashed && (
               <>
                 <button
