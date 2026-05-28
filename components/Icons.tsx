@@ -256,6 +256,35 @@ export const DotsIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+export const CopyIcon = ({ className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="8" y="8" width="13" height="13" rx="2" />
+    <path d="M5 16V5a2 2 0 0 1 2-2h11" />
+  </svg>
+);
+
+export const CheckIcon = ({ className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M4 12l5 5 11-11" />
+  </svg>
+);
+
 export const StackIcon = ({ className }: IconProps) => (
   <svg
     viewBox="0 0 24 24"

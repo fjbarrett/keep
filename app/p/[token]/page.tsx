@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { CopyNoteButton } from "@/components/CopyNoteButton";
+import { MarkdownCodeBlock } from "@/components/MarkdownCodeBlock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -144,7 +145,10 @@ export default async function SharedNotePage({
             data-note-content
             className="prose-invert-auto max-w-none text-base leading-relaxed sm:text-[17px] sm:leading-[1.75]"
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{ pre: MarkdownCodeBlock }}
+            >
               {note.body}
             </ReactMarkdown>
           </div>
