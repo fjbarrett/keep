@@ -8,6 +8,7 @@ import { MarkdownPreview } from "./MarkdownPreview";
 import {
   ArchiveIcon,
   CheckIcon,
+  ChevronLeftIcon,
   CopyIcon,
   HistoryIcon,
   PinFilledIcon,
@@ -343,7 +344,9 @@ export function NoteEditor({
             aria-label={previewOpen ? "Edit" : "Preview markdown"}
             aria-pressed={previewOpen}
           >
-            <EyeIcon className="h-3.5 w-3.5" />
+            <span className="font-mono text-[11px] font-semibold tracking-tight">
+              md
+            </span>
           </button>
           {target.mode === "edit" && (
             <button
@@ -455,6 +458,7 @@ export function NoteEditor({
             versions={versions}
             currentBody={body}
             onRestore={restoreVersion}
+            onClose={() => setHistoryOpen(false)}
           />
         ) : (
           <div className="relative flex flex-col min-h-0 flex-1 px-4 py-4">
@@ -593,7 +597,7 @@ export function NoteEditor({
 
   if (presentation === "panel") {
     return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
         {editor}
       </div>
     );
@@ -617,16 +621,36 @@ function VersionHistory({
   versions,
   currentBody,
   onRestore,
+  onClose,
 }: {
   versions: { id: string; body: string; title: string; createdAt: number }[];
   currentBody: string;
   onRestore: (body: string) => void;
+  onClose: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const header = (
+    <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
+      <button
+        type="button"
+        onClick={onClose}
+        className="flex items-center gap-1 rounded-md px-1.5 py-1 text-sm text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+        aria-label="Back to editor"
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Back
+      </button>
+      <span className="text-sm font-medium text-[var(--color-text)]">
+        Version history
+      </span>
+    </div>
+  );
+
   if (versions.length === 0) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {header}
         <p className="px-4 py-8 text-center text-sm text-[var(--color-muted)]">
           No previous versions yet
         </p>
@@ -635,8 +659,9 @@ function VersionHistory({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <ul className="divide-y divide-[var(--color-border)]">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {header}
+      <ul className="flex-1 divide-y divide-[var(--color-border)] overflow-y-auto">
         {versions.map((v, i) => {
           const expanded = expandedId === v.id;
           const newerBody = i === 0 ? currentBody : versions[i - 1].body;
@@ -833,11 +858,3 @@ function SharePopover({
   );
 }
 
-function EyeIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}

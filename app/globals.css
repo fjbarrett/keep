@@ -65,12 +65,22 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background-color: var(--color-border);
   border-radius: 999px;
-  border: 2px solid var(--color-background);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 150ms;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted);
+  background-color: var(--color-muted);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 ::selection {
