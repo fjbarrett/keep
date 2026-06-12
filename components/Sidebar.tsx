@@ -253,6 +253,7 @@ function SidebarNoteRow({
       <button
         type="button"
         onClick={onOpen}
+        aria-current={active ? "true" : undefined}
         className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm text-[var(--color-text)]"
       >
         <span className="truncate">{previewText(note)}</span>
@@ -263,11 +264,13 @@ function SidebarNoteRow({
       <button
         type="button"
         aria-label="More"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
         onClick={(e) => {
           e.stopPropagation();
           setMenuOpen((v) => !v);
         }}
-        className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] ${
+        className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
           menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
       >
@@ -279,7 +282,10 @@ function SidebarNoteRow({
             className="fixed inset-0 z-10"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute right-1 top-7 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg">
+          <div
+            role="menu"
+            className="absolute right-1 top-7 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg"
+          >
             {trashMode ? (
               <>
                 <MenuItem
@@ -349,6 +355,7 @@ function MenuItem({
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
       className={`block w-full px-3 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-surface-hover)] ${
         danger
