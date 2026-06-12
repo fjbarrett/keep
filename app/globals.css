@@ -22,6 +22,10 @@
   --color-danger: #f0564a;
   --color-attention: #d9a514;
   --color-done: #9a7ff0;
+  --color-diff-add: #5cb87a;
+  --color-diff-add-bg: rgba(70, 160, 100, 0.12);
+  --color-diff-remove: #e5746a;
+  --color-diff-remove-bg: rgba(229, 116, 106, 0.12);
 }
 
 [data-theme="light"] {
@@ -43,6 +47,10 @@
   --color-danger: #cf222e;
   --color-attention: #9a6700;
   --color-done: #7c5cd6;
+  --color-diff-add: #1a7f37;
+  --color-diff-add-bg: rgba(26, 127, 55, 0.08);
+  --color-diff-remove: #cf222e;
+  --color-diff-remove-bg: rgba(207, 34, 46, 0.08);
 }
 
 html,
