@@ -8,7 +8,7 @@ A small, opinionated notes app — autosave, pin/archive/trash, full-text search
 
 - **Next.js 14** (App Router, route handlers for the API)
 - **TypeScript** end to end
-- **Tailwind CSS** with CSS variables for the GitHub-dark color tokens
+- **Tailwind CSS** with CSS variables for the graphite & amber color tokens (dark + light)
 - **NextAuth** for sign-in (guest mode works without auth)
 - **Postgres** via `pg`, with a pooled client cached across hot reloads and a self-healing schema bootstrap
 
@@ -21,6 +21,10 @@ A small, opinionated notes app — autosave, pin/archive/trash, full-text search
 - Date-grouped sidebar (Today / Yesterday / Previous 7 days / Previous 30 days / Older)
 - Archive and Trash reachable from the Settings pane with a one-click "Back to notes"
 - Guest mode: notes live in `localStorage`; signing in migrates them to your account
+- Markdown preview and opt-in Shiki syntax highlighting per note
+- Version history with line diffs and one-click restore
+- Public share links (`/p/<token>`) with revocation
+- Passkey sign-in alongside Google OAuth
 - Google Keep Takeout import (Takeout ZIP or single `.json`)
 - Plain-text export — single `.txt` per note, or a ZIP of everything
 - Graceful DB-error banner with retry — the app stays usable even when Postgres is unreachable
