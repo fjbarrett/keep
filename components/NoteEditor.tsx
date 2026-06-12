@@ -542,11 +542,11 @@ export function NoteEditor({
             onClose={() => setHistoryOpen(false)}
           />
         ) : (
-          <div className="relative flex flex-col min-h-0 flex-1 px-4 py-4">
+          <div className="relative flex flex-col min-h-0 flex-1 py-4">
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4">
                 <HighlightedEditor
                   ref={bodyRef}
                   value={body}
@@ -572,7 +572,7 @@ export function NoteEditor({
                 data-lpignore="true"
                 data-bwignore
                 data-form-type="other"
-                className="mx-auto min-h-[320px] w-full max-w-3xl flex-1 resize-none overflow-y-auto border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                className="mx-auto min-h-[320px] w-full max-w-3xl flex-1 resize-none overflow-y-auto border-0 bg-transparent px-4 text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
             {uploading && (
