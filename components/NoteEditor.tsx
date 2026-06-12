@@ -689,7 +689,7 @@ function VersionHistory({
                 <button
                   type="button"
                   onClick={() => onRestore(v.body)}
-                  className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                  className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs font-medium text-[var(--color-link)] hover:bg-[var(--color-surface-hover)]"
                 >
                   Restore
                 </button>
@@ -742,9 +742,9 @@ function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
           key={i}
           className={`whitespace-pre-wrap px-3 py-0.5 ${
             line.type === "add"
-              ? "bg-green-500/10 text-green-400"
+              ? "bg-[var(--color-diff-add-bg)] text-[var(--color-diff-add)]"
               : line.type === "remove"
-                ? "bg-red-500/10 text-red-400"
+                ? "bg-[var(--color-diff-remove-bg)] text-[var(--color-diff-remove)]"
                 : "text-[var(--color-muted)]"
           }`}
         >
