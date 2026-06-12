@@ -36,6 +36,7 @@ function iconToggle(active: boolean) {
 export function NoteEditor({
   target,
   onClose,
+  onBack,
   onCreate,
   onUpdate,
   onTrash,
@@ -48,6 +49,7 @@ export function NoteEditor({
 }: {
   target: EditorTarget;
   onClose: () => void;
+  onBack?: () => void;
   onCreate: (n: Partial<Note>) => Promise<Note | null>;
   onUpdate: (id: string, patch: Partial<Note>) => void;
   onTrash: (id: string) => void;
@@ -293,6 +295,19 @@ export function NoteEditor({
 
   const header = (
     <div className="flex flex-wrap items-center gap-1 border-b border-[var(--color-border)] px-3 py-2">
+      {onBack && (
+        <>
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to notes"
+            className={`${ICON_BUTTON} md:hidden`}
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
+          <div className="mr-1 h-4 w-px bg-[var(--color-border)] md:hidden" />
+        </>
+      )}
       {!isTrashed ? (
         <>
           <button

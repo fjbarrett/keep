@@ -10,7 +10,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
-import { ChevronLeftIcon, PlusIcon, StackIcon, XIcon } from "@/components/Icons";
+import { PlusIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -386,6 +386,7 @@ export function NotesView({
           <NoteEditor
             target={mainTarget}
             onClose={() => setTarget(null)}
+            onBack={() => setTarget(null)}
             onCreate={handleCreate}
             onUpdate={update}
             onTrash={trash}
@@ -420,16 +421,6 @@ export function NotesView({
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
         {mainTarget ? (
           <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
-            <div className="flex items-center gap-2 px-3 py-2">
-              <button
-                type="button"
-                onClick={() => setTarget(null)}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-              >
-                <ChevronLeftIcon className="h-4 w-4" />
-                Notes
-              </button>
-            </div>
             {editorPanel}
           </main>
         ) : (
