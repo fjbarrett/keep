@@ -10,7 +10,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
-import { ChevronLeftIcon, PlusIcon, XIcon } from "@/components/Icons";
+import { ChevronLeftIcon, PlusIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -603,6 +603,9 @@ function MainPlaceholder({
   return (
     <div className="grid flex-1 place-items-center">
       <div className="px-8 text-center">
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <StackIcon className="h-5 w-5 text-[var(--color-muted)]" />
+        </div>
         <p className="text-base font-medium text-[var(--color-text)]">
           {hasNotes ? "Select a note" : "No notes yet"}
         </p>
@@ -619,6 +622,12 @@ function MainPlaceholder({
           <PlusIcon className="h-3.5 w-3.5" />
           New note
         </button>
+        <p className="mt-3 text-xs text-[var(--color-muted)]">
+          or press{" "}
+          <kbd className="inline-block min-w-[20px] rounded border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 text-center font-mono text-[11px]">
+            n
+          </kbd>
+        </p>
       </div>
     </div>
   );
