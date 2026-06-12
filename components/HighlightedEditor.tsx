@@ -8,7 +8,7 @@ import {
   useImperativeHandle,
   useCallback,
 } from "react";
-import { createHighlighter, type Highlighter } from "shiki";
+import type { Highlighter } from "shiki";
 
 const COMMON_LANGS = [
   "markdown", "bash", "shell", "javascript", "typescript", "python",
@@ -20,10 +20,12 @@ const COMMON_LANGS = [
 let highlighterPromise: Promise<Highlighter> | null = null;
 function getHighlighter() {
   if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ["dark-plus"],
-      langs: COMMON_LANGS,
-    });
+    highlighterPromise = import("shiki").then(({ createHighlighter }) =>
+      createHighlighter({
+        themes: ["dark-plus"],
+        langs: COMMON_LANGS,
+      }),
+    );
   }
   return highlighterPromise;
 }
