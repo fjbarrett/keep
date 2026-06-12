@@ -24,11 +24,11 @@
 }
 
 [data-theme="light"] {
-  --color-canvas: #f6f8fa;
+  --color-canvas: #f2f5f8;
   --color-background: #ffffff;
   --color-surface: #f6f8fa;
-  --color-surface-hover: #eaeef2;
-  --color-border: #d0d7de;
+  --color-surface-hover: #e7ecf0;
+  --color-border: #c6cdd5;
   --color-border-muted: #d8dee4;
   --color-text: #1f2328;
   --color-muted: #656d76;
