@@ -3,45 +3,46 @@
 @tailwind utilities;
 
 :root {
-  /* GitHub dark palette */
-  --color-canvas: #010409;
-  --color-background: #0d1117;
-  --color-surface: #161b22;
-  --color-surface-hover: #21262d;
-  --color-border: #30363d;
-  --color-border-muted: #21262d;
-  --color-text: #e6edf3;
-  --color-muted: #7d8590;
-  --color-subtle: #6e7681;
-  --color-link: #2f81f7;
-  --color-link-hover: #58a6ff;
-  --color-accent: #238636;
-  --color-accent-fg: #ffffff;
-  --color-accent-hover: #2ea043;
-  --color-danger: #f85149;
-  --color-attention: #d29922;
-  --color-done: #a371f7;
+  /* Graphite & amber — neutral darks, warm accent */
+  --color-canvas: #0c0c0d;
+  --color-background: #131315;
+  --color-surface: #1a1a1d;
+  --color-surface-hover: #232327;
+  --color-border: #313136;
+  --color-border-muted: #232327;
+  --color-text: #ececee;
+  --color-muted: #8f8f98;
+  --color-subtle: #717179;
+  --color-link: #e2a33c;
+  --color-link-hover: #f0b75a;
+  --color-accent: #d97916;
+  --color-accent-fg: #16130d;
+  --color-accent-hover: #ef8c1f;
+  --color-accent-border: #d97916;
+  --color-danger: #f0564a;
+  --color-attention: #d9a514;
+  --color-done: #9a7ff0;
 }
 
 [data-theme="light"] {
-  --color-canvas: #f2f5f8;
-  --color-background: #ffffff;
-  --color-surface: #f6f8fa;
-  --color-surface-hover: #e7ecf0;
-  --color-border: #c6cdd5;
-  --color-border-muted: #d8dee4;
-  --color-text: #1f2328;
-  --color-muted: #656d76;
-  --color-subtle: #6e7781;
-  --color-link: #0969da;
-  --color-link-hover: #0550ae;
-  --color-accent: #1a7f37;
+  --color-canvas: #f3f1ec;
+  --color-background: #fffefb;
+  --color-surface: #f8f6f1;
+  --color-surface-hover: #edeae2;
+  --color-border: #d2cdc2;
+  --color-border-muted: #e0dbd1;
+  --color-text: #211f1b;
+  --color-muted: #6e6a61;
+  --color-subtle: #7f7a70;
+  --color-link: #a35100;
+  --color-link-hover: #7f3f00;
+  --color-accent: #b45309;
   --color-accent-fg: #ffffff;
-  --color-accent-hover: #218c3a;
-  --color-accent-border: #1a7f37;
+  --color-accent-hover: #92400e;
+  --color-accent-border: #b45309;
   --color-danger: #cf222e;
   --color-attention: #9a6700;
-  --color-done: #8250df;
+  --color-done: #7c5cd6;
 }
 
 html,
@@ -51,8 +52,9 @@ body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
-    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
   font-size: 14px;
   line-height: 1.5;
 }
@@ -84,7 +86,7 @@ html {
 }
 
 ::selection {
-  background: rgba(56, 139, 253, 0.4);
+  background: rgba(217, 121, 22, 0.35);
   color: var(--color-text);
 }
 
