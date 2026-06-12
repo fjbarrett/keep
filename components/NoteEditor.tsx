@@ -24,6 +24,15 @@ export type EditorTarget =
   | { mode: "edit"; note: Note }
   | null;
 
+const ICON_BUTTON =
+  "grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
+
+function iconToggle(active: boolean) {
+  return active
+    ? "grid h-7 w-7 place-items-center rounded-md bg-[var(--color-surface-hover)] text-[var(--color-text)]"
+    : ICON_BUTTON;
+}
+
 export function NoteEditor({
   target,
   onClose,
@@ -280,31 +289,25 @@ export function NoteEditor({
 
   if (!target) return null;
 
-  const toolbar = (
-    <div className="absolute right-3 top-3 z-20 flex items-center gap-1 rounded-md bg-[var(--color-background)]/80 backdrop-blur-sm">
-      {target.mode !== "edit" || !target.note.trashed ? (
+  const isTrashed = target.mode === "edit" && target.note.trashed;
+
+  const header = (
+    <div className="flex flex-wrap items-center gap-1 border-b border-[var(--color-border)] px-3 py-2">
+      {!isTrashed ? (
         <>
           <button
             type="button"
             onClick={() => setTagOpen((v) => !v)}
-            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-              tags.length > 0 || tagOpen
-                ? "text-[var(--color-text)]"
-                : "text-[var(--color-muted)]"
-            }`}
+            className={iconToggle(tags.length > 0 || tagOpen)}
             title="Tags"
             aria-label="Tags"
           >
-            <TagIcon className="h-3.5 w-3.5" />
+            <TagIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => { setHighlight((v) => !v); setDirty(true); }}
-            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-              highlight
-                ? "text-[var(--color-text)]"
-                : "text-[var(--color-muted)]"
-            }`}
+            className={iconToggle(highlight)}
             title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
             aria-label="Syntax highlighting"
             aria-pressed={highlight}
@@ -316,11 +319,7 @@ export function NoteEditor({
           <button
             type="button"
             onClick={() => setPreviewOpen((v) => !v)}
-            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-              previewOpen
-                ? "text-[var(--color-text)]"
-                : "text-[var(--color-muted)]"
-            }`}
+            className={iconToggle(previewOpen)}
             title={previewOpen ? "Edit" : "Preview markdown"}
             aria-label={previewOpen ? "Edit" : "Preview markdown"}
             aria-pressed={previewOpen}
@@ -333,42 +332,142 @@ export function NoteEditor({
             <button
               type="button"
               onClick={loadHistory}
-              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-                historyOpen
-                  ? "text-[var(--color-text)]"
-                  : "text-[var(--color-muted)]"
-              }`}
+              className={iconToggle(historyOpen)}
               title="Version history"
               aria-label="Version history"
             >
-              <HistoryIcon className="h-3.5 w-3.5" />
+              <HistoryIcon className="h-4 w-4" />
+            </button>
+          )}
+        </>
+      ) : (
+        <span className="px-1 text-xs font-medium text-[var(--color-muted)]">
+          In Trash
+        </span>
+      )}
+
+      <div className="flex-1" />
+
+      {!isTrashed ? (
+        <>
+          <button
+            type="button"
+            onClick={togglePinned}
+            className={iconToggle(pinned)}
+            title={pinned ? "Unpin" : "Pin"}
+            aria-label={pinned ? "Unpin" : "Pin"}
+            aria-pressed={pinned}
+          >
+            {pinned ? (
+              <PinFilledIcon className="h-4 w-4" />
+            ) : (
+              <PinIcon className="h-4 w-4" />
+            )}
+          </button>
+          {body.trim() && (
+            <button
+              type="button"
+              onClick={copyBody}
+              className={ICON_BUTTON}
+              title={copied ? "Copied" : "Copy note"}
+              aria-label={copied ? "Copied" : "Copy note"}
+            >
+              {copied ? (
+                <CheckIcon className="h-4 w-4" />
+              ) : (
+                <CopyIcon className="h-4 w-4" />
+              )}
+            </button>
+          )}
+          {target.mode === "edit" && canShare && (
+            <SharePopover
+              note={target.note}
+              onShare={() => onShare(target.note.id)}
+              onUnshare={() => onUnshare(target.note.id)}
+            />
+          )}
+          {target.mode === "edit" && (
+            <>
+              <button
+                type="button"
+                onClick={toggleArchived}
+                className={ICON_BUTTON}
+                title={archived ? "Unarchive" : "Archive"}
+                aria-label={archived ? "Unarchive" : "Archive"}
+              >
+                {archived ? (
+                  <UnarchiveIcon className="h-4 w-4" />
+                ) : (
+                  <ArchiveIcon className="h-4 w-4" />
+                )}
+              </button>
+              <div className="mx-1 h-4 w-px bg-[var(--color-border)]" />
+              <button
+                type="button"
+                onClick={() => {
+                  flushEdit();
+                  onTrash(target.note.id);
+                  if (!isPanel) onClose();
+                }}
+                className={`${ICON_BUTTON} hover:text-[var(--color-danger)]`}
+                title="Move to Trash"
+                aria-label="Move to Trash"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </>
+          )}
+        </>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          {body.trim() && (
+            <button
+              type="button"
+              onClick={copyBody}
+              className={ICON_BUTTON}
+              title={copied ? "Copied" : "Copy note"}
+              aria-label={copied ? "Copied" : "Copy note"}
+            >
+              {copied ? (
+                <CheckIcon className="h-4 w-4" />
+              ) : (
+                <CopyIcon className="h-4 w-4" />
+              )}
             </button>
           )}
           <button
             type="button"
-            onClick={togglePinned}
-            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--color-surface-hover)] ${
-              pinned
-                ? "text-[var(--color-text)]"
-                : "text-[var(--color-muted)]"
-            }`}
-            title={pinned ? "Unpin" : "Pin"}
+            onClick={() => {
+              flushEdit();
+              onRestore(target.note.id);
+              if (!isPanel) onClose();
+            }}
+            className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
           >
-            {pinned ? (
-              <PinFilledIcon className="h-3.5 w-3.5" />
-            ) : (
-              <PinIcon className="h-3.5 w-3.5" />
-            )}
-            {pinned ? "Pinned" : "Pin"}
+            <UnarchiveIcon className="h-3.5 w-3.5" />
+            Restore
           </button>
-        </>
-      ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Permanently delete this note?")) {
+                onRemove(target.note.id);
+                onClose();
+              }
+            }}
+            className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+          >
+            <TrashIcon className="h-3.5 w-3.5" />
+            Delete forever
+          </button>
+        </div>
+      )}
       {!isPanel && (
         <button
           type="button"
           onClick={close}
           aria-label="Close"
-          className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+          className={ICON_BUTTON}
         >
           <XIcon className="h-4 w-4" />
         </button>
@@ -378,6 +477,7 @@ export function NoteEditor({
 
   const editor = (
     <>
+        {!historyOpen && header}
 
         {(tags.length > 0 || tagOpen) && (
           <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-1.5 px-4 py-2">
@@ -443,7 +543,6 @@ export function NoteEditor({
           />
         ) : (
           <div className="relative flex flex-col min-h-0 flex-1 px-4 py-4">
-            {toolbar}
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
@@ -484,97 +583,6 @@ export function NoteEditor({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-end gap-3 px-4 py-2.5">
-          {target.mode === "edit" && target.note.trashed && (
-            <span className="mr-auto text-xs text-[var(--color-muted)]">
-              In Trash
-            </span>
-          )}
-
-          <div className="flex items-center gap-1.5">
-            {body.trim() && (
-              <button
-                type="button"
-                onClick={copyBody}
-                className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
-                title={copied ? "Copied" : "Copy note"}
-                aria-label={copied ? "Copied" : "Copy note"}
-              >
-                {copied ? (
-                  <CheckIcon className="h-3.5 w-3.5" />
-                ) : (
-                  <CopyIcon className="h-3.5 w-3.5" />
-                )}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            )}
-            {target.mode === "edit" && target.note.trashed && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    flushEdit();
-                    onRestore(target.note.id);
-                    if (!isPanel) onClose();
-                  }}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
-                >
-                  <UnarchiveIcon className="h-3.5 w-3.5" />
-                  Restore
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm("Permanently delete this note?")) {
-                      onRemove(target.note.id);
-                      onClose();
-                    }
-                  }}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
-                >
-                  <TrashIcon className="h-3.5 w-3.5" />
-                  Delete forever
-                </button>
-              </>
-            )}
-            {target.mode === "edit" && !target.note.trashed && canShare && (
-              <SharePopover
-                note={target.note}
-                onShare={() => onShare(target.note.id)}
-                onUnshare={() => onUnshare(target.note.id)}
-              />
-            )}
-            {target.mode === "edit" && !target.note.trashed && (
-              <>
-                <button
-                  type="button"
-                  onClick={toggleArchived}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
-                  title={archived ? "Unarchive" : "Archive"}
-                >
-                  {archived ? (
-                    <UnarchiveIcon className="h-3.5 w-3.5" />
-                  ) : (
-                    <ArchiveIcon className="h-3.5 w-3.5" />
-                  )}
-                  {archived ? "Unarchive" : "Archive"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    flushEdit();
-                    onTrash(target.note.id);
-                    if (!isPanel) onClose();
-                  }}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
-                >
-                  <TrashIcon className="h-3.5 w-3.5" />
-                  Move to Trash
-                </button>
-              </>
-            )}
-          </div>
-        </div>
     </>
   );
 
@@ -781,14 +789,15 @@ function SharePopover({
       <button
         type="button"
         onClick={handleClick}
-        className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors ${
+        className={
           isShared
-            ? "border-[var(--color-accent-border)] bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-            : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-        }`}
+            ? "grid h-7 w-7 place-items-center rounded-md text-[var(--color-accent)] transition-colors hover:bg-[var(--color-surface-hover)]"
+            : ICON_BUTTON
+        }
+        title={isShared ? "Shared — manage link" : "Share"}
+        aria-label={isShared ? "Shared — manage link" : "Share"}
       >
-        <ShareIcon className="h-3.5 w-3.5" />
-        {isShared ? "Shared" : "Share"}
+        <ShareIcon className="h-4 w-4" />
       </button>
       {open && (
         <>
@@ -796,7 +805,7 @@ function SharePopover({
             className="fixed inset-0 z-10"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute bottom-full right-0 z-20 mb-1 w-80 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg">
+          <div className="absolute right-0 top-full z-20 mt-1 w-80 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg">
             <p className="text-xs font-medium text-[var(--color-text)]">
               Public link
             </p>
