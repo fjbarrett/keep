@@ -96,7 +96,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded-sm bg-[var(--color-link)]/25 px-0.5 text-inherit">
+      <mark className="rounded-sm bg-[rgba(56,139,253,0.35)] px-0.5 text-inherit">
         {text.slice(idx, idx + q.length)}
       </mark>
       {text.slice(idx + q.length)}
