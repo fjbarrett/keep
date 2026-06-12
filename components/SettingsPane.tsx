@@ -60,6 +60,9 @@ export function SettingsPane({
         </div>
 
         <div className="space-y-3 p-4">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            Views
+          </h3>
           <button
             type="button"
             onClick={onOpenArchive}
@@ -87,7 +90,9 @@ export function SettingsPane({
             </span>
           </button>
 
-          <div className="h-px" />
+          <h3 className="pt-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            Data
+          </h3>
 
           <input
             ref={importRef}
