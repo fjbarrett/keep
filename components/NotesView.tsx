@@ -10,7 +10,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
-import { ChevronLeftIcon, PlusIcon } from "@/components/Icons";
+import { ChevronLeftIcon, PlusIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -59,6 +59,7 @@ export function NotesView({
     "active",
   );
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
@@ -164,6 +165,17 @@ export function NotesView({
     }
     const content = await zip.generateAsync({ type: "blob" });
     downloadBlob("keep-notes.zip", content, "application/zip");
+  }
+
+  useEffect(() => {
+    setBannerDismissed(
+      sessionStorage.getItem("keep.guestBannerDismissed") === "1",
+    );
+  }, []);
+
+  function dismissBanner() {
+    sessionStorage.setItem("keep.guestBannerDismissed", "1");
+    setBannerDismissed(true);
   }
 
   useEffect(() => {
@@ -358,12 +370,13 @@ export function NotesView({
           <DbError error={error} onRetry={refresh} />
         </div>
       )}
-      {(isGuest || hasLocalNotes) && notes.length > 0 && (
+      {(isGuest || hasLocalNotes) && notes.length > 0 && !bannerDismissed && (
         <div className="px-6 pt-4">
           <GuestSaveBanner
             isGuest={isGuest}
             hasLocalNotes={hasLocalNotes}
             onSave={saveLocalNotes}
+            onDismiss={dismissBanner}
           />
         </div>
       )}
@@ -503,10 +516,12 @@ function GuestSaveBanner({
   isGuest,
   hasLocalNotes,
   onSave,
+  onDismiss,
 }: {
   isGuest: boolean;
   hasLocalNotes: boolean;
   onSave: () => Promise<{ saved: number }>;
+  onDismiss: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
@@ -515,26 +530,37 @@ function GuestSaveBanner({
           ? "Some notes are saved only in this browser."
           : "These notes are saved only in this browser."}
       </p>
-      {isGuest ? (
-        <a
-          href="/signin?from=/"
-          className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-        >
-          Sign in to save
-        </a>
-      ) : (
+      <div className="flex items-center gap-1.5">
+        {isGuest ? (
+          <a
+            href="/signin?from=/"
+            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+          >
+            Sign in to save
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onSave().catch((error) => {
+                alert(error instanceof Error ? error.message : "Failed to save");
+              });
+            }}
+            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+          >
+            Save to account
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => {
-            onSave().catch((error) => {
-              alert(error instanceof Error ? error.message : "Failed to save");
-            });
-          }}
-          className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          title="Dismiss"
+          className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
         >
-          Save to account
+          <XIcon className="h-4 w-4" />
         </button>
-      )}
+      </div>
     </div>
   );
 }
