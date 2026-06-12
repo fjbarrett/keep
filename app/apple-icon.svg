@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
-  <rect width="180" height="180" rx="40" fill="#ffffff"/>
+  <rect width="180" height="180" rx="40" fill="#d97916"/>
   <text
     x="90"
     y="90"
@@ -7,7 +7,7 @@
     text-anchor="middle"
     font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif"
     font-size="124"
-    font-weight="500"
-    fill="#000000"
+    font-weight="600"
+    fill="#16130d"
   >K</text>
 </svg>
