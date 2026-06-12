@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
@@ -152,24 +151,6 @@ export function NoteEditor({
       return () => window.clearTimeout(timer);
     }
   }, [archived, body, dirty, highlight, onCreate, onUpdate, pinned, tags, target]);
-
-  const displayTitle = useMemo(() => {
-    // Mirror the sidebar so the two never drift: prefer the saved title,
-    // fall back to local inference only when the saved one is stale.
-    // In "new" mode there's no saved row yet, so infer straight from the
-    // editor's local body so the header tracks each keystroke just like
-    // the sidebar preview does.
-    if (!target || target.mode !== "edit") {
-      return body.trim() ? inferNoteTitle(body) : "New note";
-    }
-    const saved = target.note.title;
-    // Prefer the live body so the header keeps pace with typing instead of
-    // lagging behind autosave.
-    if (needsInferredTitle(saved, body)) {
-      return inferNoteTitle(body || saved) || "Untitled";
-    }
-    return saved || "Untitled";
-  }, [target, body]);
 
   function markBody(value: string) {
     setBody(value);
@@ -399,7 +380,7 @@ export function NoteEditor({
     <>
 
         {(tags.length > 0 || tagOpen) && (
-          <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
+          <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-1.5 px-4 py-2">
             {tags.map((tag) => (
               <span
                 key={tag}
@@ -466,14 +447,16 @@ export function NoteEditor({
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
-              <HighlightedEditor
-                ref={bodyRef}
-                value={body}
-                onChange={markBody}
-                onPaste={handlePlainPaste}
-                onDrop={handlePlainDrop}
-                placeholderText="Start writing..."
-              />
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
+                <HighlightedEditor
+                  ref={bodyRef}
+                  value={body}
+                  onChange={markBody}
+                  onPaste={handlePlainPaste}
+                  onDrop={handlePlainDrop}
+                  placeholderText="Start writing..."
+                />
+              </div>
             ) : (
               <textarea
                 ref={plainRef}
@@ -490,7 +473,7 @@ export function NoteEditor({
                 data-lpignore="true"
                 data-bwignore
                 data-form-type="other"
-                className="min-h-[320px] w-full flex-1 resize-none overflow-y-auto border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                className="mx-auto min-h-[320px] w-full max-w-3xl flex-1 resize-none overflow-y-auto border-0 bg-transparent text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
             {uploading && (
