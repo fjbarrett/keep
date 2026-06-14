@@ -1,13 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#d97916"/>
-  <text
-    x="16"
-    y="16"
-    dominant-baseline="central"
-    text-anchor="middle"
-    font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif"
-    font-size="22"
-    font-weight="600"
-    fill="#16130d"
-  >K</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <rect x="20" y="19" width="24" height="26" rx="2" stroke="#fff" stroke-width="3" fill="none"/>
+  <rect x="30" y="19" width="14" height="9" rx="1" fill="#fff"/>
+  <rect x="22" y="31" width="20" height="12" rx="1" stroke="#fff" stroke-width="2.5" fill="none"/>
 </svg>
