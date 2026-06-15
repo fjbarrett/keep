@@ -5,3 +5,6 @@ node_modules
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 /takeout/
+
+# Vercel CLI project link
+.vercel
