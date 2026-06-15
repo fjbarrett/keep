@@ -46,15 +46,15 @@ describe("inferNoteTitle", () => {
     expect(inferNoteTitle("![alt](image.png)\nReal title")).toBe("Real title");
   });
 
-  it("caps at 6 words", () => {
-    const long = "one two three four five six seven eight";
-    expect(inferNoteTitle(long)).toBe("one two three four five six");
+  it("caps at 4 words", () => {
+    const long = "one two three four five six";
+    expect(inferNoteTitle(long)).toBe("one two three four");
   });
 
-  it("caps at 48 characters with ellipsis", () => {
-    const long = "a".repeat(60);
+  it("caps at 36 characters with ellipsis", () => {
+    const long = "a".repeat(50);
     const result = inferNoteTitle(long);
-    expect(result.length).toBeLessThanOrEqual(48);
+    expect(result.length).toBeLessThanOrEqual(36);
     expect(result.endsWith("…")).toBe(true);
   });
 
@@ -82,7 +82,7 @@ describe("needsInferredTitle", () => {
   });
 
   it("returns true for very long titles", () => {
-    const long = "a".repeat(49);
+    const long = "a".repeat(37);
     expect(needsInferredTitle(long, "body")).toBe(true);
   });
 

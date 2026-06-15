@@ -4,8 +4,8 @@ const HEADING_PREFIX = /^#{1,6}\s+/;
 const URL_ONLY = /^https?:\/\/\S+$/i;
 const CODE_FENCE = /^```/;
 const IMAGE_ONLY = /^!\[.*?\]\(.*?\)$/;
-const WORD_LIMIT = 6;
-const CHAR_LIMIT = 48;
+const WORD_LIMIT = 4;
+const CHAR_LIMIT = 36;
 
 function stripMarkdown(text: string): string {
   return text
