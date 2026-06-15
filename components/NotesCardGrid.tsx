@@ -1,24 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Note } from "@/lib/types";
 import { previewText } from "@/lib/inferTitle";
 import { noteColorVar } from "@/lib/noteColors";
-import { PinIcon, PinFilledIcon } from "@/components/Icons";
-
-function relativeDate(ts: number): string {
-  const now = Date.now();
-  const diffMs = now - ts;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 30) return `${diffDays} days ago`;
-  if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30);
-    return months === 1 ? "1 month ago" : `${months} months ago`;
-  }
-  const years = Math.floor(diffDays / 365);
-  return years === 1 ? "1 year ago" : `${years} years ago`;
-}
+import { ColorSwatchRow } from "@/components/ColorSwatchRow";
+import { DotsIcon, PinIcon, PinFilledIcon } from "@/components/Icons";
 
 function bodyPreview(body: string): string {
   const text = body
@@ -41,15 +28,17 @@ function bodyPreview(body: string): string {
   return text.length > 260 ? text.slice(0, 260).trimEnd() + "…" : text;
 }
 
-function NoteCard({
-  note,
-  onOpen,
-  onTogglePin,
-}: {
-  note: Note;
+type CardActions = {
   onOpen: (note: Note) => void;
   onTogglePin: (id: string) => void;
-}) {
+  onToggleArchive: (id: string) => void;
+  onTrash: (id: string) => void;
+  onColor: (id: string, color: string | null) => void;
+  onInfo: (note: Note) => void;
+};
+
+function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const title = previewText(note);
   // Prefer the AI-generated description; fall back to a cleaned body preview
   // for notes that don't have one yet (guests, imports, legacy notes).
@@ -59,8 +48,8 @@ function NoteCard({
     <div className="group relative">
       <button
         type="button"
-        onClick={() => onOpen(note)}
-        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-10 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+        onClick={() => actions.onOpen(note)}
+        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-16 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
       >
         <p className="flex items-center gap-1.5 truncate text-sm font-medium text-[var(--color-text)]">
           {noteColorVar(note.color) && (
@@ -77,32 +66,112 @@ function NoteCard({
             {preview}
           </p>
         )}
-        <p className="mt-3 text-xs text-[var(--color-subtle)]">
-          {relativeDate(note.updatedAt)}
-        </p>
       </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onTogglePin(note.id);
-        }}
-        title={note.pinned ? "Unpin" : "Pin"}
-        aria-label={note.pinned ? "Unpin" : "Pin"}
-        aria-pressed={note.pinned}
-        className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
-          note.pinned
-            ? "opacity-100"
-            : "opacity-0 group-hover:opacity-100"
-        }`}
-      >
-        {note.pinned ? (
-          <PinFilledIcon className="h-3.5 w-3.5 text-[var(--color-text)]" />
-        ) : (
-          <PinIcon className="h-3.5 w-3.5" />
-        )}
-      </button>
+
+      <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            actions.onTogglePin(note.id);
+          }}
+          title={note.pinned ? "Unpin" : "Pin"}
+          aria-label={note.pinned ? "Unpin" : "Pin"}
+          aria-pressed={note.pinned}
+          className={`grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
+            note.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
+          {note.pinned ? (
+            <PinFilledIcon className="h-3.5 w-3.5 text-[var(--color-text)]" />
+          ) : (
+            <PinIcon className="h-3.5 w-3.5" />
+          )}
+        </button>
+        <button
+          type="button"
+          aria-label="More"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen((v) => !v);
+          }}
+          className={`grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-pink-light)] focus-visible:opacity-100 ${
+            menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
+          <DotsIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+          <div
+            role="menu"
+            className="absolute right-2.5 top-10 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg"
+          >
+            <CardMenuItem
+              onClick={() => {
+                actions.onToggleArchive(note.id);
+                setMenuOpen(false);
+              }}
+            >
+              {note.archived ? "Unarchive" : "Archive"}
+            </CardMenuItem>
+            <ColorSwatchRow
+              selected={note.color ?? null}
+              onPick={(color) => {
+                actions.onColor(note.id, color);
+                setMenuOpen(false);
+              }}
+            />
+            <CardMenuItem
+              onClick={() => {
+                actions.onInfo(note);
+                setMenuOpen(false);
+              }}
+            >
+              Get Info
+            </CardMenuItem>
+            <div className="my-1 border-t border-[var(--color-border)]" />
+            <CardMenuItem
+              danger
+              onClick={() => {
+                actions.onTrash(note.id);
+                setMenuOpen(false);
+              }}
+            >
+              Move to Trash
+            </CardMenuItem>
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+function CardMenuItem({
+  children,
+  onClick,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`block w-full px-3 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-surface-hover)] ${
+        danger ? "text-[var(--color-danger)]" : "text-[var(--color-text)]"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -110,22 +179,28 @@ export function NotesCardGrid({
   notes,
   onOpen,
   onTogglePin,
+  onToggleArchive,
+  onTrash,
+  onColor,
+  onInfo,
 }: {
   notes: Note[];
-  onOpen: (note: Note) => void;
-  onTogglePin: (id: string) => void;
-}) {
+} & CardActions) {
   if (notes.length === 0) return null;
+
+  const actions: CardActions = {
+    onOpen,
+    onTogglePin,
+    onToggleArchive,
+    onTrash,
+    onColor,
+    onInfo,
+  };
 
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-3">
       {notes.map((note) => (
-        <NoteCard
-          key={note.id}
-          note={note}
-          onOpen={onOpen}
-          onTogglePin={onTogglePin}
-        />
+        <NoteCard key={note.id} note={note} actions={actions} />
       ))}
     </div>
   );
