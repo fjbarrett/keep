@@ -18,6 +18,14 @@ import {
 type DateBucket = { label: string; notes: Note[] };
 
 function bucketByDate(notes: Note[]): DateBucket[] {
+  // Pinned (non-trashed) notes float into their own section at the very top.
+  const pinned = notes.filter((n) => n.pinned && !n.trashed);
+  const rest = notes.filter((n) => !(n.pinned && !n.trashed));
+  const dated = bucketDatedNotes(rest);
+  return pinned.length ? [{ label: "Pinned", notes: pinned }, ...dated] : dated;
+}
+
+function bucketDatedNotes(notes: Note[]): DateBucket[] {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfYesterday = startOfToday - 86400_000;
