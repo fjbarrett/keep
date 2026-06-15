@@ -1,17 +1,33 @@
 const CHECKBOX_PREFIX = /^[-*]\s+\[[ xX]\]\s+/;
 const BULLET_PREFIX = /^[-*•]\s+/;
+const HEADING_PREFIX = /^#{1,6}\s+/;
 const URL_ONLY = /^https?:\/\/\S+$/i;
-const WORD_LIMIT = 7;
-const CHAR_LIMIT = 64;
+const CODE_FENCE = /^```/;
+const IMAGE_ONLY = /^!\[.*?\]\(.*?\)$/;
+const WORD_LIMIT = 6;
+const CHAR_LIMIT = 48;
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/_(.*?)_/g, "$1")
+    .replace(/~~(.*?)~~/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
 
 function cleanLine(line: string) {
   const cleaned = line
+    .replace(HEADING_PREFIX, "")
     .replace(CHECKBOX_PREFIX, "")
     .replace(BULLET_PREFIX, "")
     .replace(/\s+/g, " ")
     .trim();
-  const inlineChecklist = cleaned.search(/\s[-*]\s+\[[ xX]\]\s+/);
-  return inlineChecklist > 0 ? cleaned.slice(0, inlineChecklist).trim() : cleaned;
+  const stripped = stripMarkdown(cleaned);
+  const inlineChecklist = stripped.search(/\s[-*]\s+\[[ xX]\]\s+/);
+  return inlineChecklist > 0 ? stripped.slice(0, inlineChecklist).trim() : stripped;
 }
 
 function trimTitle(title: string) {
@@ -23,12 +39,16 @@ function trimTitle(title: string) {
 export function inferNoteTitle(body: string, fallback = "Untitled note") {
   const lines = body
     .split(/\r?\n/)
+    .filter((raw) => {
+      const t = raw.trim();
+      return t.length > 0 && !CODE_FENCE.test(t) && !IMAGE_ONLY.test(t);
+    })
     .map(cleanLine)
     .filter((line) => line.length > 0 && !URL_ONLY.test(line));
 
   if (lines[0]) return trimTitle(lines[0]);
 
-  const compact = cleanLine(body);
+  const compact = cleanLine(body.replace(/\r?\n/g, " "));
   if (compact) return trimTitle(compact);
 
   return fallback;

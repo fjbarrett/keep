@@ -21,21 +21,40 @@ describe("inferNoteTitle", () => {
     expect(inferNoteTitle("- [ ] Open task")).toBe("Open task");
   });
 
+  it("strips markdown heading markers", () => {
+    expect(inferNoteTitle("# My Title")).toBe("My Title");
+    expect(inferNoteTitle("## Section Two")).toBe("Section Two");
+  });
+
+  it("strips inline markdown formatting", () => {
+    expect(inferNoteTitle("**Bold title** here")).toBe("Bold title here");
+    expect(inferNoteTitle("_italic_ note")).toBe("italic note");
+    expect(inferNoteTitle("`code` block")).toBe("code block");
+  });
+
   it("skips URL-only lines", () => {
     expect(inferNoteTitle("https://example.com\nActual title")).toBe(
       "Actual title",
     );
   });
 
-  it("caps at 7 words", () => {
-    const long = "one two three four five six seven eight nine";
-    expect(inferNoteTitle(long)).toBe("one two three four five six seven");
+  it("skips code fence lines", () => {
+    expect(inferNoteTitle("```\nsome code\nend")).toBe("some code");
   });
 
-  it("caps at 64 characters with ellipsis", () => {
-    const long = "a".repeat(80);
+  it("skips image-only lines", () => {
+    expect(inferNoteTitle("![alt](image.png)\nReal title")).toBe("Real title");
+  });
+
+  it("caps at 6 words", () => {
+    const long = "one two three four five six seven eight";
+    expect(inferNoteTitle(long)).toBe("one two three four five six");
+  });
+
+  it("caps at 48 characters with ellipsis", () => {
+    const long = "a".repeat(60);
     const result = inferNoteTitle(long);
-    expect(result.length).toBeLessThanOrEqual(64);
+    expect(result.length).toBeLessThanOrEqual(48);
     expect(result.endsWith("…")).toBe(true);
   });
 
@@ -63,12 +82,12 @@ describe("needsInferredTitle", () => {
   });
 
   it("returns true for very long titles", () => {
-    const long = "a".repeat(65);
+    const long = "a".repeat(49);
     expect(needsInferredTitle(long, "body")).toBe(true);
   });
 
   it("returns true for titles with too many words", () => {
-    const manyWords = "one two three four five six seven eight";
+    const manyWords = "one two three four five six seven";
     expect(needsInferredTitle(manyWords, "body")).toBe(true);
   });
 
