@@ -28,12 +28,17 @@ export async function POST(req: Request) {
   }
   await ready();
   // Only set if not already present — changing the salt would make all existing
-  // ciphertext unrecoverable.
+  // ciphertext unrecoverable. Return whichever salt is now stored so the client
+  // derives its key from the real value rather than the one it proposed.
   await pool().query(
     "UPDATE users SET enc_salt = $1 WHERE id = $2 AND enc_salt IS NULL",
     [salt, session.user.id],
   );
-  return NextResponse.json({ ok: true });
+  const { rows } = await pool().query<{ enc_salt: string | null }>(
+    "SELECT enc_salt FROM users WHERE id = $1",
+    [session.user.id],
+  );
+  return NextResponse.json({ salt: rows[0]?.enc_salt ?? salt });
 }
 
 export async function DELETE() {

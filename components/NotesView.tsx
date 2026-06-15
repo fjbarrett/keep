@@ -222,6 +222,24 @@ export function NotesView({
     return () => { cancelled = true; };
   }, [notes, decrypt, encStatus]);
 
+  // Decrypts every note back to plaintext and rewrites it before dropping the
+  // salt — otherwise disabling would orphan the ciphertext permanently.
+  async function handleDisableEncryption() {
+    if (
+      !confirm(
+        "Disable encryption? Your notes will be decrypted and re-saved as plaintext on the server.",
+      )
+    ) {
+      return;
+    }
+    await Promise.all(
+      notes
+        .filter((n) => isEncrypted(n.body))
+        .map(async (n) => update(n.id, { body: await decrypt(n.body), title: n.title })),
+    );
+    await disableEncryption();
+  }
+
   // Wraps the raw update call to encrypt the body before it leaves the browser.
   const secureUpdate = useCallback(
     (id: string, patch: Partial<Note>) => {
@@ -597,7 +615,7 @@ export function NotesView({
           onImport={handleImport}
           onGuestExport={handleGuestExport}
           onEnableEncryption={() => setEncSetupOpen(true)}
-          onDisableEncryption={disableEncryption}
+          onDisableEncryption={handleDisableEncryption}
           onClose={() => setSettingsOpen(false)}
         />
       )}
@@ -606,6 +624,15 @@ export function NotesView({
         <EncryptionSetup
           onSetup={async (passphrase) => {
             await setupEncryption(passphrase);
+            // Backfill: encrypt notes that predate enabling so coverage is real.
+            // Pass the existing title so metadata isn't regenerated from ciphertext.
+            await Promise.all(
+              notes
+                .filter((n) => !isEncrypted(n.body))
+                .map(async (n) =>
+                  update(n.id, { body: await encrypt(n.body), title: n.title }),
+                ),
+            );
             setEncSetupOpen(false);
           }}
           onClose={() => setEncSetupOpen(false)}
@@ -613,7 +640,7 @@ export function NotesView({
       )}
 
       {encStatus === "locked" && (
-        <EncryptionUnlock onUnlock={unlock} />
+        <EncryptionUnlock onUnlock={unlock} onReset={disableEncryption} />
       )}
 
       {shortcutsOpen && (

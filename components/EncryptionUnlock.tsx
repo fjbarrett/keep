@@ -4,8 +4,10 @@ import { useState } from "react";
 
 export function EncryptionUnlock({
   onUnlock,
+  onReset,
 }: {
   onUnlock: (passphrase: string) => Promise<boolean>;
+  onReset: () => void;
 }) {
   const [passphrase, setPassphrase] = useState("");
   const [error, setError] = useState("");
@@ -55,6 +57,22 @@ export function EncryptionUnlock({
             {busy ? "Decrypting…" : "Unlock"}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (
+              confirm(
+                "Reset encryption? This turns it off so you can use the app again, but any notes encrypted with the forgotten passphrase stay unreadable.",
+              )
+            ) {
+              onReset();
+            }
+          }}
+          className="mt-4 w-full text-center text-xs text-[var(--color-muted)] hover:text-[var(--color-text)] hover:underline"
+        >
+          Forgot your passphrase?
+        </button>
       </div>
     </div>
   );
