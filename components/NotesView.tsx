@@ -14,6 +14,7 @@ import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
 import { EncryptionSetup } from "@/components/EncryptionSetup";
 import { EncryptionUnlock } from "@/components/EncryptionUnlock";
+import { NotesCardGrid } from "@/components/NotesCardGrid";
 import { PlusIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
@@ -268,7 +269,7 @@ export function NotesView({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const id = target?.mode === "edit" ? target.note.id : null;
-    const desired = id ? `/${id}` : "/";
+    const desired = id ? `/note/${id}` : "/";
     if (window.location.pathname === desired) return;
     window.history.replaceState(null, "", desired + window.location.search);
   }, [target]);
@@ -458,6 +459,10 @@ export function NotesView({
             canShare={!isGuest}
             presentation="panel"
           />
+        ) : filtered.length > 0 ? (
+          <div className="overflow-y-auto">
+            <NotesCardGrid notes={filtered} onOpen={openNote} />
+          </div>
         ) : (
           <MainPlaceholder
             hasNotes={!hydrated || notes.length > 0}
