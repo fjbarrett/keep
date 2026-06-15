@@ -23,8 +23,11 @@ function heuristicSummary(body: string): string {
     )
     .filter((line) => line.length > 0)
     .join(" ");
-  return text.length > 200 ? text.slice(0, 200).trimEnd() + "…" : text;
+  return text.length > 100 ? text.slice(0, 100).trimEnd() + "…" : text;
 }
+
+// Hard ceiling so a wordy model response can't blow out the card layout.
+const MAX_SUMMARY = 110;
 
 function clean(value: string, max: number) {
   return value
@@ -61,7 +64,8 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
         system:
           "Return ONLY a JSON object describing a note, with two string fields: " +
           '"title" — 3 to 7 words, no quotes or trailing punctuation; and ' +
-          '"summary" — one sentence (max ~160 chars) in active voice describing what the note contains. ' +
+          '"summary" — ONE short, concise clause of at most ~90 characters in active voice. ' +
+          "No filler, no preamble, never more than one sentence. " +
           "Output nothing except the JSON object.",
         messages: [
           { role: "user", content: body.slice(0, MAX_INPUT_CHARS) },
@@ -76,7 +80,7 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
     const parsed = JSON.parse(raw) as { title?: unknown; summary?: unknown };
     const title = typeof parsed.title === "string" ? clean(parsed.title, 80) : "";
     const summary =
-      typeof parsed.summary === "string" ? clean(parsed.summary, 200) : "";
+      typeof parsed.summary === "string" ? clean(parsed.summary, MAX_SUMMARY) : "";
     return {
       title: title || fallback.title,
       summary: summary || fallback.summary,
