@@ -34,7 +34,9 @@ function clean(value: string, max: number) {
     .replace(/^["'`]+|["'`]+$/g, "")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, max);
+    .slice(0, max)
+    // One sentence, no trailing punctuation needed.
+    .replace(/[.,;:!\s]+$/, "");
 }
 
 /**
@@ -64,8 +66,8 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
         system:
           "Return ONLY a JSON object describing a note, with two string fields: " +
           '"title" — 3 to 7 words, no quotes or trailing punctuation; and ' +
-          '"summary" — ONE short, concise clause of at most ~90 characters in active voice. ' +
-          "No filler, no preamble, never more than one sentence. " +
+          '"summary" — exactly ONE complete sentence (a full clause, not a fragment) of at most ~90 characters, active voice, ' +
+          "no trailing punctuation, no filler or preamble. " +
           "Output nothing except the JSON object.",
         messages: [
           { role: "user", content: body.slice(0, MAX_INPUT_CHARS) },
