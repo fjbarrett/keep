@@ -8,7 +8,7 @@ import { useEncryption } from "@/lib/useEncryption";
 import { isEncrypted } from "@/lib/crypto";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar, NoteInfoModal } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
@@ -69,6 +69,7 @@ export function NotesView({
   );
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [infoNote, setInfoNote] = useState<Note | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
@@ -256,7 +257,7 @@ export function NotesView({
     if (didRestoreFromUrlRef.current || !hydrated) return;
     if (!initialNoteId) {
       didRestoreFromUrlRef.current = true;
-      setTarget({ mode: "new" });
+      // Leave target null so the notes list / placeholder shows on load
       return;
     }
     const note = decryptedNotes.find((n) => n.id === initialNoteId);
@@ -423,6 +424,8 @@ export function NotesView({
     trash,
     restore,
     remove,
+    onRename: (id: string, title: string) => update(id, { title }),
+    onInfo: (note: Note) => setInfoNote(note),
   };
 
   const editorPanel = (
@@ -557,6 +560,10 @@ export function NotesView({
 
       {shortcutsOpen && (
         <ShortcutsOverlay onClose={closeShortcuts} />
+      )}
+
+      {infoNote && (
+        <NoteInfoModal note={infoNote} onClose={() => setInfoNote(null)} />
       )}
     </>
   );
