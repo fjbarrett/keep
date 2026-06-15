@@ -470,7 +470,7 @@ export function NotesView({
           />
         ) : filtered.length > 0 ? (
           <div className="overflow-y-auto">
-            <NotesCardGrid notes={filtered} onOpen={openNote} />
+            <NotesCardGrid notes={filtered} onOpen={openNote} onTogglePin={togglePin} />
           </div>
         ) : (
           <MainPlaceholder

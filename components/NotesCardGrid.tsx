@@ -2,7 +2,7 @@
 
 import { Note } from "@/lib/types";
 import { previewText } from "@/lib/inferTitle";
-import { PinIcon } from "@/components/Icons";
+import { PinIcon, PinFilledIcon } from "@/components/Icons";
 
 function relativeDate(ts: number): string {
   const now = Date.now();
@@ -43,52 +43,79 @@ function bodyPreview(body: string): string {
 function NoteCard({
   note,
   onOpen,
+  onTogglePin,
 }: {
   note: Note;
   onOpen: (note: Note) => void;
+  onTogglePin: (id: string) => void;
 }) {
   const title = previewText(note);
   const preview = bodyPreview(note.body);
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(note)}
-      className="group w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
-    >
-      <div className="flex items-start justify-between gap-2">
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={() => onOpen(note)}
+        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-10 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+      >
         <p className="truncate text-sm font-medium text-[var(--color-text)]">
           {title}
         </p>
-        {note.pinned && (
-          <PinIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-muted)]" />
+        {preview && (
+          <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-[var(--color-muted)]">
+            {preview}
+          </p>
         )}
-      </div>
-      {preview && (
-        <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-[var(--color-muted)]">
-          {preview}
+        <p className="mt-3 text-xs text-[var(--color-subtle)]">
+          {relativeDate(note.updatedAt)}
         </p>
-      )}
-      <p className="mt-3 text-xs text-[var(--color-subtle)]">
-        {relativeDate(note.updatedAt)}
-      </p>
-    </button>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onTogglePin(note.id);
+        }}
+        title={note.pinned ? "Unpin" : "Pin"}
+        aria-label={note.pinned ? "Unpin" : "Pin"}
+        aria-pressed={note.pinned}
+        className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
+          note.pinned
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        {note.pinned ? (
+          <PinFilledIcon className="h-3.5 w-3.5 text-[var(--color-text)]" />
+        ) : (
+          <PinIcon className="h-3.5 w-3.5" />
+        )}
+      </button>
+    </div>
   );
 }
 
 export function NotesCardGrid({
   notes,
   onOpen,
+  onTogglePin,
 }: {
   notes: Note[];
   onOpen: (note: Note) => void;
+  onTogglePin: (id: string) => void;
 }) {
   if (notes.length === 0) return null;
 
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-3">
       {notes.map((note) => (
-        <NoteCard key={note.id} note={note} onOpen={onOpen} />
+        <NoteCard
+          key={note.id}
+          note={note}
+          onOpen={onOpen}
+          onTogglePin={onTogglePin}
+        />
       ))}
     </div>
   );
