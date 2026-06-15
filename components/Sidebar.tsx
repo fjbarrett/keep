@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { previewText } from "@/lib/inferTitle";
+import { detectCodeLanguage, languageLabel } from "@/lib/detectLanguage";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
@@ -432,6 +433,12 @@ export function NoteInfoModal({
   const words = note.body.trim() ? note.body.trim().split(/\s+/).length : 0;
   const chars = note.body.length;
   const bytes = new TextEncoder().encode(note.body).byteLength;
+  const codeLang = detectCodeLanguage(note.body);
+  const kind = codeLang
+    ? languageLabel(codeLang)
+    : note.markdown
+    ? "Markdown"
+    : "Plain text";
 
   function fmt(ts: number) {
     return new Intl.DateTimeFormat(undefined, {
@@ -477,9 +484,7 @@ export function NoteInfoModal({
           </p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-2 text-sm">
             <dt className="text-[var(--color-muted)]">Kind</dt>
-            <dd className="text-right text-[var(--color-text)]">
-              {note.markdown ? "Markdown" : "Plain text"}
-            </dd>
+            <dd className="text-right text-[var(--color-text)]">{kind}</dd>
             <dt className="text-[var(--color-muted)]">Created</dt>
             <dd className="text-right text-[var(--color-text)]">{fmt(note.createdAt)}</dd>
             <dt className="text-[var(--color-muted)]">Modified</dt>
