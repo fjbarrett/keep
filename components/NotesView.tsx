@@ -10,6 +10,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
+import { NotesCardGrid } from "@/components/NotesCardGrid";
 import { PlusIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
@@ -424,6 +425,10 @@ export function NotesView({
             canShare={!isGuest}
             presentation="panel"
           />
+        ) : filtered.length > 0 ? (
+          <div className="overflow-y-auto">
+            <NotesCardGrid notes={filtered} onOpen={openNote} />
+          </div>
         ) : (
           <MainPlaceholder
             hasNotes={!hydrated || notes.length > 0}
