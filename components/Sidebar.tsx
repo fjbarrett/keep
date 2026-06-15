@@ -6,9 +6,9 @@ import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
   DotsIcon,
+  KeyboardIcon,
   PinFilledIcon,
   PlusIcon,
-  QuestionMarkIcon,
   SettingsIcon,
   XIcon,
 } from "@/components/Icons";
@@ -177,20 +177,20 @@ export function Sidebar({
           <div className="flex items-center gap-0.5">
             <button
               type="button"
-              onClick={onOpenShortcuts}
-              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-              title="Keyboard shortcuts"
-              aria-label="Keyboard shortcuts"
-            >
-              <QuestionMarkIcon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
               onClick={onOpenSettings}
               className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
               title="Settings"
             >
               <SettingsIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onOpenShortcuts}
+              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              title="Keyboard shortcuts"
+              aria-label="Keyboard shortcuts"
+            >
+              <KeyboardIcon className="h-4 w-4" />
             </button>
           </div>
         </div>
