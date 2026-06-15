@@ -55,7 +55,12 @@ export function NotesView({
 
   const { status: encStatus, unlock, setupEncryption, disableEncryption, encrypt, decrypt } = useEncryption();
   const [encSetupOpen, setEncSetupOpen] = useState(false);
-  const [decryptedNotes, setDecryptedNotes] = useState<Note[]>([]);
+  const [decryptedState, setDecryptedState] = useState<Note[]>([]);
+  // When encryption is unlocked we work off the decrypted copies; otherwise the
+  // raw notes are already usable (plaintext, or ciphertext we can't read yet).
+  // Deriving rather than mirroring into state avoids a one-render lag that used
+  // to briefly deselect a freshly created note.
+  const decryptedNotes = encStatus === "unlocked" ? decryptedState : notes;
 
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -73,6 +78,10 @@ export function NotesView({
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
+  // Id of the note created from the current compose session. Lets the editor's
+  // entrance-animation key stay stable across the new → edit autosave bridge so
+  // the editor isn't remounted (which would discard in-flight keystrokes).
+  const composedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const stored = parseInt(localStorage.getItem("keep.sidebarWidth") ?? "", 10);
@@ -147,6 +156,7 @@ export function NotesView({
 
   function openNote(note: Note | null) {
     if (!note) return;
+    composedIdRef.current = null;
     setSearchOpen(false);
     setQuery("");
     setActiveNoteId(note.id);
@@ -156,6 +166,7 @@ export function NotesView({
   async function handleCreate(partial: Partial<Note>) {
     const note = await create(partial);
     if (note) {
+      composedIdRef.current = note.id;
       setActiveNoteId(note.id);
       setTarget((current) =>
         current?.mode === "new" ? { mode: "edit", note } : current,
@@ -196,16 +207,14 @@ export function NotesView({
     downloadBlob("keep-notes.zip", content, "application/zip");
   }
 
-  // Decrypt all note bodies whenever the note list or encryption key changes.
-  // Notes without an "enc:" prefix pass through unchanged (legacy or unencrypted notes).
+  // Decrypt all note bodies once the key is unlocked. Notes without an "enc:"
+  // prefix pass through unchanged (legacy or unencrypted notes). When not
+  // unlocked, decryptedNotes derives straight from `notes` (see above).
   useEffect(() => {
-    if (encStatus === "disabled" || encStatus === "loading") {
-      setDecryptedNotes(notes);
-      return;
-    }
+    if (encStatus !== "unlocked") return;
     let cancelled = false;
     Promise.all(notes.map(async (n) => ({ ...n, body: await decrypt(n.body) }))).then(
-      (result) => { if (!cancelled) setDecryptedNotes(result); },
+      (result) => { if (!cancelled) setDecryptedState(result); },
     );
     return () => { cancelled = true; };
   }, [notes, decrypt, encStatus]);
@@ -431,6 +440,15 @@ export function NotesView({
     onInfo: (note: Note) => setInfoNote(note),
   };
 
+  // A new note and the edit view of the note it just autosaved into share one
+  // key ("compose") so the editor isn't remounted between them; switching to a
+  // different note changes the key and replays the entrance animation.
+  const animKey = !mainTarget
+    ? "grid"
+    : mainTarget.mode === "new" || mainTarget.note.id === composedIdRef.current
+      ? "compose"
+      : `note-${mainTarget.note.id}`;
+
   const editorPanel = (
     <>
       {error && (
@@ -450,7 +468,7 @@ export function NotesView({
       )}
 
       <div
-        key={mainTarget ? `note-${mainTarget.mode === "edit" ? mainTarget.note.id : "new"}` : "grid"}
+        key={animKey}
         className="note-content-in flex min-h-0 flex-1 flex-col p-4"
       >
         {mainTarget ? (
