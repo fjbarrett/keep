@@ -186,7 +186,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onOpenShortcuts}
-              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-accent)] transition-colors hover:bg-[rgba(37,99,235,0.12)] hover:text-[var(--color-accent-hover)]"
               title="Keyboard shortcuts"
               aria-label="Keyboard shortcuts"
             >
@@ -303,7 +303,7 @@ function SidebarNoteRow({
               e.stopPropagation();
               setMenuOpen((v) => !v);
             }}
-            className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
+            className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] transition-colors hover:bg-gradient-to-br hover:from-violet-500 hover:to-pink-500 hover:text-white focus-visible:opacity-100 ${
               menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             }`}
           >
