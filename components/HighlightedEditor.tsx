@@ -8,15 +8,18 @@ import {
   useImperativeHandle,
   useCallback,
 } from "react";
-import type { Highlighter } from "shiki";
+import type { Highlighter, ThemeRegistrationAny } from "shiki";
 import { COMMON_LANGS, detectLanguage } from "@/lib/detectLanguage";
+import { keepPaletteTheme } from "@/lib/shikiTheme";
+
+const THEME = "keep-palette";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 function getHighlighter() {
   if (!highlighterPromise) {
     highlighterPromise = import("shiki").then(({ createHighlighter }) =>
       createHighlighter({
-        themes: ["dark-plus"],
+        themes: [keepPaletteTheme as ThemeRegistrationAny],
         langs: COMMON_LANGS,
       }),
     );
@@ -65,7 +68,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     useEffect(() => {
       if (hlRef.current) {
         try {
-          setHtml(hlRef.current.codeToHtml(value || " ", { theme: "dark-plus", lang }));
+          setHtml(hlRef.current.codeToHtml(value || " ", { theme: THEME, lang }));
         } catch { /* lang not loaded */ }
         return;
       }
@@ -74,7 +77,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
         hlRef.current = hl;
         if (!cancelled) {
           try {
-            setHtml(hl.codeToHtml(value || " ", { theme: "dark-plus", lang }));
+            setHtml(hl.codeToHtml(value || " ", { theme: THEME, lang }));
           } catch { /* lang not loaded */ }
         }
       });
