@@ -75,6 +75,9 @@ export function NotesView({
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const [infoNote, setInfoNote] = useState<Note | null>(null);
+  // True while a /note/<id> deep link is still resolving — keeps the main pane
+  // blank instead of flashing the grid/placeholder before the note opens.
+  const [restoringFromUrl, setRestoringFromUrl] = useState(!!initialNoteId);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
@@ -263,18 +266,25 @@ export function NotesView({
   }, [searchOpen]);
 
   useEffect(() => {
-    if (didRestoreFromUrlRef.current || !hydrated) return;
+    if (didRestoreFromUrlRef.current) return;
     if (!initialNoteId) {
       didRestoreFromUrlRef.current = true;
+      setRestoringFromUrl(false);
       // Show the notes grid on load rather than auto-opening a new editor
       return;
     }
+    // Keep the blank restoring shell up until notes have loaded; only then
+    // decide whether the deep-linked note opens or we fall back to the grid.
+    if (!hydrated) return;
     const note = decryptedNotes.find((n) => n.id === initialNoteId);
-    if (!note) return;
+    if (!note && notes.length === 0) return;
     didRestoreFromUrlRef.current = true;
-    setActiveNoteId(note.id);
-    setTarget({ mode: "edit", note });
-  }, [hydrated, decryptedNotes, initialNoteId]);
+    setRestoringFromUrl(false);
+    if (note) {
+      setActiveNoteId(note.id);
+      setTarget({ mode: "edit", note });
+    }
+  }, [hydrated, decryptedNotes, notes.length, initialNoteId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -504,6 +514,8 @@ export function NotesView({
             canShare={!isGuest}
             presentation="panel"
           />
+        ) : restoringFromUrl ? (
+          <div className="flex-1" aria-hidden />
         ) : filtered.length > 0 ? (
           <div className="overflow-y-auto">
             <NotesCardGrid notes={filtered} onOpen={openNote} onTogglePin={togglePin} />
@@ -535,7 +547,7 @@ export function NotesView({
 
       {/* Mobile: full-screen list or full-screen editor */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
-        {mainTarget ? (
+        {mainTarget || restoringFromUrl ? (
           <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
             {editorPanel}
           </main>
