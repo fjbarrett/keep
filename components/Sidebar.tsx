@@ -9,6 +9,7 @@ import {
   PinFilledIcon,
   PlusIcon,
   SettingsIcon,
+  XIcon,
 } from "@/components/Icons";
 
 type DateBucket = { label: string; notes: Note[] };
@@ -57,6 +58,8 @@ export function Sidebar({
   trash,
   restore,
   remove,
+  onRename,
+  onInfo,
   mobile,
   width,
 }: {
@@ -74,6 +77,8 @@ export function Sidebar({
   trash: (id: string) => void;
   restore: (id: string) => void;
   remove: (id: string) => void;
+  onRename: (id: string, title: string) => void;
+  onInfo: (note: Note) => void;
   mobile?: boolean;
   width?: number;
 }) {
@@ -153,6 +158,8 @@ export function Sidebar({
                     trash={() => trash(note.id)}
                     restore={() => restore(note.id)}
                     remove={() => remove(note.id)}
+                    onRename={(title) => onRename(note.id, title)}
+                    onInfo={() => onInfo(note)}
                   />
                 ))}
               </ul>
@@ -210,6 +217,8 @@ function SidebarNoteRow({
   trash,
   restore,
   remove,
+  onRename,
+  onInfo,
 }: {
   note: Note;
   active: boolean;
@@ -220,40 +229,74 @@ function SidebarNoteRow({
   trash: () => void;
   restore: () => void;
   remove: () => void;
+  onRename: (title: string) => void;
+  onInfo: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+
+  function startRename() {
+    setRenameValue(previewText(note));
+    setIsRenaming(true);
+    setMenuOpen(false);
+  }
+
+  function commitRename() {
+    const trimmed = renameValue.trim();
+    if (trimmed) onRename(trimmed);
+    setIsRenaming(false);
+  }
+
   return (
     <li
       className={`group relative flex items-center rounded-md ${
         active ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
       }`}
     >
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-current={active ? "true" : undefined}
-        className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm text-[var(--color-text)]"
-      >
-        <span className="truncate">{previewText(note)}</span>
-        {note.pinned && !trashMode && (
-          <PinFilledIcon className="ml-auto h-3 w-3 shrink-0 text-[var(--color-muted)]" />
-        )}
-      </button>
-      <button
-        type="button"
-        aria-label="More"
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        onClick={(e) => {
-          e.stopPropagation();
-          setMenuOpen((v) => !v);
-        }}
-        className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
-          menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-        }`}
-      >
-        <DotsIcon className="h-3.5 w-3.5" />
-      </button>
+      {isRenaming ? (
+        <input
+          autoFocus
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+            if (e.key === "Escape") setIsRenaming(false);
+          }}
+          onBlur={commitRename}
+          onFocus={(e) => e.target.select()}
+          className="min-w-0 flex-1 rounded bg-[var(--color-background)] px-2.5 py-1 text-sm text-[var(--color-text)] outline-none ring-1 ring-[var(--color-accent)] mx-1"
+        />
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-current={active ? "true" : undefined}
+            className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm text-[var(--color-text)]"
+          >
+            <span className="truncate">{previewText(note)}</span>
+            {note.pinned && !trashMode && (
+              <PinFilledIcon className="ml-auto h-3 w-3 shrink-0 text-[var(--color-muted)]" />
+            )}
+          </button>
+          <button
+            type="button"
+            aria-label="More"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((v) => !v);
+            }}
+            className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
+              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+          >
+            <DotsIcon className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
       {menuOpen && (
         <>
           <div
@@ -274,6 +317,15 @@ function SidebarNoteRow({
                 >
                   Restore
                 </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    onInfo();
+                    setMenuOpen(false);
+                  }}
+                >
+                  Get Info
+                </MenuItem>
+                <div className="my-1 border-t border-[var(--color-border)]" />
                 <MenuItem
                   danger
                   onClick={() => {
@@ -301,6 +353,16 @@ function SidebarNoteRow({
                   }}
                 >
                   {note.archived ? "Unarchive" : "Archive"}
+                </MenuItem>
+                <MenuItem onClick={startRename}>Rename</MenuItem>
+                <div className="my-1 border-t border-[var(--color-border)]" />
+                <MenuItem
+                  onClick={() => {
+                    onInfo();
+                    setMenuOpen(false);
+                  }}
+                >
+                  Get Info
                 </MenuItem>
                 <div className="my-1 border-t border-[var(--color-border)]" />
                 <MenuItem
@@ -343,5 +405,80 @@ function MenuItem({
     >
       {children}
     </button>
+  );
+}
+
+export function NoteInfoModal({
+  note,
+  onClose,
+}: {
+  note: Note;
+  onClose: () => void;
+}) {
+  const words = note.body.trim() ? note.body.trim().split(/\s+/).length : 0;
+  const chars = note.body.length;
+  const bytes = new TextEncoder().encode(note.body).byteLength;
+
+  function fmt(ts: number) {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(ts));
+  }
+
+  function fmtBytes(b: number) {
+    if (b < 1024) return `${b} bytes`;
+    return `${(b / 1024).toFixed(1)} KB`;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/40"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-label="Note Info"
+        className="relative z-10 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+            Note Info
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4">
+          <p className="mb-4 truncate text-sm font-medium text-[var(--color-text)]">
+            {previewText(note)}
+          </p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-2 text-sm">
+            <dt className="text-[var(--color-muted)]">Kind</dt>
+            <dd className="text-right text-[var(--color-text)]">
+              {note.markdown ? "Markdown" : "Plain text"}
+            </dd>
+            <dt className="text-[var(--color-muted)]">Created</dt>
+            <dd className="text-right text-[var(--color-text)]">{fmt(note.createdAt)}</dd>
+            <dt className="text-[var(--color-muted)]">Modified</dt>
+            <dd className="text-right text-[var(--color-text)]">{fmt(note.updatedAt)}</dd>
+            <dt className="text-[var(--color-muted)]">Words</dt>
+            <dd className="text-right text-[var(--color-text)]">{words.toLocaleString()}</dd>
+            <dt className="text-[var(--color-muted)]">Characters</dt>
+            <dd className="text-right text-[var(--color-text)]">{chars.toLocaleString()}</dd>
+            <dt className="text-[var(--color-muted)]">Size</dt>
+            <dd className="text-right text-[var(--color-text)]">{fmtBytes(bytes)}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
   );
 }
