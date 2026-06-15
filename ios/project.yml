@@ -1,0 +1,35 @@
+# XcodeGen spec — run `xcodegen generate` in this directory to produce Keep.xcodeproj.
+# (brew install xcodegen)
+name: Keep
+options:
+  bundleIdPrefix: com.keeptxt
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.10"
+
+targets:
+  Keep:
+    type: application
+    platform: iOS
+    sources:
+      - Keep
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.keeptxt.keep
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Keep/Info.plist
+      properties:
+        # Point the app at your deployment (e.g. https://keeptxt.com).
+        KEEP_BASE_URL: "http://localhost:3000"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
