@@ -291,7 +291,7 @@ export function NoteEditor({
         <>
           <button
             type="button"
-            onClick={() => { setHighlight((v) => !v); setDirty(true); }}
+            onClick={() => { setHighlight((v) => !v); setPreviewOpen(false); setDirty(true); }}
             className={iconToggle(highlight)}
             title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
             aria-label="Syntax highlighting"
@@ -303,7 +303,7 @@ export function NoteEditor({
           </button>
           <button
             type="button"
-            onClick={() => setPreviewOpen((v) => !v)}
+            onClick={() => { setPreviewOpen((v) => !v); setHighlight(false); setDirty(true); }}
             className={iconToggle(previewOpen)}
             title={previewOpen ? "Edit" : "Preview markdown"}
             aria-label={previewOpen ? "Edit" : "Preview markdown"}
