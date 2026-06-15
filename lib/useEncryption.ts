@@ -60,15 +60,18 @@ export function useEncryption() {
   );
 
   const setupEncryption = useCallback(async (passphrase: string): Promise<void> => {
-    const newSalt = generateSalt();
     const res = await fetch("/api/enc/salt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ salt: newSalt }),
+      body: JSON.stringify({ salt: generateSalt() }),
     });
     if (!res.ok) throw new Error("Failed to save salt");
-    _key = await deriveKey(passphrase, newSalt);
-    setSalt(newSalt);
+    // Derive from whatever salt the server actually stored (may pre-exist).
+    const data = (await res.json()) as { salt?: string };
+    const effectiveSalt = data.salt;
+    if (!effectiveSalt) throw new Error("No salt returned");
+    _key = await deriveKey(passphrase, effectiveSalt);
+    setSalt(effectiveSalt);
     setStatus("unlocked");
   }, []);
 

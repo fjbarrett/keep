@@ -104,7 +104,14 @@ export function isEncrypted(body: string): boolean {
 // ── Encoding helpers ──────────────────────────────────────────────────────────
 
 function bytesToBase64(bytes: Uint8Array<ArrayBuffer>): string {
-  return btoa(String.fromCharCode(...bytes));
+  // Chunk the spread — String.fromCharCode(...bytes) overflows the argument
+  // limit (RangeError) for large notes.
+  let binary = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
 }
 
 function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {

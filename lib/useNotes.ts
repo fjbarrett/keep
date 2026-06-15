@@ -288,6 +288,7 @@ export function useNotes() {
     const needsMeta =
       bodyChanged &&
       patch.body !== undefined &&
+      patch.title === undefined &&
       (firstLine(patch.body) !== firstLine(current?.body ?? "") ||
         !current?.title?.trim());
     let nextPatch = patch;
