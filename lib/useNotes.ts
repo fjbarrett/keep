@@ -84,15 +84,19 @@ async function api<T>(
   return res.json() as Promise<T>;
 }
 
-async function titleForBody(body: string) {
+function firstLine(body: string) {
+  return body.split(/\r?\n/, 1)[0]?.trim() ?? "";
+}
+
+async function metaForBody(body: string): Promise<{ title: string; summary: string }> {
   try {
-    const data = await api<{ title: string }>("/api/notes/title", {
+    const data = await api<{ title: string; summary?: string }>("/api/notes/title", {
       method: "POST",
       json: { body },
     });
-    return data.title || inferNoteTitle(body);
+    return { title: data.title || inferNoteTitle(body), summary: data.summary ?? "" };
   } catch {
-    return inferNoteTitle(body);
+    return { title: inferNoteTitle(body), summary: "" };
   }
 }
 
@@ -227,12 +231,15 @@ export function useNotes() {
 
   const create = useCallback(async (partial: Partial<Note>) => {
     const body = partial.body ?? "";
-    const title = partial.title || await titleForBody(body);
+    const meta = partial.title
+      ? { title: partial.title, summary: partial.summary ?? "" }
+      : await metaForBody(body);
     if (isGuest) {
       const now = Date.now();
       const note: Note = {
         id: localId(),
-        title,
+        title: meta.title,
+        summary: meta.summary || null,
         body,
         pinned: partial.pinned ?? false,
         archived: partial.archived ?? false,
@@ -253,7 +260,8 @@ export function useNotes() {
       const data = await trackSync(api<{ note: Note }>("/api/notes", {
         method: "POST",
         json: {
-          title,
+          title: meta.title,
+          summary: meta.summary,
           body,
           pinned: partial.pinned ?? false,
           archived: partial.archived ?? false,
@@ -275,10 +283,22 @@ export function useNotes() {
     const current = notes.find((note) => note.id === id);
     const bodyChanged =
       patch.body !== undefined && patch.body !== (current?.body ?? "");
-    const nextPatch =
-      bodyChanged && patch.body !== undefined
-        ? { ...patch, title: await titleForBody(patch.body) }
-        : patch;
+    // Only regenerate title/summary when the lead line changes (or there's no
+    // title yet) — avoids a model call on every keystroke-batch autosave.
+    const needsMeta =
+      bodyChanged &&
+      patch.body !== undefined &&
+      (firstLine(patch.body) !== firstLine(current?.body ?? "") ||
+        !current?.title?.trim());
+    let nextPatch = patch;
+    if (needsMeta && patch.body !== undefined) {
+      const meta = await metaForBody(patch.body);
+      nextPatch = {
+        ...patch,
+        title: meta.title,
+        ...(meta.summary ? { summary: meta.summary } : {}),
+      };
+    }
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id ? { ...n, ...nextPatch, updatedAt: Date.now() } : n,
@@ -349,9 +369,11 @@ export function useNotes() {
       const importable = imported.filter((note) => !note.trashed);
       const guestNotes: Note[] = [];
       for (const [index, note] of importable.entries()) {
+        const meta = await metaForBody(note.body);
         guestNotes.push({
           id: `${localId()}${index.toString(36).toUpperCase()}`,
-          title: await titleForBody(note.body),
+          title: meta.title,
+          summary: meta.summary || null,
           body: note.body,
           pinned: note.pinned,
           archived: note.archived,

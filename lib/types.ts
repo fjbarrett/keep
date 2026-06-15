@@ -1,6 +1,7 @@
 export type Note = {
   id: string;
   title: string;
+  summary?: string | null;
   body: string;
   pinned: boolean;
   archived: boolean;
