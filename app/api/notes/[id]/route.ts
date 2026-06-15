@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { newId, pool, ready, rowToNote, NoteRow } from "@/lib/db";
-import { generateNoteTitle } from "@/lib/titleModel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ALLOWED = new Set([
   "title",
+  "summary",
   "body",
   "pinned",
   "archived",
@@ -28,14 +28,8 @@ export async function PATCH(
   try {
     await ready();
     const patch = await req.json();
-    if (
-      patch &&
-      typeof patch === "object" &&
-      typeof patch.body === "string" &&
-      patch.title === undefined
-    ) {
-      patch.title = await generateNoteTitle(patch.body);
-    }
+    // Title/summary are generated client-side (gated to meaningful edits) and
+    // sent in the patch, so the server no longer regenerates on every autosave.
     const sets: string[] = [];
     const values: unknown[] = [];
     let i = 1;

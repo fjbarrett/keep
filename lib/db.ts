@@ -74,6 +74,8 @@ async function bootstrap(): Promise<void> {
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS markdown BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS highlight BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
+    -- AI-generated one-line card description; NULL means "fall back to a body preview".
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS summary TEXT;
     CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at DESC);
     CREATE INDEX IF NOT EXISTS notes_tags_idx ON notes USING GIN (tags);
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
@@ -128,6 +130,7 @@ export function ready(): Promise<void> {
 export type NoteRow = {
   id: string;
   title: string;
+  summary: string | null;
   body: string;
   pinned: boolean;
   archived: boolean;
@@ -144,6 +147,7 @@ export function rowToNote(r: NoteRow) {
   return {
     id: r.id,
     title: r.title,
+    summary: r.summary ?? null,
     body: r.body,
     pinned: r.pinned,
     archived: r.archived,

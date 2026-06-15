@@ -50,7 +50,9 @@ function NoteCard({
   onTogglePin: (id: string) => void;
 }) {
   const title = previewText(note);
-  const preview = bodyPreview(note.body);
+  // Prefer the AI-generated description; fall back to a cleaned body preview
+  // for notes that don't have one yet (guests, imports, legacy notes).
+  const preview = note.summary?.trim() || bodyPreview(note.body);
 
   return (
     <div className="group relative">

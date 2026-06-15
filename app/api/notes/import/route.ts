@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { KeepImportNote, parseGoogleKeepImport } from "@/lib/googleKeepImport";
 import { pool, ready } from "@/lib/db";
-import { generateNoteTitle } from "@/lib/titleModel";
+import { generateNoteMeta } from "@/lib/titleModel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,14 +43,16 @@ export async function POST(req: Request) {
     await ready();
     let imported = 0;
     for (const note of importable) {
+      const meta = await generateNoteMeta(note.body);
       const result = await pool().query(
-        `INSERT INTO notes (id, user_id, title, body, pinned, archived, trashed, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8)
+        `INSERT INTO notes (id, user_id, title, summary, body, pinned, archived, trashed, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9)
          ON CONFLICT (id) DO NOTHING`,
         [
           googleKeepImportId(session.user.id, note),
           session.user.id,
-          await generateNoteTitle(note.body),
+          meta.title,
+          meta.summary,
           note.body,
           note.pinned,
           note.archived,
