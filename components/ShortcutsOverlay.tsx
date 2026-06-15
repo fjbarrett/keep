@@ -19,6 +19,7 @@ const SHORTCUT_GROUPS = [
       { keys: ["n", "c"], label: "New note" },
       { keys: ["p"], label: "Toggle pin" },
       { keys: ["a"], label: "Toggle archive" },
+      { keys: ["⌘I"], label: "Get info" },
       { keys: ["Del"], label: "Move to trash" },
     ],
   },
@@ -27,7 +28,7 @@ const SHORTCUT_GROUPS = [
     items: [
       { keys: ["⌘K"], label: "Search" },
       { keys: ["/", "f"], label: "Search" },
-      { keys: ["?"], label: "Shortcuts" },
+      { keys: ["?", "⌘/"], label: "Shortcuts" },
       { keys: ["⌘Enter"], label: "Close editor" },
     ],
   },
