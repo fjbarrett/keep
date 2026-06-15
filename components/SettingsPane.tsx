@@ -16,11 +16,14 @@ export function SettingsPane({
   notes,
   isGuest,
   counts,
+  encStatus,
   onOpenArchive,
   onOpenTrash,
   onImportClick,
   onImport,
   onGuestExport,
+  onEnableEncryption,
+  onDisableEncryption,
   onClose,
 }: {
   importing: boolean;
@@ -28,11 +31,14 @@ export function SettingsPane({
   notes: Note[];
   isGuest: boolean;
   counts: { archive: number; trash: number };
+  encStatus: "loading" | "disabled" | "locked" | "unlocked";
   onOpenArchive: () => void;
   onOpenTrash: () => void;
   onImportClick: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onGuestExport: () => void;
+  onEnableEncryption: () => void;
+  onDisableEncryption: () => void;
   onClose: () => void;
 }) {
   const exportableCount = notes.filter((note) => !note.trashed).length;
@@ -147,6 +153,39 @@ export function SettingsPane({
                 Security
               </h3>
               <PasskeysSection />
+              {encStatus !== "loading" && (
+                <div className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--color-text)]">
+                      End-to-end encryption
+                    </p>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      {encStatus === "disabled"
+                        ? "Notes stored as plaintext"
+                        : encStatus === "locked"
+                        ? "Enabled · locked this session"
+                        : "Enabled · unlocked"}
+                    </p>
+                  </div>
+                  {encStatus === "disabled" ? (
+                    <button
+                      type="button"
+                      onClick={() => { onEnableEncryption(); onClose(); }}
+                      className="ml-3 shrink-0 rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
+                    >
+                      Enable
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onDisableEncryption}
+                      className="ml-3 shrink-0 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                    >
+                      Disable
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
