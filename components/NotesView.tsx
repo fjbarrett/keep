@@ -540,7 +540,15 @@ export function NotesView({
           <div className="flex-1" aria-hidden />
         ) : filtered.length > 0 ? (
           <div className="overflow-y-auto">
-            <NotesCardGrid notes={filtered} onOpen={openNote} onTogglePin={togglePin} />
+            <NotesCardGrid
+              notes={filtered}
+              onOpen={openNote}
+              onTogglePin={togglePin}
+              onToggleArchive={toggleArchive}
+              onTrash={trash}
+              onColor={(id, color) => update(id, { color })}
+              onInfo={(note) => setInfoNote(note)}
+            />
           </div>
         ) : (
           <MainPlaceholder
