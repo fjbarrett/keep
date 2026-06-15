@@ -308,7 +308,7 @@ export const StackIcon = ({ className }: IconProps) => (
   </svg>
 );
 
-export const QuestionMarkIcon = ({ className }: IconProps) => (
+export const KeyboardIcon = ({ className }: IconProps) => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
@@ -318,8 +318,7 @@ export const QuestionMarkIcon = ({ className }: IconProps) => (
     strokeLinejoin="round"
     className={className}
   >
-    <circle cx="12" cy="12" r="10" />
-    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.54 2.29c-.63.28-1.04.9-1.04 1.57V14" />
-    <path d="M12 17.5h.01" strokeWidth="2" strokeLinecap="round" />
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
   </svg>
 );
