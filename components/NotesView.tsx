@@ -466,6 +466,7 @@ export function NotesView({
     remove,
     onRename: (id: string, title: string) => update(id, { title }),
     onInfo: (note: Note) => setInfoNote(note),
+    onColor: (id: string, color: string | null) => update(id, { color }),
   };
 
   // A new note and the edit view of the note it just autosaved into share one
@@ -511,6 +512,9 @@ export function NotesView({
             onRemove={remove}
             onShare={share}
             onUnshare={unshare}
+            onColor={(color) =>
+              mainTarget.mode === "edit" && update(mainTarget.note.id, { color })
+            }
             canShare={!isGuest}
             presentation="panel"
           />

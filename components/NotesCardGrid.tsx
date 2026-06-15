@@ -2,6 +2,7 @@
 
 import { Note } from "@/lib/types";
 import { previewText } from "@/lib/inferTitle";
+import { noteColorVar } from "@/lib/noteColors";
 import { PinIcon, PinFilledIcon } from "@/components/Icons";
 
 function relativeDate(ts: number): string {
@@ -61,8 +62,15 @@ function NoteCard({
         onClick={() => onOpen(note)}
         className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-10 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
       >
-        <p className="truncate text-sm font-medium text-[var(--color-text)]">
-          {title}
+        <p className="flex items-center gap-1.5 truncate text-sm font-medium text-[var(--color-text)]">
+          {noteColorVar(note.color) && (
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: noteColorVar(note.color)! }}
+              aria-hidden
+            />
+          )}
+          <span className="truncate">{title}</span>
         </p>
         {preview && (
           <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-[var(--color-muted)]">

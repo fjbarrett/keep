@@ -2,6 +2,7 @@ export type Note = {
   id: string;
   title: string;
   summary?: string | null;
+  color?: string | null;
   body: string;
   pinned: boolean;
   archived: boolean;
