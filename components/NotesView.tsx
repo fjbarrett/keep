@@ -234,7 +234,7 @@ export function NotesView({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const id = target?.mode === "edit" ? target.note.id : null;
-    const desired = id ? `/${id}` : "/";
+    const desired = id ? `/note/${id}` : "/";
     if (window.location.pathname === desired) return;
     window.history.replaceState(null, "", desired + window.location.search);
   }, [target]);
