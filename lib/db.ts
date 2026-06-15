@@ -122,8 +122,42 @@ async function bootstrap(): Promise<void> {
   `);
 }
 
+// Re-IDs any note that predates the 8-hex-char convention (old 12-char ids,
+// GK-import ids, …) to a fresh 8-char id, carrying its note_versions along.
+// Idempotent: once every id matches ^[0-9a-f]{8}$ this is a no-op. Each note is
+// migrated in its own transaction so a failure mid-run is safe and resumable.
+async function migrateNoteIds(): Promise<void> {
+  const legacy = await pool().query<{ id: string }>(
+    `SELECT id FROM notes WHERE id !~ '^[0-9a-f]{8}$'`,
+  );
+  if (legacy.rows.length === 0) return;
+  const used = new Set(
+    (await pool().query<{ id: string }>(`SELECT id FROM notes`)).rows.map((r) => r.id),
+  );
+  for (const { id: oldId } of legacy.rows) {
+    let next = newId();
+    while (used.has(next)) next = newId();
+    used.add(next);
+    const client = await pool().connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`UPDATE note_versions SET note_id = $1 WHERE note_id = $2`, [next, oldId]);
+      await client.query(`UPDATE notes SET id = $1 WHERE id = $2`, [next, oldId]);
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      // Don't brick the app over one row — log and let the next boot retry it.
+      console.error(`note id migration failed for ${oldId}:`, err);
+    } finally {
+      client.release();
+    }
+  }
+}
+
 export function ready(): Promise<void> {
-  if (!global.__keepReady) global.__keepReady = bootstrap();
+  if (!global.__keepReady) {
+    global.__keepReady = bootstrap().then(() => migrateNoteIds());
+  }
   return global.__keepReady;
 }
 
@@ -161,7 +195,8 @@ export function rowToNote(r: NoteRow) {
   };
 }
 
-// 12 lowercase hex chars from a UUID v4 (48 bits of randomness, ~2.8e14 keyspace).
+// 8 lowercase hex chars from a UUID v4 — 32 bits, and parseInt(id, 16) maps it
+// to a single integer (MAC-address style, no separators).
 export function newId(): string {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
 }
