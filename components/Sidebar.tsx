@@ -100,15 +100,6 @@ export function Sidebar({
           : "hidden h-full w-[260px] shrink-0 flex-col bg-[var(--color-canvas)] md:flex"
       }
     >
-      {/* Shared blue gradient used to tint the per-note overflow dots on hover. */}
-      <svg width="0" height="0" aria-hidden className="absolute">
-        <defs>
-          <linearGradient id="dotsGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--color-accent)" />
-            <stop offset="1" stopColor="var(--color-link)" />
-          </linearGradient>
-        </defs>
-      </svg>
       <div className="flex flex-col gap-1 p-2">
         <button
           type="button"
@@ -196,7 +187,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onOpenShortcuts}
-              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-link)] transition-colors hover:bg-[rgba(37,99,235,0.12)] hover:text-[var(--color-link-hover)]"
+              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-orange)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange-hover)]"
               title="Keyboard shortcuts"
               aria-label="Keyboard shortcuts"
             >
@@ -313,11 +304,11 @@ function SidebarNoteRow({
               e.stopPropagation();
               setMenuOpen((v) => !v);
             }}
-            className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface)] focus-visible:opacity-100 ${
+            className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-pink)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-pink-hover)] focus-visible:opacity-100 ${
               menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             }`}
           >
-            <DotsIcon className="note-dots h-3.5 w-3.5" />
+            <DotsIcon className="h-3.5 w-3.5" />
           </button>
         </>
       )}

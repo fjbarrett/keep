@@ -19,6 +19,10 @@
   --color-accent-fg: #ffffff;
   --color-accent-hover: #3b82f6;
   --color-accent-border: #2563eb;
+  --color-pink: #f80058;
+  --color-pink-hover: #ff4d8d;
+  --color-orange: #ffb313;
+  --color-orange-hover: #ffc23d;
   --color-danger: #f0564a;
   --color-attention: #d9a514;
   --color-done: #9a7ff0;
@@ -44,6 +48,10 @@
   --color-accent-fg: #ffffff;
   --color-accent-hover: #1d4ed8;
   --color-accent-border: #2563eb;
+  --color-pink: #f80058;
+  --color-pink-hover: #cc0048;
+  --color-orange: #ffb313;
+  --color-orange-hover: #e09a00;
   --color-danger: #cf222e;
   --color-attention: #9a6700;
   --color-done: #7c5cd6;
@@ -257,14 +265,6 @@ textarea:focus-visible {
   font-weight: 600;
 }
 .prose-invert-auto img { max-width: 100%; border-radius: 6px; }
-
-/* Tint the per-note overflow dots with the brand blue gradient on row hover. */
-.note-dots {
-  transition: fill 150ms;
-}
-.group:hover .note-dots {
-  fill: url(#dotsGrad);
-}
 
 @keyframes noteContentIn {
   from { opacity: 0; transform: scale(0.975) translateY(6px); }
