@@ -222,7 +222,7 @@ export function NotesView({
     if (didRestoreFromUrlRef.current || !hydrated) return;
     if (!initialNoteId) {
       didRestoreFromUrlRef.current = true;
-      setTarget({ mode: "new" });
+      // Show the notes grid on load rather than auto-opening a new editor
       return;
     }
     const note = notes.find((n) => n.id === initialNoteId);
@@ -241,6 +241,8 @@ export function NotesView({
   }, [target]);
 
   useEffect(() => {
+    // Don't auto-select while composing a new note — sidebar should show nothing selected
+    if (target?.mode === "new" || target === null) return;
     if (visibleNotes.length === 0) {
       setActiveNoteId(null);
       return;
@@ -248,7 +250,7 @@ export function NotesView({
     if (!activeNoteId || !visibleNotes.some((note) => note.id === activeNoteId)) {
       setActiveNoteId(visibleNotes[0].id);
     }
-  }, [activeNoteId, visibleNotes]);
+  }, [activeNoteId, target, visibleNotes]);
 
   useEffect(() => {
     function selectByOffset(offset: number) {
@@ -409,7 +411,10 @@ export function NotesView({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col p-4">
+      <div
+        key={mainTarget ? `note-${mainTarget.mode === "edit" ? mainTarget.note.id : "new"}` : "grid"}
+        className="note-content-in flex min-h-0 flex-1 flex-col p-4"
+      >
         {mainTarget ? (
           <NoteEditor
             target={mainTarget}
