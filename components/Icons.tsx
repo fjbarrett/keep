@@ -307,3 +307,19 @@ export const StackIcon = ({ className }: IconProps) => (
     <path d="M4 17l8 4 8-4" />
   </svg>
 );
+
+export const QuestionMarkIcon = ({ className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.54 2.29c-.63.28-1.04.9-1.04 1.57V14" />
+    <path d="M12 17.5h.01" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
