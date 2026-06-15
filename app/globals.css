@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* Graphite & amber — neutral darks, warm accent */
+  /* Graphite & blue — neutral darks, cool accent */
   --color-canvas: #0c0c0d;
   --color-background: #131315;
   --color-surface: #1a1a1d;
@@ -13,12 +13,12 @@
   --color-text: #ececee;
   --color-muted: #8f8f98;
   --color-subtle: #717179;
-  --color-link: #e2a33c;
-  --color-link-hover: #f0b75a;
-  --color-accent: #d97916;
-  --color-accent-fg: #16130d;
-  --color-accent-hover: #ef8c1f;
-  --color-accent-border: #d97916;
+  --color-link: #60a5fa;
+  --color-link-hover: #93c5fd;
+  --color-accent: #2563eb;
+  --color-accent-fg: #ffffff;
+  --color-accent-hover: #3b82f6;
+  --color-accent-border: #2563eb;
   --color-danger: #f0564a;
   --color-attention: #d9a514;
   --color-done: #9a7ff0;
@@ -38,12 +38,12 @@
   --color-text: #211f1b;
   --color-muted: #6e6a61;
   --color-subtle: #7f7a70;
-  --color-link: #a35100;
-  --color-link-hover: #7f3f00;
-  --color-accent: #b45309;
+  --color-link: #1d4ed8;
+  --color-link-hover: #1e40af;
+  --color-accent: #2563eb;
   --color-accent-fg: #ffffff;
-  --color-accent-hover: #92400e;
-  --color-accent-border: #b45309;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-border: #2563eb;
   --color-danger: #cf222e;
   --color-attention: #9a6700;
   --color-done: #7c5cd6;
@@ -94,7 +94,7 @@ html {
 }
 
 ::selection {
-  background: rgba(217, 121, 22, 0.35);
+  background: rgba(37, 99, 235, 0.35);
   color: var(--color-text);
 }
 
