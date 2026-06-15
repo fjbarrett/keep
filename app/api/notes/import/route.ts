@@ -8,8 +8,10 @@ import { generateNoteMeta } from "@/lib/titleModel";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Deterministic 8-hex id so re-importing the same note dedupes via ON CONFLICT,
+// while still matching the app-wide 8-char id convention.
 function googleKeepImportId(userId: string, note: KeepImportNote) {
-  return `GK${crypto
+  return crypto
     .createHash("sha1")
     .update(userId)
     .update("\0")
@@ -17,8 +19,7 @@ function googleKeepImportId(userId: string, note: KeepImportNote) {
     .update("\0")
     .update(String(note.createdAt))
     .digest("hex")
-    .slice(0, 22)
-    .toUpperCase()}`;
+    .slice(0, 8);
 }
 
 export async function POST(req: Request) {

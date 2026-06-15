@@ -16,7 +16,7 @@ import {
 const GUEST_NOTES_KEY = "keep.guestNotes.v1";
 
 function localId() {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
 }
 
 function readGuestNotes(): Note[] {
