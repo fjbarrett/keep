@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { previewText } from "@/lib/inferTitle";
 import { detectCodeLanguage, languageLabel } from "@/lib/detectLanguage";
+import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
@@ -63,6 +64,7 @@ export function Sidebar({
   remove,
   onRename,
   onInfo,
+  onColor,
   mobile,
   width,
 }: {
@@ -83,6 +85,7 @@ export function Sidebar({
   remove: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onInfo: (note: Note) => void;
+  onColor: (id: string, color: string | null) => void;
   mobile?: boolean;
   width?: number;
 }) {
@@ -164,6 +167,7 @@ export function Sidebar({
                     remove={() => remove(note.id)}
                     onRename={(title) => onRename(note.id, title)}
                     onInfo={() => onInfo(note)}
+                    onColor={(color) => onColor(note.id, color)}
                   />
                 ))}
               </ul>
@@ -234,6 +238,7 @@ function SidebarNoteRow({
   remove,
   onRename,
   onInfo,
+  onColor,
 }: {
   note: Note;
   active: boolean;
@@ -246,6 +251,7 @@ function SidebarNoteRow({
   remove: () => void;
   onRename: (title: string) => void;
   onInfo: () => void;
+  onColor: (color: string | null) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -370,6 +376,13 @@ function SidebarNoteRow({
                   {note.archived ? "Unarchive" : "Archive"}
                 </MenuItem>
                 <MenuItem onClick={startRename}>Rename</MenuItem>
+                <ColorSwatchRow
+                  selected={note.color ?? null}
+                  onPick={(color) => {
+                    onColor(color);
+                    setMenuOpen(false);
+                  }}
+                />
                 <div className="my-1 border-t border-[var(--color-border)]" />
                 <MenuItem
                   onClick={() => {

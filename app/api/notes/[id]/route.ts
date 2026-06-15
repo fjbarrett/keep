@@ -13,6 +13,7 @@ const VERSION_MIN_CHARS = 200;
 const ALLOWED = new Set([
   "title",
   "summary",
+  "color",
   "body",
   "pinned",
   "archived",

@@ -5,6 +5,8 @@ import { marked } from "marked";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
+import { ColorSwatchRow } from "./ColorSwatchRow";
+import { noteColorVar } from "@/lib/noteColors";
 import {
   ArchiveIcon,
   CheckIcon,
@@ -44,6 +46,7 @@ export function NoteEditor({
   onRemove,
   onShare,
   onUnshare,
+  onColor,
   canShare,
   presentation = "modal",
 }: {
@@ -57,6 +60,7 @@ export function NoteEditor({
   onRemove: (id: string) => void;
   onShare: (id: string) => Promise<string | null>;
   onUnshare: (id: string) => Promise<void>;
+  onColor?: (color: string | null) => void;
   canShare: boolean;
   presentation?: "modal" | "panel";
 }) {
@@ -70,6 +74,7 @@ export function NoteEditor({
   const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
   const [copied, setCopied] = useState(false);
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
+  const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const bodyRef = useRef<HighlightedEditorHandle>(null);
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
@@ -104,6 +109,7 @@ export function NoteEditor({
     setVersions([]);
     setCopied(false);
     setCopyMenuOpen(false);
+    setColorMenuOpen(false);
     createdIdRef.current = null;
     creatingRef.current = false;
     setTimeout(() => {
@@ -371,6 +377,41 @@ export function NoteEditor({
               <PinIcon className="h-4 w-4" />
             )}
           </button>
+          {target.mode === "edit" && onColor && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setColorMenuOpen((v) => !v)}
+                className={ICON_BUTTON}
+                title="Color label"
+                aria-label="Color label"
+                aria-haspopup="menu"
+                aria-expanded={colorMenuOpen}
+              >
+                <span
+                  className="h-3.5 w-3.5 rounded-full border border-[var(--color-border)]"
+                  style={{ background: noteColorVar(target.note.color) ?? "transparent" }}
+                />
+              </button>
+              {colorMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setColorMenuOpen(false)} />
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-8 z-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+                  >
+                    <ColorSwatchRow
+                      selected={target.note.color ?? null}
+                      onPick={(color) => {
+                        onColor(color);
+                        setColorMenuOpen(false);
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {body.trim() && (
             previewOpen ? (
               <div className="relative">
