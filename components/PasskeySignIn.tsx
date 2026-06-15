@@ -46,12 +46,7 @@ export function PasskeySignIn({ redirectTo }: { redirectTo: string }) {
   }
 
   return (
-    <div className="mt-3 space-y-2">
-      <div className="flex items-center gap-3 text-xs text-[var(--color-muted)]">
-        <div className="h-px flex-1 bg-[var(--color-border)]" />
-        or
-        <div className="h-px flex-1 bg-[var(--color-border)]" />
-      </div>
+    <div className="space-y-2">
       <button
         type="button"
         onClick={handlePasskeySignIn}
