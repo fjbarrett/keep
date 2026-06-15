@@ -616,6 +616,45 @@ function VersionHistory({
   onClose: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+  const [descLoading, setDescLoading] = useState<Set<string>>(new Set());
+  const [showRawDiffId, setShowRawDiffId] = useState<string | null>(null);
+
+  function wordDelta(older: string, newer: string) {
+    const d =
+      newer.trim().split(/\s+/).filter(Boolean).length -
+      older.trim().split(/\s+/).filter(Boolean).length;
+    if (d === 0) return null;
+    return d > 0 ? `+${d} words` : `${d} words`;
+  }
+
+  async function fetchDescription(id: string, oldBody: string, newBody: string) {
+    if (descriptions[id] !== undefined || descLoading.has(id)) return;
+    setDescLoading((prev) => new Set(prev).add(id));
+    try {
+      const res = await fetch("/api/notes/describe-diff", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ oldBody, newBody }),
+      });
+      const data = res.ok ? await res.json() : null;
+      setDescriptions((prev) => ({
+        ...prev,
+        [id]: data?.description ?? "Unable to describe changes.",
+      }));
+    } catch {
+      setDescriptions((prev) => ({
+        ...prev,
+        [id]: "Unable to describe changes.",
+      }));
+    } finally {
+      setDescLoading((prev) => {
+        const s = new Set(prev);
+        s.delete(id);
+        return s;
+      });
+    }
+  }
 
   const header = (
     <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
@@ -652,19 +691,38 @@ function VersionHistory({
         {versions.map((v, i) => {
           const expanded = expandedId === v.id;
           const newerBody = i === 0 ? currentBody : versions[i - 1].body;
+          const delta = wordDelta(v.body, newerBody);
+          const description = descriptions[v.id];
+          const loading = descLoading.has(v.id);
+          const showRaw = showRawDiffId === v.id;
           return (
             <li key={v.id} className="px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={() => setExpandedId(expanded ? null : v.id)}
+                  onClick={() => {
+                    const next = expanded ? null : v.id;
+                    setExpandedId(next);
+                    if (next) fetchDescription(next, v.body, newerBody);
+                  }}
                   className="min-w-0 text-left"
                 >
                   <p className="truncate text-sm font-medium text-[var(--color-text)]">
                     {v.title || "Untitled"}
                   </p>
-                  <p className="text-xs text-[var(--color-muted)]">
+                  <p className="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
                     {new Date(v.createdAt).toLocaleString()}
+                    {delta && (
+                      <span
+                        className={
+                          delta.startsWith("+")
+                            ? "text-[var(--color-diff-add)]"
+                            : "text-[var(--color-diff-remove)]"
+                        }
+                      >
+                        {delta}
+                      </span>
+                    )}
                   </p>
                 </button>
                 <button
@@ -675,11 +733,30 @@ function VersionHistory({
                   Restore
                 </button>
               </div>
-              {expanded ? (
-                <DiffView oldText={v.body} newText={newerBody} />
-              ) : (
-                <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--color-muted)]">
-                  {v.body.slice(0, 200)}
+              {expanded && (
+                <div className="mt-2 space-y-2">
+                  {loading ? (
+                    <p className="animate-pulse text-xs text-[var(--color-muted)]">
+                      Describing changes…
+                    </p>
+                  ) : (
+                    <p className="text-xs leading-relaxed text-[var(--color-text)]">
+                      {description}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowRawDiffId(showRaw ? null : v.id)}
+                    className="text-xs text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-text)] hover:underline"
+                  >
+                    {showRaw ? "Hide diff" : "Show diff"}
+                  </button>
+                  {showRaw && <DiffView oldText={v.body} newText={newerBody} />}
+                </div>
+              )}
+              {!expanded && (
+                <p className="mt-1 line-clamp-1 text-xs text-[var(--color-muted)]">
+                  {v.body.slice(0, 120)}
                 </p>
               )}
             </li>
@@ -691,42 +768,26 @@ function VersionHistory({
 }
 
 function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
-  const oldLines = oldText.split("\n");
-  const newLines = newText.split("\n");
-  const maxLen = Math.max(oldLines.length, newLines.length);
-  const diffLines: { type: "same" | "add" | "remove"; text: string }[] = [];
-
-  const oldSet = new Set(oldLines);
-  const newSet = new Set(newLines);
-
-  for (const line of oldLines) {
-    if (!newSet.has(line)) {
-      diffLines.push({ type: "remove", text: line });
-    }
-  }
-  for (const line of newLines) {
-    if (!oldSet.has(line)) {
-      diffLines.push({ type: "add", text: line });
-    }
-  }
+  const oldSet = new Set(oldText.split("\n"));
+  const newSet = new Set(newText.split("\n"));
+  const diffLines: { type: "add" | "remove"; text: string }[] = [
+    ...oldText.split("\n").filter((l) => !newSet.has(l)).map((text) => ({ type: "remove" as const, text })),
+    ...newText.split("\n").filter((l) => !oldSet.has(l)).map((text) => ({ type: "add" as const, text })),
+  ];
 
   if (diffLines.length === 0) {
-    return (
-      <p className="mt-2 text-xs text-[var(--color-muted)]">No changes</p>
-    );
+    return <p className="text-xs text-[var(--color-muted)]">No line-level changes</p>;
   }
 
   return (
-    <div className="mt-2 overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-background)] font-mono text-xs">
+    <div className="overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-background)] font-mono text-xs">
       {diffLines.map((line, i) => (
         <div
           key={i}
           className={`whitespace-pre-wrap px-3 py-0.5 ${
             line.type === "add"
               ? "bg-[var(--color-diff-add-bg)] text-[var(--color-diff-add)]"
-              : line.type === "remove"
-                ? "bg-[var(--color-diff-remove-bg)] text-[var(--color-diff-remove)]"
-                : "text-[var(--color-muted)]"
+              : "bg-[var(--color-diff-remove-bg)] text-[var(--color-diff-remove)]"
           }`}
         >
           <span className="mr-2 inline-block w-3 select-none text-right opacity-60">
