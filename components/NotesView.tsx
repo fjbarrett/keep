@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import { searchableText } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
+import { useEncryption } from "@/lib/useEncryption";
+import { isEncrypted } from "@/lib/crypto";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { Sidebar } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
+import { EncryptionSetup } from "@/components/EncryptionSetup";
+import { EncryptionUnlock } from "@/components/EncryptionUnlock";
 import { PlusIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
@@ -47,6 +51,10 @@ export function NotesView({
     unshare,
     syncStatus,
   } = useNotes();
+
+  const { status: encStatus, unlock, setupEncryption, disableEncryption, encrypt, decrypt } = useEncryption();
+  const [encSetupOpen, setEncSetupOpen] = useState(false);
+  const [decryptedNotes, setDecryptedNotes] = useState<Note[]>([]);
 
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -102,7 +110,7 @@ export function NotesView({
 
   const filtered = useMemo(() => {
     const q = searchOpen ? query.trim() : "";
-    const viewFiltered = notes
+    const viewFiltered = decryptedNotes
       .filter((n) => {
         if (viewMode === "trash") return n.trashed;
         if (viewMode === "archive") return n.archived && !n.trashed;
@@ -119,7 +127,7 @@ export function NotesView({
       minMatchCharLength: 2,
     });
     return fuse.search(q).map((r) => r.item);
-  }, [notes, query, searchOpen, viewMode]);
+  }, [decryptedNotes, query, searchOpen, viewMode]);
 
   const visibleNotes = filtered;
   const activeNote =
@@ -186,6 +194,32 @@ export function NotesView({
     downloadBlob("keep-notes.zip", content, "application/zip");
   }
 
+  // Decrypt all note bodies whenever the note list or encryption key changes.
+  // Notes without an "enc:" prefix pass through unchanged (legacy or unencrypted notes).
+  useEffect(() => {
+    if (encStatus === "disabled" || encStatus === "loading") {
+      setDecryptedNotes(notes);
+      return;
+    }
+    let cancelled = false;
+    Promise.all(notes.map(async (n) => ({ ...n, body: await decrypt(n.body) }))).then(
+      (result) => { if (!cancelled) setDecryptedNotes(result); },
+    );
+    return () => { cancelled = true; };
+  }, [notes, decrypt, encStatus]);
+
+  // Wraps the raw update call to encrypt the body before it leaves the browser.
+  const secureUpdate = useCallback(
+    (id: string, patch: Partial<Note>) => {
+      if (patch.body === undefined || encStatus !== "unlocked" || isEncrypted(patch.body)) {
+        update(id, patch);
+        return;
+      }
+      encrypt(patch.body).then((encrypted) => update(id, { ...patch, body: encrypted }));
+    },
+    [encStatus, encrypt, update],
+  );
+
   useEffect(() => {
     setBannerDismissed(
       sessionStorage.getItem("keep.guestBannerDismissed") === "1",
@@ -224,12 +258,12 @@ export function NotesView({
       setTarget({ mode: "new" });
       return;
     }
-    const note = notes.find((n) => n.id === initialNoteId);
+    const note = decryptedNotes.find((n) => n.id === initialNoteId);
     if (!note) return;
     didRestoreFromUrlRef.current = true;
     setActiveNoteId(note.id);
     setTarget({ mode: "edit", note });
-  }, [hydrated, notes, initialNoteId]);
+  }, [hydrated, decryptedNotes, initialNoteId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -365,7 +399,7 @@ export function NotesView({
     target?.mode === "edit"
       ? {
           mode: "edit",
-          note: notes.find((n) => n.id === target.note.id) ?? target.note,
+          note: decryptedNotes.find((n) => n.id === target.note.id) ?? target.note,
         }
       : target;
 
@@ -415,7 +449,7 @@ export function NotesView({
             onClose={() => setTarget(null)}
             onBack={() => setTarget(null)}
             onCreate={handleCreate}
-            onUpdate={update}
+            onUpdate={secureUpdate}
             onTrash={trash}
             onRestore={restore}
             onRemove={remove}
@@ -480,6 +514,7 @@ export function NotesView({
           notes={notes}
           isGuest={isGuest}
           counts={counts}
+          encStatus={encStatus}
           onOpenArchive={() => {
             setViewMode("archive");
             setSettingsOpen(false);
@@ -495,8 +530,24 @@ export function NotesView({
           onImportClick={() => importRef.current?.click()}
           onImport={handleImport}
           onGuestExport={handleGuestExport}
+          onEnableEncryption={() => setEncSetupOpen(true)}
+          onDisableEncryption={disableEncryption}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
+
+      {encSetupOpen && (
+        <EncryptionSetup
+          onSetup={async (passphrase) => {
+            await setupEncryption(passphrase);
+            setEncSetupOpen(false);
+          }}
+          onClose={() => setEncSetupOpen(false)}
+        />
+      )}
+
+      {encStatus === "locked" && (
+        <EncryptionUnlock onUnlock={unlock} />
       )}
 
       {shortcutsOpen && (

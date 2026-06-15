@@ -101,6 +101,10 @@ async function bootstrap(): Promise<void> {
       name       TEXT,
       updated_at BIGINT NOT NULL
     );
+    -- enc_salt stores a random 32-byte hex salt used by the client to derive
+    -- the AES-GCM encryption key via PBKDF2. NULL means encryption is disabled.
+    -- The salt is public; only the passphrase (never sent to the server) is secret.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS enc_salt TEXT;
 
     CREATE TABLE IF NOT EXISTS authenticators (
       credential_id TEXT PRIMARY KEY,
