@@ -130,7 +130,11 @@ export function NotesView({
         if (viewMode === "archive") return n.archived && !n.trashed;
         return !n.archived && !n.trashed;
       });
-    if (!q) return viewFiltered.sort((a, b) => b.updatedAt - a.updatedAt);
+    if (!q)
+      return viewFiltered.sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        return b.updatedAt - a.updatedAt;
+      });
     const fuse = new Fuse(viewFiltered, {
       keys: [
         { name: "title", getFn: (n: Note) => searchableText(n) },
