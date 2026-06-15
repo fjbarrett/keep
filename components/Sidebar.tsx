@@ -47,9 +47,6 @@ export function Sidebar({
   filtered,
   activeNoteId,
   viewMode,
-  allTags,
-  tagFilter,
-  onTagFilter,
   syncStatus,
   onExitFilteredView,
   onOpenNote,
@@ -66,9 +63,6 @@ export function Sidebar({
   filtered: Note[];
   activeNoteId: string | null;
   viewMode: "active" | "archive" | "trash";
-  allTags: string[];
-  tagFilter: string | null;
-  onTagFilter: (tag: string | null) => void;
   syncStatus: SyncStatus;
   onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
@@ -106,25 +100,6 @@ export function Sidebar({
           <span className="font-medium">New note</span>
         </button>
       </div>
-
-      {allTags.length > 0 && viewMode === "active" && (
-        <div className="flex flex-wrap gap-1 px-3 py-2">
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => onTagFilter(tagFilter === tag ? null : tag)}
-              className={`rounded-full px-2 py-0.5 text-xs transition-colors ${
-                tagFilter === tag
-                  ? "bg-[var(--color-accent)] text-[var(--color-accent-fg)]"
-                  : "bg-[var(--color-surface-hover)] text-[var(--color-muted)] hover:text-[var(--color-text)]"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      )}
 
       {filteredTitle && (
         <div className="flex items-center justify-between px-3 py-2">
