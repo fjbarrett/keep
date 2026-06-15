@@ -169,6 +169,17 @@ export function NotesView({
   }
 
   useEffect(() => {
+    if (localStorage.getItem("keep.shortcutsSeen")) return;
+    const timer = window.setTimeout(() => setShortcutsOpen(true), 800);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  function closeShortcuts() {
+    localStorage.setItem("keep.shortcutsSeen", "1");
+    setShortcutsOpen(false);
+  }
+
+  useEffect(() => {
     if (!searchOpen) return;
     const focusTimer = window.setTimeout(() => {
       searchRef.current?.focus();
@@ -262,7 +273,7 @@ export function NotesView({
 
       if (event.key === "?" || (event.shiftKey && key === "/")) {
         event.preventDefault();
-        setShortcutsOpen((v) => !v);
+        if (shortcutsOpen) closeShortcuts(); else setShortcutsOpen(true);
         return;
       }
 
@@ -455,7 +466,7 @@ export function NotesView({
       )}
 
       {shortcutsOpen && (
-        <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />
+        <ShortcutsOverlay onClose={closeShortcuts} />
       )}
     </>
   );
