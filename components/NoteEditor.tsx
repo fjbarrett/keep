@@ -515,16 +515,14 @@ export function NoteEditor({
           </button>
         </div>
       )}
-      {!isPanel && (
-        <button
-          type="button"
-          onClick={close}
-          aria-label="Close"
-          className={ICON_BUTTON}
-        >
-          <XIcon className="h-4 w-4" />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={close}
+        aria-label="Close"
+        className={ICON_BUTTON}
+      >
+        <XIcon className="h-4 w-4" />
+      </button>
     </div>
   );
 
