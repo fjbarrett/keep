@@ -320,7 +320,31 @@ export function NotesView({
         return;
       }
 
+      // ⌘I — Get Info for the active note (Mac "Get Info" muscle memory).
+      if ((event.metaKey || event.ctrlKey) && key === "i") {
+        event.preventDefault();
+        if (activeNote) setInfoNote(activeNote);
+        return;
+      }
+
+      // ⌘/ (and ⌘?) toggles the shortcuts sheet even while typing.
+      if ((event.metaKey || event.ctrlKey) && (key === "/" || event.key === "?")) {
+        event.preventDefault();
+        if (shortcutsOpen) closeShortcuts();
+        else setShortcutsOpen(true);
+        return;
+      }
+
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // Bare "?" opens the sheet whenever the user isn't typing in a field —
+      // including when a note is open (which previously swallowed it).
+      if (!typing && (event.key === "?" || (event.shiftKey && key === "/"))) {
+        event.preventDefault();
+        if (shortcutsOpen) closeShortcuts();
+        else setShortcutsOpen(true);
+        return;
+      }
 
       if (typing || target) {
         if (searchFocused && event.key === "ArrowDown") {
@@ -344,12 +368,6 @@ export function NotesView({
         if (event.key === "Escape" && searchFocused) {
           closeSearch();
         }
-        return;
-      }
-
-      if (event.key === "?" || (event.shiftKey && key === "/")) {
-        event.preventDefault();
-        if (shortcutsOpen) closeShortcuts(); else setShortcutsOpen(true);
         return;
       }
 
@@ -406,7 +424,7 @@ export function NotesView({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeNote, activeNoteId, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
+  }, [activeNote, activeNoteId, remove, searchOpen, shortcutsOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
 
   const mainTarget: EditorTarget =
     target?.mode === "edit"
