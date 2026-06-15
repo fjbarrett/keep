@@ -8,6 +8,7 @@ import {
   UploadIcon,
   XIcon,
 } from "@/components/Icons";
+import { PasskeysSection } from "@/components/PasskeysSection";
 
 export function SettingsPane({
   importing,
@@ -140,6 +141,14 @@ export function SettingsPane({
             </button>
           )}
 
+          {!isGuest && (
+            <>
+              <h3 className="pt-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                Security
+              </h3>
+              <PasskeysSection />
+            </>
+          )}
         </div>
       </section>
     </div>
