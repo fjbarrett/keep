@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { marked } from "marked";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
@@ -68,6 +69,7 @@ export function NoteEditor({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
   const [copied, setCopied] = useState(false);
+  const [copyMenuOpen, setCopyMenuOpen] = useState(false);
   const bodyRef = useRef<HighlightedEditorHandle>(null);
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
@@ -101,6 +103,7 @@ export function NoteEditor({
     setHistoryOpen(false);
     setVersions([]);
     setCopied(false);
+    setCopyMenuOpen(false);
     createdIdRef.current = null;
     creatingRef.current = false;
     setTimeout(() => {
@@ -241,9 +244,28 @@ export function NoteEditor({
     try {
       await navigator.clipboard.writeText(body);
       setCopied(true);
+      setCopyMenuOpen(false);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
       // Clipboard may be blocked (insecure context, etc.) — silently no-op.
+    }
+  }
+
+  async function copyFormatted() {
+    if (!body.trim()) return;
+    try {
+      const html = await marked(body);
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([body], { type: "text/plain" }),
+        }),
+      ]);
+      setCopied(true);
+      setCopyMenuOpen(false);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      await copyBody();
     }
   }
 
@@ -350,19 +372,65 @@ export function NoteEditor({
             )}
           </button>
           {body.trim() && (
-            <button
-              type="button"
-              onClick={copyBody}
-              className={ICON_BUTTON}
-              title={copied ? "Copied" : "Copy note"}
-              aria-label={copied ? "Copied" : "Copy note"}
-            >
-              {copied ? (
-                <CheckIcon className="h-4 w-4" />
-              ) : (
-                <CopyIcon className="h-4 w-4" />
-              )}
-            </button>
+            previewOpen ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setCopyMenuOpen((v) => !v)}
+                  className={ICON_BUTTON}
+                  title={copied ? "Copied" : "Copy note"}
+                  aria-label={copied ? "Copied" : "Copy note"}
+                  aria-haspopup="menu"
+                  aria-expanded={copyMenuOpen}
+                >
+                  {copied ? (
+                    <CheckIcon className="h-4 w-4" />
+                  ) : (
+                    <CopyIcon className="h-4 w-4" />
+                  )}
+                </button>
+                {copyMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setCopyMenuOpen(false)} />
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-8 z-20 min-w-[168px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => copyBody()}
+                        className="block w-full px-3 py-1.5 text-left text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                      >
+                        Copy Markdown
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={copyFormatted}
+                        className="block w-full px-3 py-1.5 text-left text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                      >
+                        Copy Formatted
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={copyBody}
+                className={ICON_BUTTON}
+                title={copied ? "Copied" : "Copy note"}
+                aria-label={copied ? "Copied" : "Copy note"}
+              >
+                {copied ? (
+                  <CheckIcon className="h-4 w-4" />
+                ) : (
+                  <CopyIcon className="h-4 w-4" />
+                )}
+              </button>
+            )
           )}
           {target.mode === "edit" && canShare && (
             <SharePopover
