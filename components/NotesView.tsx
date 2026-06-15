@@ -59,9 +59,38 @@ export function NotesView({
     "active",
   );
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(260);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
+
+  useEffect(() => {
+    const stored = parseInt(localStorage.getItem("keep.sidebarWidth") ?? "", 10);
+    if (!isNaN(stored)) setSidebarWidth(stored);
+  }, []);
+
+  function startSidebarResize(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function onMove(ev: MouseEvent) {
+      const w = Math.min(400, Math.max(160, startWidth + ev.clientX - startX));
+      setSidebarWidth(w);
+    }
+    function onUp(ev: MouseEvent) {
+      const w = Math.min(400, Math.max(160, startWidth + ev.clientX - startX));
+      localStorage.setItem("keep.sidebarWidth", String(w));
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
 
   const counts = useMemo(
     () => ({
@@ -409,7 +438,12 @@ export function NotesView({
     <>
       {/* Desktop: sidebar + editor side by side */}
       <div className="hidden min-h-0 flex-1 md:flex">
-        <Sidebar {...sidebarProps} />
+        <Sidebar {...sidebarProps} width={sidebarWidth} />
+        <div
+          onMouseDown={startSidebarResize}
+          className="w-[3px] shrink-0 cursor-col-resize bg-[var(--color-border)] opacity-0 transition-opacity hover:opacity-100"
+          aria-hidden
+        />
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
           {editorPanel}
         </main>
