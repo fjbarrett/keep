@@ -58,6 +58,7 @@ export function Sidebar({
   restore,
   remove,
   mobile,
+  width,
 }: {
   hydrated: boolean;
   filtered: Note[];
@@ -74,6 +75,7 @@ export function Sidebar({
   restore: (id: string) => void;
   remove: (id: string) => void;
   mobile?: boolean;
+  width?: number;
 }) {
   const buckets = bucketByDate(filtered);
   const filteredTitle =
@@ -82,6 +84,7 @@ export function Sidebar({
   return (
     <aside
       aria-label="Notes sidebar"
+      style={!mobile && width ? { width } : undefined}
       className={
         mobile
           ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
