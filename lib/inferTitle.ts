@@ -34,13 +34,11 @@ export function inferNoteTitle(body: string, fallback = "Untitled note") {
   return fallback;
 }
 
-export function searchableText(note: { body: string; title: string; tags?: string[] }) {
-  const base = note.body.trim() || note.title.trim();
-  if (note.tags?.length) return base + " " + note.tags.join(" ");
-  return base;
+export function searchableText(note: { body: string; title: string }) {
+  return note.body.trim() || note.title.trim();
 }
 
-export function previewText(note: { body: string; title: string; tags?: string[] }) {
+export function previewText(note: { body: string; title: string }) {
   const title = needsInferredTitle(note.title, note.body)
     ? inferNoteTitle(searchableText(note))
     : note.title;
@@ -48,7 +46,7 @@ export function previewText(note: { body: string; title: string; tags?: string[]
   return text || "(empty)";
 }
 
-export function needsInferredTitle(title: string, body: string) {
+export function needsInferredTitle(title: string, body: string): boolean {
   const compactTitle = title.replace(/\s+/g, " ").trim();
   const compactBody = body.replace(/\s+/g, " ").trim();
   return (

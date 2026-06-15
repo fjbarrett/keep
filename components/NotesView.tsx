@@ -58,7 +58,6 @@ export function NotesView({
   const [viewMode, setViewMode] = useState<"active" | "archive" | "trash">(
     "active",
   );
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
@@ -72,14 +71,6 @@ export function NotesView({
     [notes],
   );
 
-  const allTags = useMemo(() => {
-    const set = new Set<string>();
-    for (const n of notes) {
-      if (!n.trashed) for (const t of n.tags) set.add(t);
-    }
-    return [...set].sort();
-  }, [notes]);
-
   const filtered = useMemo(() => {
     const q = searchOpen ? query.trim() : "";
     const viewFiltered = notes
@@ -87,8 +78,7 @@ export function NotesView({
         if (viewMode === "trash") return n.trashed;
         if (viewMode === "archive") return n.archived && !n.trashed;
         return !n.archived && !n.trashed;
-      })
-      .filter((n) => !tagFilter || n.tags.includes(tagFilter));
+      });
     if (!q) return viewFiltered.sort((a, b) => b.updatedAt - a.updatedAt);
     const fuse = new Fuse(viewFiltered, {
       keys: [
@@ -100,7 +90,7 @@ export function NotesView({
       minMatchCharLength: 2,
     });
     return fuse.search(q).map((r) => r.item);
-  }, [notes, query, searchOpen, tagFilter, viewMode]);
+  }, [notes, query, searchOpen, viewMode]);
 
   const visibleNotes = filtered;
   const activeNote =
@@ -344,11 +334,8 @@ export function NotesView({
     filtered,
     activeNoteId,
     viewMode,
-    allTags,
-    tagFilter,
-    onTagFilter: setTagFilter,
     syncStatus,
-    onExitFilteredView: () => { setViewMode("active"); setTagFilter(null); },
+    onExitFilteredView: () => setViewMode("active"),
     onOpenNote: openNote,
     onNewNote: () => {
       setActiveNoteId(null);

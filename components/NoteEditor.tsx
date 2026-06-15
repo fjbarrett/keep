@@ -13,7 +13,6 @@ import {
   PinFilledIcon,
   PinIcon,
   ShareIcon,
-  TagIcon,
   TrashIcon,
   UnarchiveIcon,
   XIcon,
@@ -63,9 +62,6 @@ export function NoteEditor({
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
-  const [tagOpen, setTagOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -95,16 +91,12 @@ export function NoteEditor({
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
       setHighlight(Boolean(target.note.highlight));
-      setTags(target.note.tags ?? []);
     } else {
       setBody("");
       setPinned(false);
       setArchived(false);
       setHighlight(false);
-      setTags([]);
     }
-    setTagInput("");
-    setTagOpen(false);
     setDirty(false);
     setHistoryOpen(false);
     setVersions([]);
@@ -134,7 +126,7 @@ export function NoteEditor({
     if (!target || !dirty) return;
     if (target.mode === "edit") {
       const timer = window.setTimeout(() => {
-        onUpdate(target.note.id, { body, pinned, archived, highlight, tags });
+        onUpdate(target.note.id, { body, pinned, archived, highlight });
         setDirty(false);
       }, 550);
       return () => window.clearTimeout(timer);
@@ -143,7 +135,7 @@ export function NoteEditor({
       if (createdIdRef.current) {
         const id = createdIdRef.current;
         const timer = window.setTimeout(() => {
-          onUpdate(id, { body, pinned, archived, highlight, tags });
+          onUpdate(id, { body, pinned, archived, highlight });
           setDirty(false);
         }, 550);
         return () => window.clearTimeout(timer);
@@ -152,7 +144,7 @@ export function NoteEditor({
       const timer = window.setTimeout(async () => {
         if (createdIdRef.current || creatingRef.current) return;
         creatingRef.current = true;
-        const note = await onCreate({ body, pinned, archived, highlight, tags });
+        const note = await onCreate({ body, pinned, archived, highlight });
         creatingRef.current = false;
         if (note) {
           createdIdRef.current = note.id;
@@ -161,7 +153,7 @@ export function NoteEditor({
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, highlight, onCreate, onUpdate, pinned, tags, target]);
+  }, [archived, body, dirty, highlight, onCreate, onUpdate, pinned, target]);
 
   function markBody(value: string) {
     setBody(value);
@@ -175,19 +167,6 @@ export function NoteEditor({
 
   function toggleArchived() {
     setArchived((value) => !value);
-    setDirty(true);
-  }
-
-  function addTag(tag: string) {
-    const t = tag.trim().toLowerCase();
-    if (!t || tags.includes(t)) return;
-    setTags((prev) => [...prev, t]);
-    setTagInput("");
-    setDirty(true);
-  }
-
-  function removeTag(tag: string) {
-    setTags((prev) => prev.filter((t) => t !== tag));
     setDirty(true);
   }
 
@@ -270,7 +249,7 @@ export function NoteEditor({
 
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
-    onUpdate(target.note.id, { body, pinned, archived, highlight, tags });
+    onUpdate(target.note.id, { body, pinned, archived, highlight });
     setDirty(false);
   }
 
@@ -278,10 +257,10 @@ export function NoteEditor({
     if (!target) return;
     if (target.mode === "new") {
       if (createdIdRef.current) {
-        onUpdate(createdIdRef.current, { body, pinned, archived, highlight, tags });
+        onUpdate(createdIdRef.current, { body, pinned, archived, highlight });
       } else if (body.trim() && !creatingRef.current) {
         creatingRef.current = true;
-        onCreate({ body, pinned, archived, highlight, tags });
+        onCreate({ body, pinned, archived, highlight });
       }
     } else {
       flushEdit();
@@ -310,15 +289,6 @@ export function NoteEditor({
       )}
       {!isTrashed ? (
         <>
-          <button
-            type="button"
-            onClick={() => setTagOpen((v) => !v)}
-            className={iconToggle(tags.length > 0 || tagOpen)}
-            title="Tags"
-            aria-label="Tags"
-          >
-            <TagIcon className="h-4 w-4" />
-          </button>
           <button
             type="button"
             onClick={() => { setHighlight((v) => !v); setDirty(true); }}
@@ -493,61 +463,6 @@ export function NoteEditor({
   const editor = (
     <>
         {!historyOpen && header}
-
-        {(tags.length > 0 || tagOpen) && (
-          <div className="flex w-full max-w-3xl flex-wrap items-center gap-1.5 px-6 py-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 rounded-full bg-[var(--color-surface-hover)] px-2 py-0.5 text-xs text-[var(--color-text)]"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeTag(tag)}
-                  className="ml-0.5 text-[var(--color-muted)] hover:text-[var(--color-text)]"
-                  aria-label={`Remove tag ${tag}`}
-                >
-                  <XIcon className="h-2.5 w-2.5" />
-                </button>
-              </span>
-            ))}
-            {tagOpen && (
-              <input
-                autoFocus
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === ",") {
-                    e.preventDefault();
-                    addTag(tagInput);
-                  }
-                  if (e.key === "Backspace" && !tagInput && tags.length > 0) {
-                    removeTag(tags[tags.length - 1]);
-                  }
-                  if (e.key === "Escape") {
-                    setTagOpen(false);
-                    setTagInput("");
-                  }
-                }}
-                onBlur={() => {
-                  if (tagInput.trim()) addTag(tagInput);
-                  setTagOpen(false);
-                }}
-                placeholder="Add tag..."
-                name="note-tag"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                data-1p-ignore
-                data-lpignore="true"
-                data-bwignore
-                data-form-type="other"
-                className="min-w-[80px] flex-1 border-0 bg-transparent text-xs text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
-              />
-            )}
-          </div>
-        )}
 
         {historyOpen ? (
           <VersionHistory

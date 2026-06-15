@@ -79,40 +79,26 @@ describe("needsInferredTitle", () => {
 
 describe("searchableText", () => {
   it("uses body when present", () => {
-    expect(searchableText({ body: "body", title: "title", tags: [] })).toBe(
-      "body",
-    );
+    expect(searchableText({ body: "body", title: "title" })).toBe("body");
   });
 
   it("falls back to title when body is empty", () => {
-    expect(searchableText({ body: "", title: "title", tags: [] })).toBe(
-      "title",
-    );
-  });
-
-  it("appends tags", () => {
-    expect(
-      searchableText({ body: "body", title: "title", tags: ["a", "b"] }),
-    ).toBe("body a b");
+    expect(searchableText({ body: "", title: "title" })).toBe("title");
   });
 });
 
 describe("previewText", () => {
   it("infers title for notes without explicit title", () => {
-    const result = previewText({ body: "Hello world", title: "", tags: [] });
+    const result = previewText({ body: "Hello world", title: "" });
     expect(result).toBe("Hello world");
   });
 
   it("uses saved title when valid", () => {
-    const result = previewText({
-      body: "long body text here",
-      title: "My Note",
-      tags: [],
-    });
+    const result = previewText({ body: "long body text here", title: "My Note" });
     expect(result).toBe("My Note");
   });
 
   it("returns fallback for blank note", () => {
-    expect(previewText({ body: "", title: "", tags: [] })).toBe("Untitled note");
+    expect(previewText({ body: "", title: "" })).toBe("Untitled note");
   });
 });
