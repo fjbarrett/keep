@@ -20,7 +20,7 @@ function relativeDate(ts: number): string {
 }
 
 function bodyPreview(body: string): string {
-  return body
+  const text = body
     .split(/\r?\n/)
     .map((line) =>
       line
@@ -36,8 +36,8 @@ function bodyPreview(body: string): string {
         .trim(),
     )
     .filter((line) => line.length > 0)
-    .slice(0, 3)
-    .join(" · ");
+    .join(" ");
+  return text.length > 260 ? text.slice(0, 260).trimEnd() + "…" : text;
 }
 
 function NoteCard({
@@ -65,7 +65,7 @@ function NoteCard({
         )}
       </div>
       {preview && (
-        <p className="mt-1.5 line-clamp-2 text-xs text-[var(--color-muted)]">
+        <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-[var(--color-muted)]">
           {preview}
         </p>
       )}
