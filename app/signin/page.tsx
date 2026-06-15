@@ -14,8 +14,8 @@ export default async function SignInPage({
   return (
     <main className="flex flex-1 items-center justify-center px-6">
       <div className="w-full max-w-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-sm">
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <Logo />
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <Logo size={44} />
           <p className="text-sm text-[var(--color-muted)]">
             Sign in to keep your notes.
           </p>
