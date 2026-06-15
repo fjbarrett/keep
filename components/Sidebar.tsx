@@ -8,6 +8,7 @@ import {
   DotsIcon,
   PinFilledIcon,
   PlusIcon,
+  QuestionMarkIcon,
   SettingsIcon,
   XIcon,
 } from "@/components/Icons";
@@ -53,6 +54,7 @@ export function Sidebar({
   onOpenNote,
   onNewNote,
   onOpenSettings,
+  onOpenShortcuts,
   togglePin,
   toggleArchive,
   trash,
@@ -72,6 +74,7 @@ export function Sidebar({
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
   onOpenSettings: () => void;
+  onOpenShortcuts: () => void;
   togglePin: (id: string) => void;
   toggleArchive: (id: string) => void;
   trash: (id: string) => void;
@@ -171,14 +174,25 @@ export function Sidebar({
       <div className="p-2">
         <div className="flex items-center justify-between px-2.5 py-1">
           <SyncIndicator status={syncStatus} />
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-            title="Settings"
-          >
-            <SettingsIcon className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onOpenShortcuts}
+              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              title="Keyboard shortcuts"
+              aria-label="Keyboard shortcuts"
+            >
+              <QuestionMarkIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              title="Settings"
+            >
+              <SettingsIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

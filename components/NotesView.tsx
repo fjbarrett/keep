@@ -419,6 +419,7 @@ export function NotesView({
       setTarget({ mode: "new" });
     },
     onOpenSettings: () => setSettingsOpen(true),
+    onOpenShortcuts: () => setShortcutsOpen(true),
     togglePin,
     toggleArchive,
     trash,
