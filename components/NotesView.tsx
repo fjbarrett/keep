@@ -658,7 +658,7 @@ export function NotesView({
             <Sidebar {...sidebarProps} width={sidebarWidth} />
             <div
               onMouseDown={startSidebarResize}
-              className="mt-4 w-[3px] shrink-0 cursor-col-resize bg-[var(--color-border)] opacity-0 transition-opacity hover:opacity-100"
+              className="w-[3px] shrink-0 cursor-col-resize"
               aria-hidden
             />
           </>

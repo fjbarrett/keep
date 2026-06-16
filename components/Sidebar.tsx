@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { previewText } from "@/lib/inferTitle";
 import { detectCodeLanguage, languageLabel } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
@@ -113,26 +113,52 @@ export function Sidebar({
   >(null);
   const orderKey = useMemo(() => filtered.map((n) => n.id).join(","), [filtered]);
 
+  const measure = useCallback(
+    (animateOnChange: boolean) => {
+      const container = listRef.current;
+      const row =
+        container && activeNoteId
+          ? container.querySelector<HTMLElement>(
+              `[data-note-id="${CSS.escape(activeNoteId)}"]`,
+            )
+          : null;
+      if (!row) {
+        setIndicator(null);
+        return;
+      }
+      const top = row.offsetTop;
+      const height = row.offsetHeight;
+      setIndicator((prev) =>
+        prev && prev.top === top && prev.height === height
+          ? prev
+          : { top, height, animate: animateOnChange && prev != null },
+      );
+    },
+    [activeNoteId],
+  );
+
+  // A user selection (or the list reordering) springs the highlight into place.
+  useEffect(() => {
+    measure(true);
+  }, [measure, orderKey, hydrated]);
+
+  // Web fonts loading (and sidebar resizes) shift row offsets after the first
+  // paint, which left the very first selection a few px off. Re-measure and
+  // snap (no slide) so it lands exactly.
   useEffect(() => {
     const container = listRef.current;
-    const row =
-      container && activeNoteId
-        ? container.querySelector<HTMLElement>(
-            `[data-note-id="${CSS.escape(activeNoteId)}"]`,
-          )
-        : null;
-    if (!row) {
-      setIndicator(null);
-      return;
-    }
-    const top = row.offsetTop;
-    const height = row.offsetHeight;
-    setIndicator((prev) =>
-      prev && prev.top === top && prev.height === height
-        ? prev
-        : { top, height, animate: prev != null },
-    );
-  }, [activeNoteId, orderKey, hydrated]);
+    if (!container) return;
+    const ro = new ResizeObserver(() => measure(false));
+    ro.observe(container);
+    let cancelled = false;
+    document.fonts?.ready?.then(() => {
+      if (!cancelled) measure(false);
+    });
+    return () => {
+      cancelled = true;
+      ro.disconnect();
+    };
+  }, [measure]);
 
   return (
     <aside
