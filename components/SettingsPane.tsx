@@ -127,18 +127,6 @@ export function SettingsPane({
             <span>{importing ? "Importing..." : "Import from Google Keep"}</span>
             <UploadIcon className="h-4 w-4" />
           </button>
-          <p className="-mt-1 px-1 text-xs text-[var(--color-muted)]">
-            Exported via{" "}
-            <a
-              href="https://takeout.google.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--color-link)] hover:underline"
-            >
-              Takeout
-            </a>
-            .
-          </p>
 
           <input
             ref={importTextsRef}
