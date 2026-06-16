@@ -52,7 +52,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
       <button
         type="button"
         onClick={() => actions.onOpen(note)}
-        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-16 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+        className="flex h-44 w-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-16 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
       >
         <p className="flex items-center gap-1.5 truncate text-sm font-medium text-[var(--color-text)]">
           {noteColorVar(note.color) && (
@@ -69,11 +69,9 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
             {preview}
           </p>
         )}
-        {ext !== "txt" && (
-          <span className="mt-3 inline-block rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px] lowercase text-[var(--color-subtle)]">
-            .{ext}
-          </span>
-        )}
+        <span className="mt-auto inline-block self-start rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px] lowercase text-[var(--color-subtle)]">
+          .{ext}
+        </span>
       </button>
 
       {/* Quick pin — top-right corner */}
