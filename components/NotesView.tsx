@@ -620,7 +620,7 @@ export function NotesView({
         ) : restoringFromUrl ? (
           <div className="flex-1" aria-hidden />
         ) : filtered.length > 0 ? (
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto p-2">
             <NotesCardGrid
               notes={filtered}
               onOpen={openNote}
