@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
+import { noteFileExtension } from "@/lib/detectLanguage";
 import { CopyNoteButton } from "@/components/CopyNoteButton";
 import { MarkdownCodeBlock } from "@/components/MarkdownCodeBlock";
 
@@ -83,6 +84,7 @@ export default async function SharedNotePage({
   const title = displayTitle(note.title, note.body);
   const isMarkdown = looksLikeMarkdown(note.body);
   const sameDay = isSameDay(note.createdAt, note.updatedAt);
+  const downloadExt = noteFileExtension(note.body);
 
   const hasTags = note.tags && note.tags.length > 0;
 
@@ -122,10 +124,10 @@ export default async function SharedNotePage({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <a
-                href={`/p/${params.token}.txt`}
+                href={`/p/${params.token}.${downloadExt}`}
                 download
-                aria-label="Download as .txt"
-                title="Download as .txt"
+                aria-label={`Download as .${downloadExt}`}
+                title={`Download as .${downloadExt}`}
                 className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
               >
                 <DownloadMark />
