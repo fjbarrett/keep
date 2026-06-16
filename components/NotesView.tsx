@@ -12,7 +12,6 @@ import { Sidebar, NoteInfoModal } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
-import { EncryptionSetup } from "@/components/EncryptionSetup";
 import { EncryptionUnlock } from "@/components/EncryptionUnlock";
 import { NotesCardGrid } from "@/components/NotesCardGrid";
 import { KeyboardIcon, PanelLeftIcon, PlusIcon, SettingsIcon, StackIcon, XIcon } from "@/components/Icons";
@@ -55,8 +54,10 @@ export function NotesView({
     syncStatus,
   } = useNotes();
 
-  const { status: encStatus, unlock, setupEncryption, disableEncryption, encrypt, decrypt } = useEncryption();
-  const [encSetupOpen, setEncSetupOpen] = useState(false);
+  // Encryption setup/disable is on ice while its decrypt bugs are worked out
+  // (the Settings entry point is removed). The unlock + decrypt path stays so
+  // any notes already stored as "enc:" ciphertext remain readable.
+  const { status: encStatus, unlock, disableEncryption, encrypt, decrypt } = useEncryption();
   const [decryptedState, setDecryptedState] = useState<Note[]>([]);
   // When encryption is unlocked we work off the decrypted copies; otherwise the
   // raw notes are already usable (plaintext, or ciphertext we can't read yet).
@@ -253,63 +254,6 @@ export function NotesView({
     );
     return () => { cancelled = true; };
   }, [notes, decrypt, encStatus]);
-
-  // Decrypts every note back to plaintext and rewrites it before dropping the
-  // salt — otherwise disabling would orphan the ciphertext permanently.
-  async function handleDisableEncryption() {
-    if (
-      !confirm(
-        "Disable encryption? Your text will be decrypted and re-saved as plaintext on the server.",
-      )
-    ) {
-      return;
-    }
-    await Promise.all(
-      notes
-        .filter((n) => isEncrypted(n.body))
-        .map(async (n) => update(n.id, { body: await decrypt(n.body), title: n.title })),
-    );
-    await disableEncryption();
-  }
-
-  // Notes still stored as plaintext (encryption was enabled after they were
-  // created, or a prior backfill missed them).
-  const plaintextCount =
-    encStatus === "unlocked"
-      ? notes.filter((n) => !isEncrypted(n.body) && n.body.trim().length > 0).length
-      : 0;
-
-  // Re-runnable backfill: encrypt every plaintext note now. Sequential and
-  // failure-tolerant so one bad save doesn't abort the rest (unlike the
-  // one-shot Promise.all at setup time).
-  async function handleEncryptAll() {
-    const targets = notes.filter(
-      (n) => !isEncrypted(n.body) && n.body.trim().length > 0,
-    );
-    if (targets.length === 0) return;
-    if (
-      !confirm(
-        `Encrypt ${targets.length} note${targets.length === 1 ? "" : "s"} still stored as plaintext? They'll be re-saved as ciphertext.`,
-      )
-    ) {
-      return;
-    }
-    let failed = 0;
-    for (const n of targets) {
-      try {
-        const body = await encrypt(n.body);
-        await update(n.id, { body, title: n.title });
-      } catch {
-        failed += 1;
-      }
-    }
-    setSettingsOpen(false);
-    alert(
-      failed
-        ? `Encrypted ${targets.length - failed} of ${targets.length}; ${failed} failed — try again.`
-        : `Encrypted ${targets.length} note${targets.length === 1 ? "" : "s"}.`,
-    );
-  }
 
   // Wraps the raw update call to encrypt the body before it leaves the browser.
   const secureUpdate = useCallback(
@@ -704,7 +648,6 @@ export function NotesView({
           notes={notes}
           isGuest={isGuest}
           counts={counts}
-          encStatus={encStatus}
           onOpenArchive={() => {
             setViewMode("archive");
             setSettingsOpen(false);
@@ -723,30 +666,7 @@ export function NotesView({
           onImportTextsClick={() => importTextsRef.current?.click()}
           onImportTexts={handleImportTexts}
           onGuestExport={handleGuestExport}
-          onEnableEncryption={() => setEncSetupOpen(true)}
-          onDisableEncryption={handleDisableEncryption}
-          onEncryptAll={handleEncryptAll}
-          plaintextCount={plaintextCount}
           onClose={() => setSettingsOpen(false)}
-        />
-      )}
-
-      {encSetupOpen && (
-        <EncryptionSetup
-          onSetup={async (passphrase) => {
-            await setupEncryption(passphrase);
-            // Backfill: encrypt notes that predate enabling so coverage is real.
-            // Pass the existing title so metadata isn't regenerated from ciphertext.
-            await Promise.all(
-              notes
-                .filter((n) => !isEncrypted(n.body))
-                .map(async (n) =>
-                  update(n.id, { body: await encrypt(n.body), title: n.title }),
-                ),
-            );
-            setEncSetupOpen(false);
-          }}
-          onClose={() => setEncSetupOpen(false)}
         />
       )}
 
