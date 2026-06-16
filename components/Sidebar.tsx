@@ -457,10 +457,67 @@ function MenuItem({
 export function NoteInfoModal({
   note,
   onClose,
+  onShare,
+  onUnshare,
+  onSetShareToken,
+  canShare,
 }: {
   note: Note;
   onClose: () => void;
+  onShare?: (id: string) => Promise<string | null>;
+  onUnshare?: (id: string) => Promise<void>;
+  onSetShareToken?: (id: string, token: string) => Promise<string | null>;
+  canShare?: boolean;
 }) {
+  const [token, setToken] = useState<string | null>(note.shareToken ?? null);
+  const [vanity, setVanity] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const url = token ? `${origin}/p/${token}` : "";
+
+  async function createShare() {
+    if (!onShare) return;
+    setBusy(true);
+    setShareError(null);
+    try {
+      setToken(await onShare(note.id));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function stopShare() {
+    if (!onUnshare) return;
+    setBusy(true);
+    try {
+      await onUnshare(note.id);
+      setToken(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveVanity() {
+    if (!onSetShareToken || !vanity.trim()) return;
+    setBusy(true);
+    setShareError(null);
+    try {
+      setToken(await onSetShareToken(note.id, vanity.trim()));
+      setVanity("");
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : "Couldn't set that link.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard blocked */ }
+  }
+
   const words = note.body.trim() ? note.body.trim().split(/\s+/).length : 0;
   const chars = note.body.length;
   const bytes = new TextEncoder().encode(note.body).byteLength;
@@ -527,6 +584,73 @@ export function NoteInfoModal({
             <dt className="text-[var(--color-muted)]">Size</dt>
             <dd className="text-right text-[var(--color-text)]">{fmtBytes(bytes)}</dd>
           </dl>
+          {canShare && (
+            <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+              <p className="text-xs font-medium text-[var(--color-text)]">Public link</p>
+              <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                Anyone with the link can read this text.
+              </p>
+              {token ? (
+                <>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <input
+                      readOnly
+                      value={url}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 font-mono text-xs text-[var(--color-text)] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={copyUrl}
+                      className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                    >
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className="shrink-0 font-mono text-xs text-[var(--color-muted)]">
+                      /p/
+                    </span>
+                    <input
+                      value={vanity}
+                      onChange={(e) => setVanity(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && saveVanity()}
+                      placeholder="custom-link"
+                      className="min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 font-mono text-xs text-[var(--color-text)] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveVanity}
+                      disabled={busy || !vanity.trim()}
+                      className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                  {shareError && (
+                    <p className="mt-1.5 text-xs text-[var(--color-danger)]">{shareError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={stopShare}
+                    disabled={busy}
+                    className="mt-2 text-xs text-[var(--color-danger)] hover:underline disabled:opacity-50"
+                  >
+                    Stop sharing
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={createShare}
+                  disabled={busy}
+                  className="mt-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+                >
+                  {busy ? "Generating link…" : "Create share link"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

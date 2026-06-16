@@ -51,6 +51,7 @@ export function NotesView({
     toggleArchive,
     share,
     unshare,
+    setShareToken,
     syncStatus,
   } = useNotes();
 
@@ -712,7 +713,14 @@ export function NotesView({
       )}
 
       {infoNote && (
-        <NoteInfoModal note={infoNote} onClose={() => setInfoNote(null)} />
+        <NoteInfoModal
+          note={infoNote}
+          onClose={() => setInfoNote(null)}
+          onShare={share}
+          onUnshare={unshare}
+          onSetShareToken={setShareToken}
+          canShare={!isGuest}
+        />
       )}
     </>
   );

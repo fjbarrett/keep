@@ -535,6 +535,20 @@ export function useNotes() {
     [isGuest, localNoteIds],
   );
 
+  // Sets a custom vanity share token. Throws on error (e.g. taken) so callers
+  // can surface it inline.
+  const setShareToken = useCallback(
+    async (id: string, token: string) => {
+      const data = await api<{ note: Note }>(`/api/notes/${id}/share`, {
+        method: "PUT",
+        json: { token },
+      });
+      setNotes((prev) => prev.map((n) => (n.id === id ? data.note : n)));
+      return data.note.shareToken;
+    },
+    [],
+  );
+
   return {
     notes,
     hydrated,
@@ -550,6 +564,7 @@ export function useNotes() {
     restore,
     share,
     unshare,
+    setShareToken,
     importKeepFile,
     importTextFiles,
     saveLocalNotes,
