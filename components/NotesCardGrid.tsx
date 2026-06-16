@@ -79,7 +79,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
         title={note.pinned ? "Unpin" : "Pin"}
         aria-label={note.pinned ? "Unpin" : "Pin"}
         aria-pressed={note.pinned}
-        className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
+        className={`absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
           note.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
       >
@@ -100,7 +100,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
           e.stopPropagation();
           setMenuOpen((v) => !v);
         }}
-        className={`absolute bottom-2.5 right-2.5 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-pink-light)] focus-visible:opacity-100 ${
+        className={`absolute bottom-2.5 right-2.5 grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-pink-light)] focus-visible:opacity-100 ${
           menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
       >

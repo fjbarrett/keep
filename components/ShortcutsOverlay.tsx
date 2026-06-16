@@ -66,7 +66,7 @@ export function ShortcutsOverlay({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
           >
             <XIcon className="h-4 w-4" />
           </button>

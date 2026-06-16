@@ -195,7 +195,7 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={onCollapse}
-                className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"
               >
@@ -205,7 +205,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
               title="Settings"
             >
               <SettingsIcon className="h-4 w-4" />
@@ -213,7 +213,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onOpenShortcuts}
-              className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
+              className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
               title="Keyboard shortcuts"
               aria-label="Keyboard shortcuts"
             >
@@ -508,7 +508,7 @@ export function NoteInfoModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
           >
             <XIcon className="h-4 w-4" />
           </button>
