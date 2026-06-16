@@ -29,6 +29,8 @@ export function SettingsPane({
   onGuestExport,
   onEnableEncryption,
   onDisableEncryption,
+  onEncryptAll,
+  plaintextCount,
   onClose,
 }: {
   importing: boolean;
@@ -47,6 +49,8 @@ export function SettingsPane({
   onGuestExport: () => void;
   onEnableEncryption: () => void;
   onDisableEncryption: () => void;
+  onEncryptAll: () => void;
+  plaintextCount: number;
   onClose: () => void;
 }) {
   const exportableCount = notes.filter((note) => !note.trashed).length;
@@ -218,6 +222,21 @@ export function SettingsPane({
                     </button>
                   )}
                 </div>
+              )}
+              {encStatus === "unlocked" && plaintextCount > 0 && (
+                <button
+                  type="button"
+                  onClick={onEncryptAll}
+                  className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-left text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                >
+                  <span>
+                    Encrypt {plaintextCount} existing{" "}
+                    {plaintextCount === 1 ? "note" : "notes"}
+                    <span className="block text-xs font-normal text-[var(--color-muted)]">
+                      Still stored as plaintext — encrypt them now
+                    </span>
+                  </span>
+                </button>
               )}
             </>
           )}
