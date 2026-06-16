@@ -22,6 +22,9 @@ export function SettingsPane({
   onOpenTrash,
   onImportClick,
   onImport,
+  importTextsRef,
+  onImportTextsClick,
+  onImportTexts,
   onGuestExport,
   onEnableEncryption,
   onDisableEncryption,
@@ -37,6 +40,9 @@ export function SettingsPane({
   onOpenTrash: () => void;
   onImportClick: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  importTextsRef: React.RefObject<HTMLInputElement>;
+  onImportTextsClick: () => void;
+  onImportTexts: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onGuestExport: () => void;
   onEnableEncryption: () => void;
   onDisableEncryption: () => void;
@@ -123,7 +129,36 @@ export function SettingsPane({
             disabled={importing}
             className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
           >
-            <span>{importing ? "Importing..." : "Import Google Keep"}</span>
+            <span>{importing ? "Importing..." : "Import from Google Keep"}</span>
+            <UploadIcon className="h-4 w-4" />
+          </button>
+          <p className="-mt-1 px-1 text-xs text-[var(--color-muted)]">
+            Exported via{" "}
+            <a
+              href="https://takeout.google.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--color-link)] hover:underline"
+            >
+              Takeout
+            </a>
+            .
+          </p>
+
+          <input
+            ref={importTextsRef}
+            type="file"
+            accept=".txt,.md,.markdown,.zip,text/plain,application/zip"
+            onChange={onImportTexts}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={onImportTextsClick}
+            disabled={importing}
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
+          >
+            <span>{importing ? "Importing..." : "Import texts (.txt / .zip)"}</span>
             <UploadIcon className="h-4 w-4" />
           </button>
 
