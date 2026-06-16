@@ -7,11 +7,13 @@ import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor"
 import { MarkdownPreview } from "./MarkdownPreview";
 import { ColorSwatchRow } from "./ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
+import { noteFileExtension } from "@/lib/detectLanguage";
 import {
   ArchiveIcon,
   CheckIcon,
   ChevronLeftIcon,
   CopyIcon,
+  DownloadIcon,
   HistoryIcon,
   PinFilledIcon,
   PinIcon,
@@ -275,6 +277,22 @@ export function NoteEditor({
     }
   }
 
+  function downloadNote() {
+    if (!body.trim()) return;
+    const ext = noteFileExtension(body);
+    const first = body.split("\n").find((l) => l.trim()) ?? "note";
+    const base =
+      first.replace(/^#{1,6}\s+/, "").replace(/[<>:"/\\|?*\x00-\x1f]/g, "").trim().slice(0, 50) ||
+      "note";
+    const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${base}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
     onUpdate(target.note.id, { body, pinned, archived, highlight });
@@ -472,6 +490,17 @@ export function NoteEditor({
                 )}
               </button>
             )
+          )}
+          {body.trim() && (
+            <button
+              type="button"
+              onClick={downloadNote}
+              className={ICON_BUTTON}
+              title="Download note"
+              aria-label="Download note"
+            >
+              <DownloadIcon className="h-4 w-4" />
+            </button>
           )}
           {target.mode === "edit" && canShare && (
             <SharePopover
