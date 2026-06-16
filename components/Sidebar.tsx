@@ -417,7 +417,7 @@ function SidebarNoteRow({
       className={`group relative flex items-center rounded-md ${
         active
           ? slidingIn
-            ? "bg-[var(--color-surface-hover)]"
+            ? "bg-[var(--color-accent)]"
             : ""
           : "hover:bg-[var(--color-surface-hover)]"
       }`}
@@ -442,7 +442,7 @@ function SidebarNoteRow({
             onClick={onOpen}
             aria-current={active ? "true" : undefined}
             className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
-              active && !slidingIn
+              active
                 ? "text-[var(--color-accent-fg)]"
                 : "text-[var(--color-text)]"
             }`}
