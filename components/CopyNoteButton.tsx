@@ -30,8 +30,8 @@ export function CopyNoteButton({
     <button
       type="button"
       onClick={onCopy}
-      aria-label={copied ? "Copied" : "Copy note"}
-      title={copied ? "Copied" : "Copy note"}
+      aria-label={copied ? "Copied" : "Copy text"}
+      title={copied ? "Copied" : "Copy text"}
       className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
     >
       {copied ? <CheckMark /> : <CopyMark />}

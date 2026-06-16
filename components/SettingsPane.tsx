@@ -133,7 +133,7 @@ export function SettingsPane({
               onClick={onGuestExport}
               className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
             >
-              <span>Export notes</span>
+              <span>Export texts</span>
               <DownloadIcon className="h-4 w-4" />
             </button>
           ) : exportableCount > 0 ? (
@@ -142,7 +142,7 @@ export function SettingsPane({
               className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
               onClick={onClose}
             >
-              <span>Export notes</span>
+              <span>Export texts</span>
               <DownloadIcon className="h-4 w-4" />
             </a>
           ) : (
@@ -151,7 +151,7 @@ export function SettingsPane({
               disabled
               className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-muted)] opacity-60"
             >
-              <span>Export notes</span>
+              <span>Export texts</span>
               <DownloadIcon className="h-4 w-4" />
             </button>
           )}
@@ -170,7 +170,7 @@ export function SettingsPane({
                     </p>
                     <p className="text-xs text-[var(--color-muted)]">
                       {encStatus === "disabled"
-                        ? "Notes stored as plaintext"
+                        ? "Text stored as plaintext"
                         : encStatus === "locked"
                         ? "Enabled · locked this session"
                         : "Enabled · unlocked"}

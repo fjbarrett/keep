@@ -7,16 +7,16 @@ const SHORTCUT_GROUPS = [
   {
     title: "Navigation",
     items: [
-      { keys: ["j", "↓"], label: "Next note" },
-      { keys: ["k", "↑"], label: "Previous note" },
-      { keys: ["Enter", "o"], label: "Open note" },
+      { keys: ["j", "↓"], label: "Next text" },
+      { keys: ["k", "↑"], label: "Previous text" },
+      { keys: ["Enter", "o"], label: "Open text" },
       { keys: ["Esc"], label: "Close editor" },
     ],
   },
   {
     title: "Actions",
     items: [
-      { keys: ["n", "c"], label: "New note" },
+      { keys: ["n", "c"], label: "New text" },
       { keys: ["p"], label: "Toggle pin" },
       { keys: ["a"], label: "Toggle archive" },
       { keys: ["⌘I"], label: "Get info" },
@@ -77,9 +77,9 @@ export function ShortcutsOverlay({
               Welcome to Keep
             </p>
             <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
-              A fast, minimalist place for notes — write in plain text, Markdown,
+              A fast, minimalist place for text — write in plain text, Markdown,
               or code with syntax highlighting; organize with pins, colors, and
-              search. You&apos;re browsing as a guest: notes stay in this browser
+              search. You&apos;re browsing as a guest: text stays in this browser
               until you{" "}
               <a href="/signin?from=/" className="text-[var(--color-link)] hover:underline">
                 sign in to save and sync

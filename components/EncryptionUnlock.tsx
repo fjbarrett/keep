@@ -63,7 +63,7 @@ export function EncryptionUnlock({
           onClick={() => {
             if (
               confirm(
-                "Reset encryption? This turns it off so you can use the app again, but any notes encrypted with the forgotten passphrase stay unreadable.",
+                "Reset encryption? This turns it off so you can use the app again, but any text encrypted with the forgotten passphrase stay unreadable.",
               )
             ) {
               onReset();

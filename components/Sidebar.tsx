@@ -105,7 +105,7 @@ export function Sidebar({
 
   return (
     <aside
-      aria-label="Notes sidebar"
+      aria-label="Text sidebar"
       style={!mobile && width ? { width } : undefined}
       className={
         mobile
@@ -122,7 +122,7 @@ export function Sidebar({
           <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
             <PlusIcon className="h-3.5 w-3.5" />
           </span>
-          <span className="font-medium">New note</span>
+          <span className="font-medium">New text</span>
         </button>
       </div>
 
@@ -136,7 +136,7 @@ export function Sidebar({
             onClick={onExitFilteredView}
             className="text-xs text-[var(--color-link)] hover:underline"
           >
-            Back to notes
+            Back to texts
           </button>
         </div>
       )}
@@ -154,7 +154,7 @@ export function Sidebar({
           </div>
         ) : filtered.length === 0 ? (
           <p className="px-2 py-6 text-xs text-[var(--color-muted)]">
-            {filteredTitle ? `${filteredTitle} is empty.` : "No notes."}
+            {filteredTitle ? `${filteredTitle} is empty.` : "No texts."}
           </p>
         ) : (
           buckets.map((bucket) => (
@@ -368,7 +368,7 @@ function SidebarNoteRow({
                 <MenuItem
                   danger
                   onClick={() => {
-                    if (confirm("Permanently delete this note?")) remove();
+                    if (confirm("Permanently delete this text?")) remove();
                     setMenuOpen(false);
                   }}
                 >
@@ -493,12 +493,12 @@ export function NoteInfoModal({
       />
       <div
         role="dialog"
-        aria-label="Note Info"
+        aria-label="Text Info"
         className="relative z-10 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">
-            Note Info
+            Text Info
           </h2>
           <button
             type="button"

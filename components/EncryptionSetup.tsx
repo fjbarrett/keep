@@ -56,7 +56,7 @@ export function EncryptionSetup({
         <p className="mb-4 text-xs text-[var(--color-muted)]">
           Choose a passphrase. It never leaves this device — the server only
           stores your encrypted notes and cannot read them without it.
-          <strong className="text-[var(--color-text)]"> If you forget your passphrase your notes cannot be recovered.</strong>
+          <strong className="text-[var(--color-text)]"> If you forget your passphrase your text cannot be recovered.</strong>
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">

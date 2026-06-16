@@ -226,7 +226,7 @@ export function NotesView({
       zip.file(noteFileName(note), noteFileContent(note));
     }
     const content = await zip.generateAsync({ type: "blob" });
-    downloadBlob("keep-notes.zip", content, "application/zip");
+    downloadBlob("keep-texts.zip", content, "application/zip");
   }
 
   // Decrypt all note bodies once the key is unlocked. Notes without an "enc:"
@@ -246,7 +246,7 @@ export function NotesView({
   async function handleDisableEncryption() {
     if (
       !confirm(
-        "Disable encryption? Your notes will be decrypted and re-saved as plaintext on the server.",
+        "Disable encryption? Your text will be decrypted and re-saved as plaintext on the server.",
       )
     ) {
       return;
@@ -462,7 +462,7 @@ export function NotesView({
       if ((event.key === "Delete" || event.key === "Backspace") && activeNote) {
         event.preventDefault();
         if (activeNote.trashed) {
-          if (confirm("Permanently delete this note?")) remove(activeNote.id);
+          if (confirm("Permanently delete this text?")) remove(activeNote.id);
         } else {
           trash(activeNote.id);
         }
@@ -756,8 +756,8 @@ function GuestSaveBanner({
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
       <p className="text-sm text-[var(--color-muted)]">
         {hasLocalNotes
-          ? "Some notes are saved only in this browser."
-          : "These notes are saved only in this browser."}
+          ? "Some of your text is saved only in this browser."
+          : "Your text is saved only in this browser."}
       </p>
       <div className="flex items-center gap-1.5">
         {isGuest ? (
@@ -836,12 +836,12 @@ function MainPlaceholder({
           <StackIcon className="h-5 w-5 text-[var(--color-muted)]" />
         </div>
         <p className="text-base font-medium text-[var(--color-text)]">
-          {hasNotes ? "Select a note" : "No notes yet"}
+          {hasNotes ? "Select a text" : "No texts yet"}
         </p>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
           {hasNotes
-            ? "Open a note from the sidebar, or create a new one."
-            : "Start by creating your first note."}
+            ? "Open a text from the sidebar, or create a new one."
+            : "Start by creating your first text."}
         </p>
         <button
           type="button"
@@ -849,7 +849,7 @@ function MainPlaceholder({
           className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-accent-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
         >
           <PlusIcon className="h-3.5 w-3.5" />
-          New note
+          New text
         </button>
         <p className="mt-3 text-xs text-[var(--color-muted)]">
           or press{" "}
