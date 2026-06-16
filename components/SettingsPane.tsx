@@ -45,14 +45,14 @@ export function SettingsPane({
   const exportableCount = notes.filter((note) => !note.trashed).length;
 
   return (
-    <div className="fixed inset-0 z-40" role="dialog" aria-label="Settings">
+    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-label="Settings">
       <button
         type="button"
         aria-label="Close settings"
-        className="absolute inset-0 cursor-default bg-black/35"
+        className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
         onClick={onClose}
       />
-      <section className="absolute right-4 top-20 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl sm:right-6">
+      <section className="relative z-10 flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">
             Settings
@@ -67,7 +67,7 @@ export function SettingsPane({
           </button>
         </div>
 
-        <div className="space-y-3 p-4">
+        <div className="space-y-3 overflow-y-auto p-4">
           <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Appearance
           </h3>
