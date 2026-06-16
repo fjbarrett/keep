@@ -52,7 +52,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
       <button
         type="button"
         onClick={() => actions.onOpen(note)}
-        className="flex h-44 w-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-16 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+        className="flex h-36 w-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pr-16 text-left transition-colors hover:border-[var(--color-border-muted)] hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
       >
         <p className="flex items-center gap-1.5 truncate text-sm font-medium text-[var(--color-text)]">
           {noteColorVar(note.color) && (
@@ -65,7 +65,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
           <span className="truncate">{title}</span>
         </p>
         {preview && (
-          <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-[var(--color-muted)]">
+          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--color-muted)]">
             {preview}
           </p>
         )}
@@ -225,7 +225,7 @@ export function NotesCardGrid({
   };
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-3">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(15rem,100%),1fr))] gap-3">
       {notes.map((note) => (
         <NoteCard key={note.id} note={note} actions={actions} />
       ))}
