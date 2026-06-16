@@ -56,6 +56,9 @@ function bucketDatedNotes(notes: Note[]): DateBucket[] {
     .map(([label, list]) => ({ label, notes: list }));
 }
 
+// Keep in sync with the indicator's transform transition duration in the JSX.
+const SELECTION_SLIDE_MS = 300;
+
 export function Sidebar({
   hydrated,
   filtered,
@@ -113,13 +116,57 @@ export function Sidebar({
   >(null);
   const orderKey = useMemo(() => filtered.map((n) => n.id).join(","), [filtered]);
 
+  // The selection pill is driven by a local id so it starts sliding on click,
+  // before the editor swaps. The editor content swap (onOpenNote) is deferred
+  // until the slide finishes; meanwhile the clicked row keeps its hover
+  // highlight so it doesn't look empty mid-slide. A timeout (not transitionend)
+  // is used so the open always fires even if no transition runs.
+  const [pillId, setPillId] = useState<string | null>(activeNoteId);
+  const [sliding, setSliding] = useState(false);
+  const pendingTimer = useRef<number | null>(null);
+
+  // Follow external active changes (keyboard nav, deep links, deferred open).
+  useEffect(() => {
+    setPillId(activeNoteId);
+  }, [activeNoteId]);
+
+  useEffect(
+    () => () => {
+      if (pendingTimer.current) window.clearTimeout(pendingTimer.current);
+    },
+    [],
+  );
+
+  const selectNote = useCallback(
+    (note: Note) => {
+      if (pendingTimer.current) window.clearTimeout(pendingTimer.current);
+      if (note.id === pillId) {
+        onOpenNote(note);
+        return;
+      }
+      const willSlide = pillId != null;
+      setPillId(note.id);
+      if (!willSlide) {
+        onOpenNote(note); // nothing to slide from on the first selection
+        return;
+      }
+      setSliding(true);
+      pendingTimer.current = window.setTimeout(() => {
+        setSliding(false);
+        pendingTimer.current = null;
+        onOpenNote(note);
+      }, SELECTION_SLIDE_MS);
+    },
+    [pillId, onOpenNote],
+  );
+
   const measure = useCallback(
     (animateOnChange: boolean) => {
       const container = listRef.current;
       const row =
-        container && activeNoteId
+        container && pillId
           ? container.querySelector<HTMLElement>(
-              `[data-note-id="${CSS.escape(activeNoteId)}"]`,
+              `[data-note-id="${CSS.escape(pillId)}"]`,
             )
           : null;
       if (!row) {
@@ -134,7 +181,7 @@ export function Sidebar({
           : { top, height, animate: animateOnChange && prev != null },
       );
     },
-    [activeNoteId],
+    [pillId],
   );
 
   // A user selection (or the list reordering) springs the highlight into place.
@@ -238,8 +285,9 @@ export function Sidebar({
                   <SidebarNoteRow
                     key={note.id}
                     note={note}
-                    active={note.id === activeNoteId}
-                    onOpen={() => onOpenNote(note)}
+                    active={note.id === pillId}
+                    slidingIn={sliding && note.id === pillId}
+                    onOpen={() => selectNote(note)}
                     trashMode={note.trashed}
                     togglePin={() => togglePin(note.id)}
                     toggleArchive={() => toggleArchive(note.id)}
@@ -321,6 +369,7 @@ function SyncIndicator({ status }: { status: SyncStatus }) {
 function SidebarNoteRow({
   note,
   active,
+  slidingIn,
   onOpen,
   trashMode,
   togglePin,
@@ -334,6 +383,7 @@ function SidebarNoteRow({
 }: {
   note: Note;
   active: boolean;
+  slidingIn: boolean;
   onOpen: () => void;
   trashMode: boolean;
   togglePin: () => void;
@@ -365,7 +415,11 @@ function SidebarNoteRow({
     <li
       data-note-id={note.id}
       className={`group relative flex items-center rounded-md ${
-        active ? "" : "hover:bg-[var(--color-surface-hover)]"
+        active
+          ? slidingIn
+            ? "bg-[var(--color-surface-hover)]"
+            : ""
+          : "hover:bg-[var(--color-surface-hover)]"
       }`}
     >
       {isRenaming ? (
@@ -388,7 +442,9 @@ function SidebarNoteRow({
             onClick={onOpen}
             aria-current={active ? "true" : undefined}
             className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
-              active ? "text-[var(--color-accent-fg)]" : "text-[var(--color-text)]"
+              active && !slidingIn
+                ? "text-[var(--color-accent-fg)]"
+                : "text-[var(--color-text)]"
             }`}
           >
             {noteColorVar(note.color) && (
