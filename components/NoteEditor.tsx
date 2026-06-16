@@ -502,13 +502,6 @@ export function NoteEditor({
               <DownloadIcon className="h-4 w-4" />
             </button>
           )}
-          {target.mode === "edit" && canShare && (
-            <SharePopover
-              note={target.note}
-              onShare={() => onShare(target.note.id)}
-              onUnshare={() => onUnshare(target.note.id)}
-            />
-          )}
           {target.mode === "edit" && (
             <>
               <button
@@ -645,6 +638,16 @@ export function NoteEditor({
               <p className="absolute bottom-3 left-4 text-xs text-[var(--color-muted)] animate-pulse">
                 Uploading image...
               </p>
+            )}
+            {target.mode === "edit" && canShare && (
+              <div className="absolute bottom-3 right-4 z-10">
+                <SharePopover
+                  placement="corner"
+                  note={target.note}
+                  onShare={() => onShare(target.note.id)}
+                  onUnshare={() => onUnshare(target.note.id)}
+                />
+              </div>
             )}
           </div>
         )}
@@ -874,15 +877,18 @@ function SharePopover({
   note,
   onShare,
   onUnshare,
+  placement = "toolbar",
 }: {
   note: Note;
   onShare: () => Promise<string | null>;
   onUnshare: () => Promise<void>;
+  placement?: "toolbar" | "corner";
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const isShared = !!note.shareToken;
+  const isCorner = placement === "corner";
   const url =
     note.shareToken && typeof window !== "undefined"
       ? `${window.location.origin}/p/${note.shareToken}`
@@ -917,14 +923,19 @@ function SharePopover({
         type="button"
         onClick={handleClick}
         className={
-          isShared
-            ? "grid h-8 w-8 place-items-center rounded-md text-[var(--color-accent)] transition-colors hover:bg-[var(--color-surface-hover)]"
-            : ICON_BUTTON
+          isCorner
+            ? `flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs shadow-sm transition-colors hover:bg-[var(--color-surface-hover)] ${
+                isShared ? "text-[var(--color-accent)]" : "text-[var(--color-text)]"
+              }`
+            : isShared
+              ? "grid h-8 w-8 place-items-center rounded-md text-[var(--color-accent)] transition-colors hover:bg-[var(--color-surface-hover)]"
+              : ICON_BUTTON
         }
         title={isShared ? "Shared — manage link" : "Share"}
         aria-label={isShared ? "Shared — manage link" : "Share"}
       >
         <ShareIcon className="h-4 w-4" />
+        {isCorner && <span>{isShared ? "Shared" : "Share"}</span>}
       </button>
       {open && (
         <>
@@ -932,7 +943,11 @@ function SharePopover({
             className="fixed inset-0 z-10"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-full z-20 mt-1 w-80 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg">
+          <div
+            className={`absolute right-0 z-20 w-80 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg ${
+              isCorner ? "bottom-full mb-2" : "top-full mt-1"
+            }`}
+          >
             <p className="text-xs font-medium text-[var(--color-text)]">
               Public link
             </p>
