@@ -15,7 +15,7 @@ import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
 import { EncryptionSetup } from "@/components/EncryptionSetup";
 import { EncryptionUnlock } from "@/components/EncryptionUnlock";
 import { NotesCardGrid } from "@/components/NotesCardGrid";
-import { PanelLeftIcon, PlusIcon, StackIcon, XIcon } from "@/components/Icons";
+import { KeyboardIcon, PanelLeftIcon, PlusIcon, SettingsIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -575,9 +575,16 @@ export function NotesView({
 
   return (
     <>
-      {/* Desktop: sidebar + editor side by side */}
+      {/* Desktop: sidebar (or mini rail) + editor side by side */}
       <div className="hidden min-h-0 flex-1 md:flex">
-        {!sidebarCollapsed && (
+        {sidebarCollapsed ? (
+          <MiniRail
+            onNewNote={sidebarProps.onNewNote}
+            onOpenSettings={sidebarProps.onOpenSettings}
+            onOpenShortcuts={sidebarProps.onOpenShortcuts}
+            onExpand={() => toggleSidebar(false)}
+          />
+        ) : (
           <>
             <Sidebar {...sidebarProps} width={sidebarWidth} />
             <div
@@ -588,17 +595,6 @@ export function NotesView({
           </>
         )}
         <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
-          {sidebarCollapsed && (
-            <button
-              type="button"
-              onClick={() => toggleSidebar(false)}
-              className="absolute left-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-              title="Show sidebar"
-              aria-label="Show sidebar"
-            >
-              <PanelLeftIcon className="h-4 w-4" />
-            </button>
-          )}
           {editorPanel}
         </main>
       </div>
@@ -797,6 +793,54 @@ function DbError({
         Retry
       </button>
     </div>
+  );
+}
+
+function MiniRail({
+  onNewNote,
+  onOpenSettings,
+  onOpenShortcuts,
+  onExpand,
+}: {
+  onNewNote: () => void;
+  onOpenSettings: () => void;
+  onOpenShortcuts: () => void;
+  onExpand: () => void;
+}) {
+  const iconBtn =
+    "grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
+  return (
+    <aside
+      aria-label="Collapsed sidebar"
+      className="flex w-12 shrink-0 flex-col items-center justify-between bg-[var(--color-canvas)] py-2"
+    >
+      <button
+        type="button"
+        onClick={onNewNote}
+        title="New text"
+        aria-label="New text"
+        className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+      >
+        <PlusIcon className="h-4 w-4" />
+      </button>
+      <div className="flex flex-col items-center gap-0.5">
+        <button type="button" onClick={onOpenSettings} title="Settings" aria-label="Settings" className={iconBtn}>
+          <SettingsIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenShortcuts}
+          title="Keyboard shortcuts"
+          aria-label="Keyboard shortcuts"
+          className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
+        >
+          <KeyboardIcon className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={onExpand} title="Show sidebar" aria-label="Show sidebar" className={iconBtn}>
+          <PanelLeftIcon className="h-4 w-4" />
+        </button>
+      </div>
+    </aside>
   );
 }
 
