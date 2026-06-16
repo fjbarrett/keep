@@ -272,6 +272,45 @@ export function NotesView({
     await disableEncryption();
   }
 
+  // Notes still stored as plaintext (encryption was enabled after they were
+  // created, or a prior backfill missed them).
+  const plaintextCount =
+    encStatus === "unlocked"
+      ? notes.filter((n) => !isEncrypted(n.body) && n.body.trim().length > 0).length
+      : 0;
+
+  // Re-runnable backfill: encrypt every plaintext note now. Sequential and
+  // failure-tolerant so one bad save doesn't abort the rest (unlike the
+  // one-shot Promise.all at setup time).
+  async function handleEncryptAll() {
+    const targets = notes.filter(
+      (n) => !isEncrypted(n.body) && n.body.trim().length > 0,
+    );
+    if (targets.length === 0) return;
+    if (
+      !confirm(
+        `Encrypt ${targets.length} note${targets.length === 1 ? "" : "s"} still stored as plaintext? They'll be re-saved as ciphertext.`,
+      )
+    ) {
+      return;
+    }
+    let failed = 0;
+    for (const n of targets) {
+      try {
+        const body = await encrypt(n.body);
+        await update(n.id, { body, title: n.title });
+      } catch {
+        failed += 1;
+      }
+    }
+    setSettingsOpen(false);
+    alert(
+      failed
+        ? `Encrypted ${targets.length - failed} of ${targets.length}; ${failed} failed — try again.`
+        : `Encrypted ${targets.length} note${targets.length === 1 ? "" : "s"}.`,
+    );
+  }
+
   // Wraps the raw update call to encrypt the body before it leaves the browser.
   const secureUpdate = useCallback(
     (id: string, patch: Partial<Note>) => {
@@ -681,6 +720,8 @@ export function NotesView({
           onGuestExport={handleGuestExport}
           onEnableEncryption={() => setEncSetupOpen(true)}
           onDisableEncryption={handleDisableEncryption}
+          onEncryptAll={handleEncryptAll}
+          plaintextCount={plaintextCount}
           onClose={() => setSettingsOpen(false)}
         />
       )}
