@@ -5,6 +5,7 @@ import { previewText } from "@/lib/inferTitle";
 import { detectCodeLanguage, languageLabel } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
+import { downloadNoteBody } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
@@ -425,6 +426,14 @@ function SidebarNoteRow({
                   }}
                 >
                   Get Info
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    downloadNoteBody(note.body);
+                    setMenuOpen(false);
+                  }}
+                >
+                  Download
                 </MenuItem>
                 <div className="my-1 border-t border-[var(--color-border)]" />
                 <MenuItem
