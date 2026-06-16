@@ -65,7 +65,7 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
         max_tokens: 200,
         system:
           "Return ONLY a JSON object describing a note, with two string fields: " +
-          '"title" — 3 to 7 words, no quotes or trailing punctuation; and ' +
+          '"title" — a concise 3–6 word title in sentence case (capitalize only the first word plus genuine proper nouns/acronyms), no quotes or trailing punctuation; and ' +
           '"summary" — a concise, descriptive caption of at most ~90 characters that says what the note is about. ' +
           "Describe the content/subject directly, like a caption. Do NOT narrate the act of writing or use any " +
           'first/second/third person or meta references (never "I", "you", "the user", "this note", "the author"). ' +

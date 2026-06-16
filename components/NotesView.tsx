@@ -857,8 +857,8 @@ function MiniRail({
       <button
         type="button"
         onClick={onNewNote}
-        title="New text"
-        aria-label="New text"
+        title="New"
+        aria-label="New"
         className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
       >
         <PlusIcon className="h-4 w-4" />
@@ -911,7 +911,7 @@ function MainPlaceholder({
           className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-accent-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
         >
           <PlusIcon className="h-3.5 w-3.5" />
-          New text
+          New
         </button>
         <p className="mt-3 text-xs text-[var(--color-muted)]">
           or press{" "}
