@@ -10,16 +10,17 @@ ownership to `appuser`, bootstrapped the latest schema, and pointed both the
 droplet and local `.env.local` at `/keep`. 41 notes (7 active) under your Google
 ID are now served on keeptxt.com.
 
-## 3. Auto-encryption model (random key, no passphrase)
-Requested: enforce E2E on all notes with a random key, no passphrase. True E2E +
-no passphrase + cross-device can't all hold. Choose:
-- **Server-stored random key** (recommended for an account-synced app): seamless,
-  cross-device, DB holds only ciphertext — but the server can decrypt, so it's
-  encryption-at-rest, not strict E2E.
-- **localStorage random key**: real E2E, but per-device; clearing data / new
-  device = notes unreadable.
-Confirm which and I'll implement (and it unblocks the version-history encryption
-reconciliation too).
+## 3. Email + password auth — shipped, NOT deployed (#171)
+Per your pivot ("nevermind encryption… use email + password with a verification
+email"). Built additively (Google + passkeys untouched): scrypt hashing,
+`/signup`, `/api/auth/register` + `/api/auth/verify`, a `password` provider, and
+email/password on `/signin`. **To go live you need to:**
+- Set `RESEND_API_KEY` + `EMAIL_FROM` on the droplet (else verify links are only
+  logged, not emailed). Any SMTP/Resend account works.
+- Then redeploy (`scripts/deploy.sh`). I held off deploying so live keeptxt.com
+  keeps working until you've reviewed.
+
+(Passphrase/auto-encryption requests withdrawn — dropped from the queue.)
 
 ## 4. Image uploads
 Disabled until storage is configured. Provide DO **Spaces** creds and I'll set
