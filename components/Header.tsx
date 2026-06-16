@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
 import { Logo } from "./Logo";
-import { ThemeToggle } from "./ThemeToggle";
 
 export async function Header() {
   const session = await auth();
@@ -15,8 +14,6 @@ export async function Header() {
         </a>
 
         <div className="flex-1" />
-
-        <ThemeToggle />
 
         {user ? (
           <form
