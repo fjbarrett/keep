@@ -614,7 +614,7 @@ export function NotesView({
             <button
               type="button"
               onClick={() => toggleSidebar(false)}
-              className="absolute left-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              className="absolute left-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
               title="Show sidebar"
               aria-label="Show sidebar"
             >
@@ -785,7 +785,7 @@ function GuestSaveBanner({
           onClick={onDismiss}
           aria-label="Dismiss"
           title="Dismiss"
-          className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+          className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
         >
           <XIcon className="h-4 w-4" />
         </button>

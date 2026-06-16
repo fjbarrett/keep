@@ -29,11 +29,11 @@ export type EditorTarget =
   | null;
 
 const ICON_BUTTON =
-  "grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
+  "grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
 
 function iconToggle(active: boolean) {
   return active
-    ? "grid h-7 w-7 place-items-center rounded-md bg-[var(--color-surface-hover)] text-[var(--color-text)]"
+    ? "grid h-8 w-8 place-items-center rounded-md bg-[var(--color-surface-hover)] text-[var(--color-text)]"
     : ICON_BUTTON;
 }
 
@@ -918,7 +918,7 @@ function SharePopover({
         onClick={handleClick}
         className={
           isShared
-            ? "grid h-7 w-7 place-items-center rounded-md text-[var(--color-accent)] transition-colors hover:bg-[var(--color-surface-hover)]"
+            ? "grid h-8 w-8 place-items-center rounded-md text-[var(--color-accent)] transition-colors hover:bg-[var(--color-surface-hover)]"
             : ICON_BUTTON
         }
         title={isShared ? "Shared — manage link" : "Share"}
