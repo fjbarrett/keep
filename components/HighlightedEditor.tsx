@@ -10,16 +10,24 @@ import {
 } from "react";
 import type { Highlighter, ThemeRegistrationAny } from "shiki";
 import { COMMON_LANGS, detectLanguage } from "@/lib/detectLanguage";
-import { keepPaletteTheme } from "@/lib/shikiTheme";
+import { keepPaletteThemeDark, keepPaletteThemeLight } from "@/lib/shikiTheme";
 
-const THEME = "keep-palette";
+function currentShikiTheme(): string {
+  if (typeof document === "undefined") return "keep-palette-dark";
+  return document.documentElement.getAttribute("data-theme") === "light"
+    ? "keep-palette-light"
+    : "keep-palette-dark";
+}
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 function getHighlighter() {
   if (!highlighterPromise) {
     highlighterPromise = import("shiki").then(({ createHighlighter }) =>
       createHighlighter({
-        themes: [keepPaletteTheme as ThemeRegistrationAny],
+        themes: [
+          keepPaletteThemeDark as ThemeRegistrationAny,
+          keepPaletteThemeLight as ThemeRegistrationAny,
+        ],
         langs: COMMON_LANGS,
       }),
     );
@@ -44,9 +52,20 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
   function HighlightedEditor({ value, onChange, onPaste, onDrop, placeholderText }, ref) {
     const [html, setHtml] = useState("");
     const [lang, setLang] = useState<string>(() => detectLanguage(value));
+    const [theme, setTheme] = useState<string>(currentShikiTheme);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const preRef = useRef<HTMLPreElement>(null);
     const hlRef = useRef<Highlighter | null>(null);
+
+    // Re-highlight when the app theme flips so code stays readable in light mode.
+    useEffect(() => {
+      const obs = new MutationObserver(() => setTheme(currentShikiTheme()));
+      obs.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
+      });
+      return () => obs.disconnect();
+    }, []);
 
     useImperativeHandle(ref, () => ({
       focus: () => textareaRef.current?.focus(),
@@ -68,7 +87,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     useEffect(() => {
       if (hlRef.current) {
         try {
-          setHtml(hlRef.current.codeToHtml(value || " ", { theme: THEME, lang }));
+          setHtml(hlRef.current.codeToHtml(value || " ", { theme, lang }));
         } catch { /* lang not loaded */ }
         return;
       }
@@ -77,12 +96,12 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
         hlRef.current = hl;
         if (!cancelled) {
           try {
-            setHtml(hl.codeToHtml(value || " ", { theme: THEME, lang }));
+            setHtml(hl.codeToHtml(value || " ", { theme, lang }));
           } catch { /* lang not loaded */ }
         }
       });
       return () => { cancelled = true; };
-    }, [value, lang]);
+    }, [value, lang, theme]);
 
     const handleChange = useCallback(
       (e: React.ChangeEvent<HTMLTextAreaElement>) => {
