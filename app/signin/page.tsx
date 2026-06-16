@@ -1,5 +1,6 @@
 import { signIn, auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { safeRedirect } from "@/lib/safeRedirect";
 import { Logo } from "@/components/Logo";
 import { PasskeySignIn } from "@/components/PasskeySignIn";
 import { EmailPasswordSignIn } from "@/components/EmailPasswordSignIn";
@@ -9,9 +10,12 @@ export default async function SignInPage({
 }: {
   searchParams: { from?: string; verified?: string; error?: string };
 }) {
+  // Only honor same-origin relative paths in ?from= so the post-login redirect
+  // can't be hijacked to an external site.
+  const safeFrom = safeRedirect(searchParams.from);
   const session = await auth();
-  if (session?.user) redirect(searchParams.from ?? "/");
-  const redirectTo = searchParams.from ?? "/";
+  if (session?.user) redirect(safeFrom);
+  const redirectTo = safeFrom;
 
   return (
     <main className="flex flex-1 items-center justify-center px-6">
@@ -45,7 +49,7 @@ export default async function SignInPage({
         <form
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: searchParams.from ?? "/" });
+            await signIn("google", { redirectTo: safeFrom });
           }}
         >
           <button
@@ -61,7 +65,7 @@ export default async function SignInPage({
           <span className="px-3 text-xs text-[var(--color-muted)]">or</span>
           <div className="flex-1 border-t border-[var(--color-border)]" />
         </div>
-        <PasskeySignIn redirectTo={searchParams.from ?? "/"} />
+        <PasskeySignIn redirectTo={safeFrom} />
       </div>
     </main>
   );
