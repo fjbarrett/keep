@@ -8,3 +8,6 @@ tsconfig.tsbuildinfo
 
 # Vercel CLI project link
 .vercel
+
+# Local working/handover notes — never publish to the public repo
+HANDOVER.md
