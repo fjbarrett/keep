@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { putPublicFile, storageConfigured } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!storageConfigured()) {
     return NextResponse.json({ error: "Image uploads not configured" }, { status: 501 });
   }
 
@@ -29,10 +30,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
 
-  const { put } = await import("@vercel/blob");
   const ext = file.name.split(".").pop() || "png";
   const path = `keep/${session.user.id}/${Date.now()}.${ext}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
 
-  const blob = await put(path, file, { access: "public" });
-  return NextResponse.json({ url: blob.url });
+  try {
+    const { url } = await putPublicFile(path, bytes, file.type);
+    return NextResponse.json({ url });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Upload failed" },
+      { status: 502 },
+    );
+  }
 }
