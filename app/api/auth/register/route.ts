@@ -6,6 +6,10 @@ import { sendVerificationEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
+// Verification links expire after a day so a leaked link can't be redeemed
+// indefinitely; users can re-register or re-request to get a fresh one.
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
@@ -28,9 +32,9 @@ export async function POST(req: Request) {
   const hash = await hashPassword(password);
   const token = randomBytes(32).toString("hex");
   await pool().query(
-    `INSERT INTO users (id, email, name, password_hash, verify_token, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [id, email, null, hash, token, Date.now()],
+    `INSERT INTO users (id, email, name, password_hash, verify_token, verify_token_expires, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, email, null, hash, token, Date.now() + VERIFY_TOKEN_TTL_MS, Date.now()],
   );
 
   const origin = process.env.AUTH_URL ?? new URL(req.url).origin;

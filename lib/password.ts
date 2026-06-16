@@ -48,6 +48,9 @@ export async function verifyPassword(password: string, stored: string): Promise<
 /** Minimal strength check; keep it permissive enough for passphrases. */
 export function passwordIssue(password: string): string | null {
   if (password.length < 10) return "Use at least 10 characters.";
+  // scrypt cost is paid on every login attempt, so an unbounded password is a
+  // cheap DoS — cap it well above any real passphrase.
+  if (password.length > 1024) return "Password is too long.";
   if (/^\d+$/.test(password)) return "Use more than just digits.";
   return null;
 }

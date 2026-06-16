@@ -113,6 +113,8 @@ async function bootstrap(): Promise<void> {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BIGINT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token TEXT;
+    -- Expiry for verify_token so a leaked link can't be redeemed indefinitely.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token_expires BIGINT;
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (lower(email)) WHERE email IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS authenticators (
