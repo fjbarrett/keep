@@ -11,8 +11,14 @@
 //   npx --yes playwright install ffmpeg             # one-time, for video
 //   node scripts/capture-anim.mjs http://localhost:3005 /tmp/keep-anim
 //
-// Outputs <outDir>/clip.webm (drag into a PR for inline playback) plus
-// frame-start/mid/settled.png. Clean up the worktree afterwards:
+// Outputs a .webm plus scratch frame-start/mid/settled.png into <outDir> (kept
+// in /tmp, not committed). The raw capture usually carries a few partly-painted
+// "gray" frames at load/teardown — run the cleaner before committing, then keep
+// only the cleaned .webm under screenshots/pr/:
+//
+//   scripts/clean-anim.sh /tmp/keep-anim/<file>.webm screenshots/pr/<name>.webm
+//
+// Clean up the worktree afterwards:
 //   git worktree remove --force /tmp/keep-capture
 import { chromium } from "playwright-core";
 
