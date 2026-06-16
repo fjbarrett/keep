@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { KeepImportNote, parseGoogleKeepImport } from "@/lib/googleKeepImport";
 import { pool, ready } from "@/lib/db";
 import { heuristicNoteMeta } from "@/lib/titleModel";
+import { internalError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,9 +84,6 @@ export async function POST(req: Request) {
       truncated,
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Import failed" },
-      { status: 500 },
-    );
+    return internalError("notes:import", err);
   }
 }

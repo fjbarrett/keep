@@ -4,6 +4,7 @@ import {
   createTokenBucketRateLimiter,
 } from "@/lib/rateLimit";
 import { generateNoteMeta } from "@/lib/titleModel";
+import { internalError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,9 +53,6 @@ export async function POST(req: Request) {
     }
     return NextResponse.json(await generateNoteMeta(noteBody));
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Title generation failed" },
-      { status: 500 },
-    );
+    return internalError("notes:title", err);
   }
 }
