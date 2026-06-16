@@ -153,6 +153,14 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
           data-bwignore
           data-form-type="other"
           className="highlighted-editor-textarea relative z-10 w-full flex-1 resize-none overflow-y-auto border-0 bg-transparent leading-relaxed caret-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+          // Keep the text visible until the Shiki layer is actually painted —
+          // otherwise a failed/slow highlight leaves only the transparent
+          // textarea and the code looks invisible.
+          style={
+            html
+              ? undefined
+              : { color: "var(--color-text)", WebkitTextFillColor: "var(--color-text)" }
+          }
           spellCheck={false}
         />
       </div>
