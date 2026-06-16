@@ -9,7 +9,7 @@ export type NoteColorKey =
   | "red";
 
 export const NOTE_COLORS: { key: NoteColorKey; label: string; var: string }[] = [
-  { key: "blue", label: "Blue", var: "--color-accent" },
+  { key: "blue", label: "Blue", var: "--color-blue" },
   { key: "pink", label: "Pink", var: "--color-pink" },
   { key: "green", label: "Green", var: "--color-green" },
   { key: "orange", label: "Orange", var: "--color-orange" },

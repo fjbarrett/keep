@@ -10,6 +10,7 @@ import {
 } from "@/components/Icons";
 import { PasskeysSection } from "@/components/PasskeysSection";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AccentPicker } from "@/components/AccentPicker";
 
 export function SettingsPane({
   importing,
@@ -78,6 +79,11 @@ export function SettingsPane({
 
         <div className="space-y-3 overflow-y-auto p-4">
           <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            Accent
+          </h3>
+          <AccentPicker />
+
+          <h3 className="pt-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Views
           </h3>
           <button
