@@ -132,7 +132,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
             </CardMenuItem>
             <CardMenuItem
               onClick={() => {
-                const next = window.prompt("Rename note", previewText(note));
+                const next = window.prompt("Rename text", previewText(note));
                 if (next && next.trim()) actions.onRename(note.id, next.trim());
                 setMenuOpen(false);
               }}

@@ -26,7 +26,7 @@ export function SearchOverlay({
   const hasQuery = query.trim().length > 0;
 
   return (
-    <div data-search-overlay role="dialog" aria-label="Search notes" className="fixed inset-0 z-40 px-4 pt-[14vh]">
+    <div data-search-overlay role="dialog" aria-label="Search texts" className="fixed inset-0 z-40 px-4 pt-[14vh]">
       <button
         type="button"
         aria-label="Close search"
@@ -40,8 +40,8 @@ export function SearchOverlay({
             ref={searchRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            aria-label="Search notes"
-            placeholder="Search notes..."
+            aria-label="Search texts"
+            placeholder="Search texts..."
             className="min-w-0 flex-1 border-0 bg-transparent text-lg text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
           />
         </div>
@@ -79,7 +79,7 @@ export function SearchOverlay({
           ) : (
             <div className="px-3 py-8 text-center">
               <p className="text-sm font-medium text-[var(--color-text)]">
-                {hasQuery ? "No notes found" : "Start typing to search"}
+                {hasQuery ? "No texts found" : "Start typing to search"}
               </p>
             </div>
           )}

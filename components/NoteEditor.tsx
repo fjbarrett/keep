@@ -325,7 +325,7 @@ export function NoteEditor({
           <button
             type="button"
             onClick={onBack}
-            aria-label="Back to notes"
+            aria-label="Back to texts"
             className={`${ICON_BUTTON} md:hidden`}
           >
             <ChevronLeftIcon className="h-4 w-4" />
@@ -437,8 +437,8 @@ export function NoteEditor({
                   type="button"
                   onClick={() => setCopyMenuOpen((v) => !v)}
                   className={ICON_BUTTON}
-                  title={copied ? "Copied" : "Copy note"}
-                  aria-label={copied ? "Copied" : "Copy note"}
+                  title={copied ? "Copied" : "Copy text"}
+                  aria-label={copied ? "Copied" : "Copy text"}
                   aria-haspopup="menu"
                   aria-expanded={copyMenuOpen}
                 >
@@ -480,8 +480,8 @@ export function NoteEditor({
                 type="button"
                 onClick={copyBody}
                 className={ICON_BUTTON}
-                title={copied ? "Copied" : "Copy note"}
-                aria-label={copied ? "Copied" : "Copy note"}
+                title={copied ? "Copied" : "Copy text"}
+                aria-label={copied ? "Copied" : "Copy text"}
               >
                 {copied ? (
                   <CheckIcon className="h-4 w-4" />
@@ -496,8 +496,8 @@ export function NoteEditor({
               type="button"
               onClick={downloadNote}
               className={ICON_BUTTON}
-              title="Download note"
-              aria-label="Download note"
+              title="Download text"
+              aria-label="Download text"
             >
               <DownloadIcon className="h-4 w-4" />
             </button>
@@ -548,8 +548,8 @@ export function NoteEditor({
               type="button"
               onClick={copyBody}
               className={ICON_BUTTON}
-              title={copied ? "Copied" : "Copy note"}
-              aria-label={copied ? "Copied" : "Copy note"}
+              title={copied ? "Copied" : "Copy text"}
+              aria-label={copied ? "Copied" : "Copy text"}
             >
               {copied ? (
                 <CheckIcon className="h-4 w-4" />
@@ -573,7 +573,7 @@ export function NoteEditor({
           <button
             type="button"
             onClick={() => {
-              if (confirm("Permanently delete this note?")) {
+              if (confirm("Permanently delete this text?")) {
                 onRemove(target.note.id);
                 onClose();
               }
