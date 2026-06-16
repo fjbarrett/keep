@@ -294,7 +294,9 @@ function SidebarNoteRow({
   return (
     <li
       className={`group relative flex items-center rounded-md ${
-        active ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]"
+        active
+          ? "bg-[var(--color-accent)]"
+          : "hover:bg-[var(--color-surface-hover)]"
       }`}
     >
       {isRenaming ? (
@@ -316,11 +318,15 @@ function SidebarNoteRow({
             type="button"
             onClick={onOpen}
             aria-current={active ? "true" : undefined}
-            className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm text-[var(--color-text)]"
+            className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm ${
+              active ? "text-[var(--color-accent-fg)]" : "text-[var(--color-text)]"
+            }`}
           >
             {noteColorVar(note.color) && (
               <span
-                className="h-2 w-2 shrink-0 rounded-full"
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  active ? "ring-1 ring-white/40" : ""
+                }`}
                 style={{ background: noteColorVar(note.color)! }}
                 aria-hidden
               />
@@ -336,9 +342,11 @@ function SidebarNoteRow({
               e.stopPropagation();
               setMenuOpen((v) => !v);
             }}
-            className={`mr-1 grid h-6 w-6 place-items-center rounded text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-pink-light)] focus-visible:opacity-100 ${
-              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
+            className={`mr-1 grid h-6 w-6 place-items-center rounded transition-colors focus-visible:opacity-100 ${
+              active
+                ? "text-white/75 hover:bg-white/20 hover:text-white"
+                : "text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-pink-light)]"
+            } ${menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
           >
             <DotsIcon className="h-3.5 w-3.5" />
           </button>
