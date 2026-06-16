@@ -37,6 +37,16 @@ function iconToggle(active: boolean) {
     : ICON_BUTTON;
 }
 
+// A segment inside the macOS-style view-mode control: no individual rounding
+// (the bordered container clips it), filled when active.
+function segmentButton(active: boolean) {
+  return `grid h-8 w-9 place-items-center transition-colors ${
+    active
+      ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]"
+      : "text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+  }`;
+}
+
 export function NoteEditor({
   target,
   onClose,
@@ -335,30 +345,33 @@ export function NoteEditor({
       )}
       {!isTrashed ? (
         <>
-          <button
-            type="button"
-            onClick={() => { setHighlight((v) => !v); setPreviewOpen(false); setDirty(true); }}
-            className={iconToggle(highlight)}
-            title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
-            aria-label="Syntax highlighting"
-            aria-pressed={highlight}
-          >
-            <span className="font-mono text-[11px] tracking-tight">
-              {"</>"}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setPreviewOpen((v) => !v); setHighlight(false); setDirty(true); }}
-            className={iconToggle(previewOpen)}
-            title={previewOpen ? "Edit" : "Preview markdown"}
-            aria-label={previewOpen ? "Edit" : "Preview markdown"}
-            aria-pressed={previewOpen}
-          >
-            <span className="font-mono text-[11px] font-semibold tracking-tight">
-              md
-            </span>
-          </button>
+          <div className="flex items-center overflow-hidden rounded-md border border-[var(--color-border)]">
+            <button
+              type="button"
+              onClick={() => { setHighlight((v) => !v); setPreviewOpen(false); setDirty(true); }}
+              className={segmentButton(highlight)}
+              title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
+              aria-label="Syntax highlighting"
+              aria-pressed={highlight}
+            >
+              <span className="font-mono text-[11px] tracking-tight">
+                {"</>"}
+              </span>
+            </button>
+            <div className="h-5 w-px bg-[var(--color-border)]" />
+            <button
+              type="button"
+              onClick={() => { setPreviewOpen((v) => !v); setHighlight(false); setDirty(true); }}
+              className={segmentButton(previewOpen)}
+              title={previewOpen ? "Edit" : "Preview markdown"}
+              aria-label={previewOpen ? "Edit" : "Preview markdown"}
+              aria-pressed={previewOpen}
+            >
+              <span className="font-mono text-[11px] font-semibold tracking-tight">
+                md
+              </span>
+            </button>
+          </div>
           {target.mode === "edit" && (
             <button
               type="button"
