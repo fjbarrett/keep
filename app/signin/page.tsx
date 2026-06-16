@@ -2,14 +2,16 @@ import { signIn, auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { PasskeySignIn } from "@/components/PasskeySignIn";
+import { EmailPasswordSignIn } from "@/components/EmailPasswordSignIn";
 
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: { from?: string };
+  searchParams: { from?: string; verified?: string; error?: string };
 }) {
   const session = await auth();
   if (session?.user) redirect(searchParams.from ?? "/");
+  const redirectTo = searchParams.from ?? "/";
 
   return (
     <main className="flex flex-1 items-center justify-center px-6">
@@ -20,6 +22,26 @@ export default async function SignInPage({
             Sign in to keep your text.
           </p>
         </div>
+
+        {searchParams.verified === "1" && (
+          <p className="mb-4 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-xs text-[var(--color-text)]">
+            Email verified — you can sign in now.
+          </p>
+        )}
+        {searchParams.error === "verify" && (
+          <p className="mb-4 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-xs text-[var(--color-danger)]">
+            That verification link is invalid or expired.
+          </p>
+        )}
+
+        <EmailPasswordSignIn redirectTo={redirectTo} />
+
+        <div className="relative my-5 flex items-center">
+          <div className="flex-1 border-t border-[var(--color-border)]" />
+          <span className="px-3 text-xs text-[var(--color-muted)]">or</span>
+          <div className="flex-1 border-t border-[var(--color-border)]" />
+        </div>
+
         <form
           action={async () => {
             "use server";
