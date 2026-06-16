@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { newId, pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { generateNoteMeta } from "@/lib/titleModel";
 import { internalError } from "@/lib/apiError";
+import { MAX_NOTE_BODY, tagsInvalid } from "@/lib/noteLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,12 @@ export async function POST(req: Request) {
     await ready();
     const body = await req.json();
     const noteBody = String(body.body ?? "");
+    if (noteBody.length > MAX_NOTE_BODY) {
+      return NextResponse.json({ error: "Note is too large." }, { status: 413 });
+    }
+    if (body.tags !== undefined && tagsInvalid(body.tags)) {
+      return NextResponse.json({ error: "Invalid tags." }, { status: 400 });
+    }
     let title = String(body.title ?? "");
     let summary = typeof body.summary === "string" ? body.summary : null;
     // The client normally supplies both (one Haiku call); only fall back to
