@@ -109,11 +109,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: string | null;
           name: string | null;
           password_hash: string | null;
-        }>("SELECT id, email, name, password_hash FROM users WHERE lower(email) = $1", [email]);
+          email_verified: string | null;
+        }>(
+          "SELECT id, email, name, password_hash, email_verified FROM users WHERE lower(email) = $1",
+          [email],
+        );
         const user = rows[0];
         if (!user?.password_hash) return null;
         const ok = await verifyPassword(password, user.password_hash);
         if (!ok) return null;
+        // Require a verified email before issuing a session. Fail the same way
+        // as a bad password (null, not a distinct error) so we don't reveal
+        // which addresses have registered-but-unverified accounts.
+        if (!user.email_verified) return null;
         return { id: user.id, email: user.email, name: user.name };
       },
     }),
