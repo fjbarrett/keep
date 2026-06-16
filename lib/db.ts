@@ -109,6 +109,11 @@ async function bootstrap(): Promise<void> {
     -- the AES-GCM encryption key via PBKDF2. NULL means encryption is disabled.
     -- The salt is public; only the passphrase (never sent to the server) is secret.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS enc_salt TEXT;
+    -- Email + password auth (additive; Google users have a null password_hash).
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BIGINT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (lower(email)) WHERE email IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS authenticators (
       credential_id TEXT PRIMARY KEY,

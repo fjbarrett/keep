@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/types";
 import { pool, ready } from "@/lib/db";
+import { verifyPassword } from "@/lib/password";
 import {
   b64urlToBytes,
   getAuthenticator,
@@ -92,6 +93,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user?.email ?? null,
           name: user?.name ?? null,
         };
+      },
+    }),
+    Credentials({
+      id: "password",
+      name: "Email and password",
+      credentials: { email: { type: "email" }, password: { type: "password" } },
+      async authorize(credentials) {
+        const email = String(credentials?.email ?? "").trim().toLowerCase();
+        const password = String(credentials?.password ?? "");
+        if (!email || !password) return null;
+        await ready();
+        const { rows } = await pool().query<{
+          id: string;
+          email: string | null;
+          name: string | null;
+          password_hash: string | null;
+        }>("SELECT id, email, name, password_hash FROM users WHERE lower(email) = $1", [email]);
+        const user = rows[0];
+        if (!user?.password_hash) return null;
+        const ok = await verifyPassword(password, user.password_hash);
+        if (!ok) return null;
+        return { id: user.id, email: user.email, name: user.name };
       },
     }),
   ],
