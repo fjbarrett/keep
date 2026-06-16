@@ -559,19 +559,24 @@ export function NotesView({
     onCollapse: () => toggleSidebar(true),
   };
 
-  // A new note and the edit view of the note it just autosaved into share one
-  // key ("compose") so the editor isn't remounted between them; switching to a
-  // different note changes the key and replays the entrance animation.
+  // All open notes share one key ("note") so switching between them updates the
+  // editor in place — no remount, so it doesn't re-run Shiki or flash. The key
+  // only changes for grid / compose / a note being open, which is what should
+  // replay an entrance animation.
   const animKey = !mainTarget
     ? "grid"
     : mainTarget.mode === "new" || mainTarget.note.id === composedIdRef.current
       ? "compose"
-      : `note-${mainTarget.note.id}`;
+      : "note";
 
-  // Opening a text from the grid (no prior target) expands; switching between
-  // texts just fades.
-  const animClass =
-    mainTarget && !prevTargetRef.current ? "note-expand-in" : "note-fade-in";
+  // Opening from the grid/compose expands; switching between already-open notes
+  // updates in place with no animation (the editor stays mounted); the grid
+  // itself fades in.
+  const animClass = !mainTarget
+    ? "note-fade-in"
+    : prevTargetRef.current
+      ? ""
+      : "note-expand-in";
 
   useEffect(() => {
     prevTargetRef.current = !!mainTarget;
