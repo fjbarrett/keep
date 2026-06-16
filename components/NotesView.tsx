@@ -657,7 +657,7 @@ export function NotesView({
       )}
 
       {shortcutsOpen && (
-        <ShortcutsOverlay onClose={closeShortcuts} />
+        <ShortcutsOverlay onClose={closeShortcuts} isGuest={isGuest} />
       )}
 
       {infoNote && (
