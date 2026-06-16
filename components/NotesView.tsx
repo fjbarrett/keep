@@ -86,6 +86,9 @@ export function NotesView({
   // entrance-animation key stay stable across the new → edit autosave bridge so
   // the editor isn't remounted (which would discard in-flight keystrokes).
   const composedIdRef = useRef<string | null>(null);
+  // Whether the previous render showed a text (vs the grid), to choose the
+  // entrance animation.
+  const prevTargetRef = useRef(false);
 
   useEffect(() => {
     const stored = parseInt(localStorage.getItem("keep.sidebarWidth") ?? "", 10);
@@ -508,6 +511,15 @@ export function NotesView({
       ? "compose"
       : `note-${mainTarget.note.id}`;
 
+  // Opening a text from the grid (no prior target) expands; switching between
+  // texts just fades.
+  const animClass =
+    mainTarget && !prevTargetRef.current ? "note-expand-in" : "note-fade-in";
+
+  useEffect(() => {
+    prevTargetRef.current = !!mainTarget;
+  });
+
   const editorPanel = (
     <>
       {error && (
@@ -528,7 +540,7 @@ export function NotesView({
 
       <div
         key={animKey}
-        className="note-content-in flex min-h-0 flex-1 flex-col p-4"
+        className={`${animClass} flex min-h-0 flex-1 flex-col p-4`}
       >
         {mainTarget ? (
           <NoteEditor
