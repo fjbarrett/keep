@@ -181,7 +181,7 @@ export function Sidebar({
               height: indicator.height,
               transform: `translateY(${indicator.top}px)`,
               transition: indicator.animate
-                ? "transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1), height 200ms ease"
+                ? "transform 300ms cubic-bezier(0.34, 1.25, 0.64, 1), height 160ms ease"
                 : "none",
               willChange: "transform",
             }}
