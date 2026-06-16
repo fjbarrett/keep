@@ -189,23 +189,26 @@ export function Sidebar({
     measure(true);
   }, [measure, orderKey, hydrated]);
 
-  // Web fonts loading (and sidebar resizes) shift row offsets after the first
-  // paint, which left the very first selection a few px off. Re-measure and
-  // snap (no slide) so it lands exactly.
+  // Web fonts loading and sidebar resizes shift row offsets; re-measure and
+  // snap (no slide) so the pill lands exactly. Mounted ONCE via a ref —
+  // re-creating the observer per selection would fire its initial callback and
+  // snap mid-slide, cancelling the animation.
+  const measureRef = useRef(measure);
+  measureRef.current = measure;
   useEffect(() => {
     const container = listRef.current;
     if (!container) return;
-    const ro = new ResizeObserver(() => measure(false));
+    const ro = new ResizeObserver(() => measureRef.current(false));
     ro.observe(container);
     let cancelled = false;
     document.fonts?.ready?.then(() => {
-      if (!cancelled) measure(false);
+      if (!cancelled) measureRef.current(false);
     });
     return () => {
       cancelled = true;
       ro.disconnect();
     };
-  }, [measure]);
+  }, []);
 
   return (
     <aside
