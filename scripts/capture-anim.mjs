@@ -41,11 +41,13 @@ const guestNotes = ids.map((id, i) =>
   note(id, bodies[i], { color: colors[i], highlight: i === 0, markdown: i === 1, updatedAt: now - i * day }),
 );
 
+// Render at 2x and record at a large size so the clip is crisp (Playwright
+// otherwise scales the video down to fit 800x800).
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const ctx = await browser.newContext({
-  viewport: { width: 980, height: 760 },
+  viewport: { width: 1600, height: 1000 },
   deviceScaleFactor: 2,
-  recordVideo: { dir: outDir, size: { width: 980, height: 760 } },
+  recordVideo: { dir: outDir, size: { width: 1600, height: 1000 } },
 });
 await ctx.addInitScript((d) => {
   localStorage.setItem("keep.guestNotes.v1", d);
@@ -54,19 +56,20 @@ await ctx.addInitScript((d) => {
 }, JSON.stringify(guestNotes));
 
 const page = await ctx.newPage();
-const clip = { x: 0, y: 0, width: 360, height: 600 };
+const clip = { x: 0, y: 0, width: 440, height: 760 };
 await page.goto(`${url}/note/${ids[0]}`, { waitUntil: "networkidle", timeout: 30000 });
-await page.waitForTimeout(1500);
+await page.waitForTimeout(2200);
 await page.screenshot({ path: `${outDir}/frame-start.png`, clip });
 
-for (const i of [4, 1, 5, 2, 0, 3]) {
+// Slow, deliberate pacing so each slide + settle is easy to watch.
+for (const i of [4, 1, 5, 2, 0]) {
   await page.locator(`[data-note-id="${ids[i]}"] button`).first().click();
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(1700);
 }
-await page.locator(`[data-note-id="${ids[0]}"] button`).first().click();
+await page.locator(`[data-note-id="${ids[3]}"] button`).first().click();
 await page.waitForTimeout(120);
 await page.screenshot({ path: `${outDir}/frame-mid.png`, clip });
-await page.waitForTimeout(600);
+await page.waitForTimeout(1500);
 await page.screenshot({ path: `${outDir}/frame-settled.png`, clip });
 
 await page.close();
