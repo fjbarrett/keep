@@ -63,26 +63,21 @@ export function SettingsPane({
           <h2 className="text-sm font-semibold text-[var(--color-text)]">
             Settings
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close settings"
-            className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-          >
-            <XIcon className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close settings"
+              className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3 overflow-y-auto p-4">
           <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-            Appearance
-          </h3>
-          <div className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
-            <span className="text-sm font-medium text-[var(--color-text)]">Theme</span>
-            <ThemeToggle />
-          </div>
-
-          <h3 className="pt-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Views
           </h3>
           <button
