@@ -9,6 +9,7 @@ import {
   XIcon,
 } from "@/components/Icons";
 import { PasskeysSection } from "@/components/PasskeysSection";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function SettingsPane({
   importing,
@@ -68,6 +69,14 @@ export function SettingsPane({
 
         <div className="space-y-3 p-4">
           <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            Appearance
+          </h3>
+          <div className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
+            <span className="text-sm font-medium text-[var(--color-text)]">Theme</span>
+            <ThemeToggle />
+          </div>
+
+          <h3 className="pt-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Views
           </h3>
           <button
