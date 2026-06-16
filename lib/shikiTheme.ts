@@ -34,28 +34,29 @@ function theme(name: string, type: "dark" | "light", fg: string, c: Record<strin
   };
 }
 
-// Lighter palette tones — read softly on the dark editor.
+// The accent palette (blue/purple/pink/red/orange/yellow/green/graphite),
+// lightened for legibility on the dark editor.
 export const keepPaletteThemeDark = theme("keep-palette-dark", "dark", "#ececee", {
-  comment: "#717179",
-  keyword: "#fb70a1",
-  tag: "#fb4082",
-  string: "#b7fc71",
-  constant: "#ffd272",
-  func: "#7c9df5",
-  type: "#9ffc41",
-  attr: "#ffd272",
-  punct: "#8f8f98",
+  comment: "#8b8b94", // graphite
+  keyword: "#b08bf0", // purple
+  tag: "#f76aa6", // pink
+  string: "#5cc47d", // green
+  constant: "#f7a052", // orange
+  func: "#6e94f5", // blue
+  type: "#eab534", // yellow
+  attr: "#f7a052", // orange
+  punct: "#9a9aa2", // graphite
 });
 
-// Darker, saturated palette tones — readable on the light editor background.
+// The same accent hues, darkened for legibility on the light editor background.
 export const keepPaletteThemeLight = theme("keep-palette-light", "light", "#211f1b", {
-  comment: "#8a857a",
-  keyword: "#c2185b",
-  tag: "#ad1457",
-  string: "#2e7d00",
-  constant: "#b36b00",
-  func: "#1565c0",
-  type: "#00695c",
-  attr: "#b36b00",
-  punct: "#6e6a61",
+  comment: "#6e6a61", // graphite
+  keyword: "#7b3fd0", // purple
+  tag: "#c61f6e", // pink
+  string: "#2e8b50", // green
+  constant: "#bf6a14", // orange
+  func: "#1e4fd0", // blue
+  type: "#9a7a0a", // yellow
+  attr: "#bf6a14", // orange
+  punct: "#6e6a61", // graphite
 });
