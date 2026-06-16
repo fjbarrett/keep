@@ -45,6 +45,7 @@ export function NotesView({
     trash,
     restore,
     importKeepFile,
+    importTextFiles,
     saveLocalNotes,
     togglePin,
     toggleArchive,
@@ -81,6 +82,7 @@ export function NotesView({
   const [restoringFromUrl, setRestoringFromUrl] = useState(!!initialNoteId);
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const importTextsRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
   // Id of the note created from the current compose session. Lets the editor's
   // entrance-animation key stay stable across the new → edit autosave bridge so
@@ -200,6 +202,21 @@ export function NotesView({
     setImporting(true);
     try {
       await importKeepFile(file);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleImportTexts(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      await importTextFiles(file);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Import failed");
     } finally {
@@ -657,6 +674,9 @@ export function NotesView({
           }}
           onImportClick={() => importRef.current?.click()}
           onImport={handleImport}
+          importTextsRef={importTextsRef}
+          onImportTextsClick={() => importTextsRef.current?.click()}
+          onImportTexts={handleImportTexts}
           onGuestExport={handleGuestExport}
           onEnableEncryption={() => setEncSetupOpen(true)}
           onDisableEncryption={handleDisableEncryption}

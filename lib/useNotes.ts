@@ -419,6 +419,35 @@ export function useNotes() {
     return result;
   }, [isGuest, refresh]);
 
+  // Imports this app's own exports: a single .txt/.md, or a .zip of them
+  // (one text per file). Routes through create() so guest/server + encryption
+  // are handled the same as any new text.
+  const importTextFiles = useCallback(
+    async (file: File) => {
+      const bodies: string[] = [];
+      if (/\.zip$/i.test(file.name)) {
+        const JSZip = (await import("jszip")).default;
+        const zip = await JSZip.loadAsync(await file.arrayBuffer());
+        for (const entry of Object.values(zip.files)) {
+          if (!entry.dir && /\.(txt|md|markdown)$/i.test(entry.name)) {
+            bodies.push(await entry.async("string"));
+          }
+        }
+      } else {
+        bodies.push(await file.text());
+      }
+      let imported = 0;
+      for (const body of bodies) {
+        if (body.trim()) {
+          await create({ body: body.trim() });
+          imported++;
+        }
+      }
+      return { imported };
+    },
+    [create],
+  );
+
   const saveLocalNotes = useCallback(async () => {
     const localNotes = notes.filter(
       (note) => localNoteIds.has(note.id) && !note.trashed,
@@ -522,6 +551,7 @@ export function useNotes() {
     share,
     unshare,
     importKeepFile,
+    importTextFiles,
     saveLocalNotes,
     togglePin,
     toggleArchive,
