@@ -197,7 +197,6 @@ function CardMenuItem({
 
 export function NotesCardGrid({
   notes,
-  minWidth = 20,
   onOpen,
   onTogglePin,
   onToggleArchive,
@@ -207,7 +206,6 @@ export function NotesCardGrid({
   onRename,
 }: {
   notes: Note[];
-  minWidth?: number;
 } & CardActions) {
   if (notes.length === 0) return null;
 
@@ -222,12 +220,7 @@ export function NotesCardGrid({
   };
 
   return (
-    <div
-      className="grid gap-3"
-      style={{
-        gridTemplateColumns: `repeat(auto-fill, minmax(min(${minWidth}rem, 100%), 1fr))`,
-      }}
-    >
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-3">
       {notes.map((note) => (
         <NoteCard key={note.id} note={note} actions={actions} />
       ))}

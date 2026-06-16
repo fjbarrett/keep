@@ -75,7 +75,6 @@ export function NotesView({
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [cardSize, setCardSize] = useState(20);
   const [infoNote, setInfoNote] = useState<Note | null>(null);
   // True while a /note/<id> deep link is still resolving — keeps the main pane
   // blank instead of flashing the grid/placeholder before the note opens.
@@ -92,14 +91,7 @@ export function NotesView({
     const stored = parseInt(localStorage.getItem("keep.sidebarWidth") ?? "", 10);
     if (!isNaN(stored)) setSidebarWidth(stored);
     setSidebarCollapsed(localStorage.getItem("keep.sidebarCollapsed") === "1");
-    const cs = parseInt(localStorage.getItem("keep.cardSize") ?? "", 10);
-    if (!isNaN(cs)) setCardSize(cs);
   }, []);
-
-  function changeCardSize(value: number) {
-    setCardSize(value);
-    localStorage.setItem("keep.cardSize", String(value));
-  }
 
   function toggleSidebar(collapsed: boolean) {
     setSidebarCollapsed(collapsed);
@@ -560,22 +552,8 @@ export function NotesView({
           <div className="flex-1" aria-hidden />
         ) : filtered.length > 0 ? (
           <div className="overflow-y-auto">
-            <div className="mb-3 flex items-center justify-end gap-2 pr-1">
-              <span className="text-xs text-[var(--color-subtle)]">Card size</span>
-              <input
-                type="range"
-                min={14}
-                max={30}
-                step={1}
-                value={cardSize}
-                onChange={(e) => changeCardSize(Number(e.target.value))}
-                aria-label="Grid card size"
-                className="h-1 w-28 cursor-pointer accent-[var(--color-accent)]"
-              />
-            </div>
             <NotesCardGrid
               notes={filtered}
-              minWidth={cardSize}
               onOpen={openNote}
               onTogglePin={togglePin}
               onToggleArchive={toggleArchive}
