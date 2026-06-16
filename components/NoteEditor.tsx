@@ -614,7 +614,7 @@ export function NoteEditor({
             onClose={() => setHistoryOpen(false)}
           />
         ) : (
-          <div className="relative flex flex-col min-h-0 flex-1 py-4">
+          <div className="relative flex flex-col min-h-0 flex-1 pt-6 pb-4">
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
