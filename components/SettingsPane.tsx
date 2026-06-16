@@ -18,7 +18,6 @@ export function SettingsPane({
   notes,
   isGuest,
   counts,
-  encStatus,
   onOpenArchive,
   onOpenTrash,
   onImportClick,
@@ -27,10 +26,6 @@ export function SettingsPane({
   onImportTextsClick,
   onImportTexts,
   onGuestExport,
-  onEnableEncryption,
-  onDisableEncryption,
-  onEncryptAll,
-  plaintextCount,
   onClose,
 }: {
   importing: boolean;
@@ -38,7 +33,6 @@ export function SettingsPane({
   notes: Note[];
   isGuest: boolean;
   counts: { archive: number; trash: number };
-  encStatus: "loading" | "disabled" | "locked" | "unlocked";
   onOpenArchive: () => void;
   onOpenTrash: () => void;
   onImportClick: () => void;
@@ -47,10 +41,6 @@ export function SettingsPane({
   onImportTextsClick: () => void;
   onImportTexts: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onGuestExport: () => void;
-  onEnableEncryption: () => void;
-  onDisableEncryption: () => void;
-  onEncryptAll: () => void;
-  plaintextCount: number;
   onClose: () => void;
 }) {
   const exportableCount = notes.filter((note) => !note.trashed).length;
@@ -190,54 +180,6 @@ export function SettingsPane({
                 Security
               </h3>
               <PasskeysSection />
-              {encStatus !== "loading" && (
-                <div className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--color-text)]">
-                      End-to-end encryption
-                    </p>
-                    <p className="text-xs text-[var(--color-muted)]">
-                      {encStatus === "disabled"
-                        ? "Text stored as plaintext"
-                        : encStatus === "locked"
-                        ? "Enabled · locked this session"
-                        : "Enabled · unlocked"}
-                    </p>
-                  </div>
-                  {encStatus === "disabled" ? (
-                    <button
-                      type="button"
-                      onClick={() => { onEnableEncryption(); onClose(); }}
-                      className="ml-3 shrink-0 rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-                    >
-                      Enable
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={onDisableEncryption}
-                      className="ml-3 shrink-0 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-                    >
-                      Disable
-                    </button>
-                  )}
-                </div>
-              )}
-              {encStatus === "unlocked" && plaintextCount > 0 && (
-                <button
-                  type="button"
-                  onClick={onEncryptAll}
-                  className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-left text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-                >
-                  <span>
-                    Encrypt {plaintextCount} existing{" "}
-                    {plaintextCount === 1 ? "note" : "notes"}
-                    <span className="block text-xs font-normal text-[var(--color-muted)]">
-                      Still stored as plaintext — encrypt them now
-                    </span>
-                  </span>
-                </button>
-              )}
             </>
           )}
         </div>
