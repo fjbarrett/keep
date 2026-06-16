@@ -21,6 +21,6 @@ ssh "$HOST" 'set -e
   echo "   service: $(systemctl is-active keep) @ $(git rev-parse --short HEAD)"'
 
 echo "-> Capturing screenshot of ${URL}"
-"$HERE/screenshot.sh" "$URL"
+node "$HERE/screenshot.mjs" "$URL"
 
 echo "Done. Commit the refreshed docs/screenshot.png and the new screenshots/ file."
