@@ -35,6 +35,7 @@ type CardActions = {
   onTrash: (id: string) => void;
   onColor: (id: string, color: string | null) => void;
   onInfo: (note: Note) => void;
+  onRename: (id: string, title: string) => void;
 };
 
 function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
@@ -68,50 +69,59 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
         )}
       </button>
 
-      <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            actions.onTogglePin(note.id);
-          }}
-          title={note.pinned ? "Unpin" : "Pin"}
-          aria-label={note.pinned ? "Unpin" : "Pin"}
-          aria-pressed={note.pinned}
-          className={`grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
-            note.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          }`}
-        >
-          {note.pinned ? (
-            <PinFilledIcon className="h-3.5 w-3.5 text-[var(--color-text)]" />
-          ) : (
-            <PinIcon className="h-3.5 w-3.5" />
-          )}
-        </button>
-        <button
-          type="button"
-          aria-label="More"
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          onClick={(e) => {
-            e.stopPropagation();
-            setMenuOpen((v) => !v);
-          }}
-          className={`grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-pink-light)] focus-visible:opacity-100 ${
-            menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          }`}
-        >
-          <DotsIcon className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      {/* Quick pin — top-right corner */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          actions.onTogglePin(note.id);
+        }}
+        title={note.pinned ? "Unpin" : "Pin"}
+        aria-label={note.pinned ? "Unpin" : "Pin"}
+        aria-pressed={note.pinned}
+        className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-text)] focus-visible:opacity-100 ${
+          note.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        {note.pinned ? (
+          <PinFilledIcon className="h-3.5 w-3.5 text-[var(--color-text)]" />
+        ) : (
+          <PinIcon className="h-3.5 w-3.5" />
+        )}
+      </button>
+
+      {/* Context menu — bottom-right corner */}
+      <button
+        type="button"
+        aria-label="More"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        onClick={(e) => {
+          e.stopPropagation();
+          setMenuOpen((v) => !v);
+        }}
+        className={`absolute bottom-2.5 right-2.5 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition hover:bg-[var(--color-background)] hover:text-[var(--color-pink-light)] focus-visible:opacity-100 ${
+          menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        <DotsIcon className="h-3.5 w-3.5" />
+      </button>
 
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
           <div
             role="menu"
-            className="absolute right-2.5 top-10 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg"
+            className="absolute bottom-11 right-2.5 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg"
           >
+            <CardMenuItem
+              onClick={() => {
+                actions.onTogglePin(note.id);
+                setMenuOpen(false);
+              }}
+            >
+              {note.pinned ? "Unpin" : "Pin"}
+            </CardMenuItem>
             <CardMenuItem
               onClick={() => {
                 actions.onToggleArchive(note.id);
@@ -120,6 +130,15 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
             >
               {note.archived ? "Unarchive" : "Archive"}
             </CardMenuItem>
+            <CardMenuItem
+              onClick={() => {
+                const next = window.prompt("Rename note", previewText(note));
+                if (next && next.trim()) actions.onRename(note.id, next.trim());
+                setMenuOpen(false);
+              }}
+            >
+              Rename
+            </CardMenuItem>
             <ColorSwatchRow
               selected={note.color ?? null}
               onPick={(color) => {
@@ -127,6 +146,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
                 setMenuOpen(false);
               }}
             />
+            <div className="my-1 border-t border-[var(--color-border)]" />
             <CardMenuItem
               onClick={() => {
                 actions.onInfo(note);
@@ -183,6 +203,7 @@ export function NotesCardGrid({
   onTrash,
   onColor,
   onInfo,
+  onRename,
 }: {
   notes: Note[];
 } & CardActions) {
@@ -195,6 +216,7 @@ export function NotesCardGrid({
     onTrash,
     onColor,
     onInfo,
+    onRename,
   };
 
   return (
