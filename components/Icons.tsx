@@ -322,3 +322,18 @@ export const KeyboardIcon = ({ className }: IconProps) => (
     <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
   </svg>
 );
+
+export const PanelLeftIcon = ({ className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M9 4v16" />
+  </svg>
+);

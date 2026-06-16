@@ -9,6 +9,7 @@ import { Note } from "@/lib/types";
 import {
   DotsIcon,
   KeyboardIcon,
+  PanelLeftIcon,
   PinFilledIcon,
   PlusIcon,
   SettingsIcon,
@@ -73,6 +74,7 @@ export function Sidebar({
   onRename,
   onInfo,
   onColor,
+  onCollapse,
   mobile,
   width,
 }: {
@@ -94,6 +96,7 @@ export function Sidebar({
   onRename: (id: string, title: string) => void;
   onInfo: (note: Note) => void;
   onColor: (id: string, color: string | null) => void;
+  onCollapse?: () => void;
   mobile?: boolean;
   width?: number;
 }) {
@@ -188,6 +191,17 @@ export function Sidebar({
         <div className="flex items-center justify-between px-2.5 py-1">
           <SyncIndicator status={syncStatus} />
           <div className="flex items-center gap-0.5">
+            {onCollapse && !mobile && (
+              <button
+                type="button"
+                onClick={onCollapse}
+                className="grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+              >
+                <PanelLeftIcon className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenSettings}

@@ -15,7 +15,7 @@ import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
 import { EncryptionSetup } from "@/components/EncryptionSetup";
 import { EncryptionUnlock } from "@/components/EncryptionUnlock";
 import { NotesCardGrid } from "@/components/NotesCardGrid";
-import { PlusIcon, StackIcon, XIcon } from "@/components/Icons";
+import { PanelLeftIcon, PlusIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -74,6 +74,7 @@ export function NotesView({
   );
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [infoNote, setInfoNote] = useState<Note | null>(null);
   // True while a /note/<id> deep link is still resolving — keeps the main pane
   // blank instead of flashing the grid/placeholder before the note opens.
@@ -89,7 +90,13 @@ export function NotesView({
   useEffect(() => {
     const stored = parseInt(localStorage.getItem("keep.sidebarWidth") ?? "", 10);
     if (!isNaN(stored)) setSidebarWidth(stored);
+    setSidebarCollapsed(localStorage.getItem("keep.sidebarCollapsed") === "1");
   }, []);
+
+  function toggleSidebar(collapsed: boolean) {
+    setSidebarCollapsed(collapsed);
+    localStorage.setItem("keep.sidebarCollapsed", collapsed ? "1" : "0");
+  }
 
   function startSidebarResize(e: React.MouseEvent) {
     e.preventDefault();
@@ -489,6 +496,7 @@ export function NotesView({
     onRename: (id: string, title: string) => update(id, { title }),
     onInfo: (note: Note) => setInfoNote(note),
     onColor: (id: string, color: string | null) => update(id, { color }),
+    onCollapse: () => toggleSidebar(true),
   };
 
   // A new note and the edit view of the note it just autosaved into share one
@@ -569,13 +577,28 @@ export function NotesView({
     <>
       {/* Desktop: sidebar + editor side by side */}
       <div className="hidden min-h-0 flex-1 md:flex">
-        <Sidebar {...sidebarProps} width={sidebarWidth} />
-        <div
-          onMouseDown={startSidebarResize}
-          className="w-[3px] shrink-0 cursor-col-resize bg-[var(--color-border)] opacity-0 transition-opacity hover:opacity-100"
-          aria-hidden
-        />
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
+        {!sidebarCollapsed && (
+          <>
+            <Sidebar {...sidebarProps} width={sidebarWidth} />
+            <div
+              onMouseDown={startSidebarResize}
+              className="w-[3px] shrink-0 cursor-col-resize bg-[var(--color-border)] opacity-0 transition-opacity hover:opacity-100"
+              aria-hidden
+            />
+          </>
+        )}
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
+          {sidebarCollapsed && (
+            <button
+              type="button"
+              onClick={() => toggleSidebar(false)}
+              className="absolute left-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+              title="Show sidebar"
+              aria-label="Show sidebar"
+            >
+              <PanelLeftIcon className="h-4 w-4" />
+            </button>
+          )}
           {editorPanel}
         </main>
       </div>
