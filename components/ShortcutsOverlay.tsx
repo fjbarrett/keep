@@ -34,7 +34,13 @@ const SHORTCUT_GROUPS = [
   },
 ];
 
-export function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
+export function ShortcutsOverlay({
+  onClose,
+  isGuest,
+}: {
+  onClose: () => void;
+  isGuest?: boolean;
+}) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" || e.key === "?") onClose();
@@ -65,6 +71,23 @@ export function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
             <XIcon className="h-4 w-4" />
           </button>
         </div>
+        {isGuest && (
+          <div className="border-b border-[var(--color-border)] px-4 py-3">
+            <p className="text-sm font-medium text-[var(--color-text)]">
+              Welcome to Keep
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
+              A fast, minimalist place for notes — write in plain text, Markdown,
+              or code with syntax highlighting; organize with pins, colors, and
+              search. You&apos;re browsing as a guest: notes stay in this browser
+              until you{" "}
+              <a href="/signin?from=/" className="text-[var(--color-link)] hover:underline">
+                sign in to save and sync
+              </a>
+              .
+            </p>
+          </div>
+        )}
         <div className="grid gap-5 p-4 sm:grid-cols-2">
           {SHORTCUT_GROUPS.map((group) => (
             <div key={group.title}>
