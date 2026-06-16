@@ -44,6 +44,25 @@ export function languageLabel(lang: string): string {
   return LABELS[lang] ?? lang.charAt(0).toUpperCase() + lang.slice(1);
 }
 
+const EXTENSIONS: Record<string, string> = {
+  javascript: "js", typescript: "ts", tsx: "tsx", jsx: "jsx", python: "py",
+  json: "json", yaml: "yml", html: "html", css: "css", go: "go", rust: "rs",
+  java: "java", c: "c", cpp: "cpp", sql: "sql", ruby: "rb", php: "php",
+  swift: "swift", kotlin: "kt", toml: "toml", dockerfile: "dockerfile",
+  xml: "xml", graphql: "graphql", bash: "sh", shell: "sh", perl: "pl",
+  markdown: "md",
+};
+
+/** File extension for downloading a note: code → its ext, markdown → md, else txt. */
+export function noteFileExtension(body: string): string {
+  const code = detectCodeLanguage(body);
+  if (code) return EXTENSIONS[code] ?? "txt";
+  const first = body.split("\n")[0]?.trim() ?? "";
+  if (/^#{1,6}\s/.test(first) || /```/.test(body) || /\[[^\]]+\]\([^)]+\)/.test(body))
+    return "md";
+  return "txt";
+}
+
 /** Returns a programming/markup language when the body clearly is code, else null. */
 export function detectCodeLanguage(code: string): string | null {
   const lines = code.split("\n");
