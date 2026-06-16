@@ -5,6 +5,7 @@ import { Note } from "@/lib/types";
 import { previewText } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
 import { noteColorVar } from "@/lib/noteColors";
+import { downloadNoteBody } from "@/lib/downloadNote";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { DotsIcon, PinIcon, PinFilledIcon } from "@/components/Icons";
 
@@ -159,6 +160,14 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
               }}
             >
               Get Info
+            </CardMenuItem>
+            <CardMenuItem
+              onClick={() => {
+                downloadNoteBody(note.body);
+                setMenuOpen(false);
+              }}
+            >
+              Download
             </CardMenuItem>
             <div className="my-1 border-t border-[var(--color-border)]" />
             <CardMenuItem
