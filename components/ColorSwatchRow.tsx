@@ -31,7 +31,7 @@ export function ColorSwatchRow({
           aria-label={c.label}
           title={c.label}
           onClick={() => onPick(c.key)}
-          style={{ background: `var(${c.var})` }}
+          style={{ background: c.color }}
           className={`h-4 w-4 rounded-full transition-transform hover:scale-110 ${
             selected === c.key
               ? "ring-2 ring-[var(--color-text)] ring-offset-1 ring-offset-[var(--color-surface)]"
