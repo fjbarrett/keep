@@ -87,6 +87,12 @@ export function detectCodeLanguage(code: string): string | null {
   if (/^<(!DOCTYPE|html|div|span|head|body|script|style)\b/i.test(first)) return "html";
   if (/^<\?xml/.test(first)) return "xml";
 
+  // CSS: at-rules (@tailwind/@media/…), a custom property, or a selector block.
+  if (/^@(tailwind|import|media|keyframes|font-face|charset|supports|layer|namespace)\b/.test(first))
+    return "css";
+  if (/^--[\w-]+\s*:/.test(first)) return "css";
+  if (/^(:root|\*|\.[-\w]+|#[-\w]+|::?[\w-]+)[\s,{]/.test(first)) return "css";
+
   if (/^(import|export)\s/.test(first) && /from\s+['"]/.test(first)) return "typescript";
   if (/^(const|let|var|function|class|interface|type)\s/.test(first)) return "typescript";
   // Swift: a capitalized single-module import (import Foundation/SwiftUI) or an
