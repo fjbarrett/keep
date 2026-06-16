@@ -5,7 +5,7 @@
 # Env overrides: KEEP_HOST (ssh target), KEEP_URL (public url).
 set -euo pipefail
 
-HOST="${KEEP_HOST:-root@24.199.101.95}"
+HOST="${KEEP_HOST:?Set KEEP_HOST, e.g. export KEEP_HOST=root@your-droplet}"
 URL="${KEEP_URL:-https://keeptxt.com}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
