@@ -10,7 +10,6 @@ import {
   DotsIcon,
   KeyboardIcon,
   PanelLeftIcon,
-  PinFilledIcon,
   PlusIcon,
   SettingsIcon,
   XIcon,
@@ -319,9 +318,6 @@ function SidebarNoteRow({
             className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm text-[var(--color-text)]"
           >
             <span className="truncate">{previewText(note)}</span>
-            {note.pinned && !trashMode && (
-              <PinFilledIcon className="ml-auto h-3 w-3 shrink-0 text-[var(--color-muted)]" />
-            )}
           </button>
           <button
             type="button"
