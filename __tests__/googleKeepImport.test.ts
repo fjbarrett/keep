@@ -1,8 +1,19 @@
 import { describe, it, expect } from "vitest";
+import JSZip from "jszip";
 import { parseGoogleKeepImport } from "@/lib/googleKeepImport";
 
 function jsonToBuffer(data: Record<string, unknown>): ArrayBuffer {
   return new TextEncoder().encode(JSON.stringify(data)).buffer;
+}
+
+async function buildKeepZip(
+  entries: Record<string, unknown>[],
+): Promise<ArrayBuffer> {
+  const zip = new JSZip();
+  entries.forEach((data, i) =>
+    zip.file(`Takeout/Keep/note-${i}.json`, JSON.stringify(data)),
+  );
+  return zip.generateAsync({ type: "arraybuffer" });
 }
 
 describe("parseGoogleKeepImport", () => {
@@ -87,5 +98,62 @@ describe("parseGoogleKeepImport", () => {
 
     expect(result.notes).toHaveLength(1);
     expect(result.notes[0].createdAt).toBeGreaterThan(0);
+    expect(result.truncated).toBe(false);
+  });
+});
+
+describe("parseGoogleKeepImport bounds", () => {
+  const big = 1024 * 1024;
+
+  it("caps the number of imported notes and flags truncation", async () => {
+    const data = await buildKeepZip([
+      { textContent: "one" },
+      { textContent: "two" },
+      { textContent: "three" },
+    ]);
+
+    const result = await parseGoogleKeepImport("Takeout.zip", data, {
+      maxNotes: 2,
+      maxEntryBytes: big,
+      maxTotalBytes: 50 * big,
+    });
+
+    expect(result.notes).toHaveLength(2);
+    expect(result.truncated).toBe(true);
+  });
+
+  it("skips an entry larger than the per-entry cap", async () => {
+    const data = await buildKeepZip([
+      { textContent: "small" },
+      { textContent: "x".repeat(5000) },
+    ]);
+
+    const result = await parseGoogleKeepImport("Takeout.zip", data, {
+      maxNotes: 100,
+      maxEntryBytes: 1000,
+      maxTotalBytes: 50 * big,
+    });
+
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0].body).toBe("small");
+    expect(result.skipped).toBeGreaterThanOrEqual(1);
+  });
+
+  it("stops once the total decompressed cap is reached", async () => {
+    const chunk = "y".repeat(2000);
+    const data = await buildKeepZip([
+      { textContent: chunk },
+      { textContent: chunk },
+      { textContent: chunk },
+    ]);
+
+    const result = await parseGoogleKeepImport("Takeout.zip", data, {
+      maxNotes: 100,
+      maxEntryBytes: big,
+      maxTotalBytes: 3000,
+    });
+
+    expect(result.notes.length).toBeLessThan(3);
+    expect(result.truncated).toBe(true);
   });
 });

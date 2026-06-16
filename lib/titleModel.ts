@@ -40,6 +40,15 @@ function clean(value: string, max: number) {
 }
 
 /**
+ * Heuristic-only title + summary with no model call. Used for bulk import,
+ * where one Anthropic request per note would amplify cost (and latency)
+ * without meaningfully improving metadata over the inferred title.
+ */
+export function heuristicNoteMeta(body: string): NoteMeta {
+  return { title: inferNoteTitle(body), summary: heuristicSummary(body) };
+}
+
+/**
  * Generates a short title and a one-sentence card description in a single
  * Anthropic Haiku call. Falls back to heuristics when the key is missing or
  * the call fails, so callers always get usable metadata.
