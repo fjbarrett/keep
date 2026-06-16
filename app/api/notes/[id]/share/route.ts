@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
+import { internalError, isUniqueViolation } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,10 +36,7 @@ export async function POST(
     }
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    return internalError("notes:share", err);
   }
 }
 
@@ -64,10 +62,7 @@ export async function DELETE(
     }
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    return internalError("notes:share", err);
   }
 }
 
@@ -107,9 +102,14 @@ export async function PUT(
     }
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    // Two concurrent PUTs can both pass the SELECT above and race on the
+    // unique index; turn that into a clean 409 instead of a leaked 500.
+    if (isUniqueViolation(err)) {
+      return NextResponse.json(
+        { error: "That link is already taken." },
+        { status: 409 },
+      );
+    }
+    return internalError("notes:share", err);
   }
 }

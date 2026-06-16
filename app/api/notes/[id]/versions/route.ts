@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { pool, ready } from "@/lib/db";
+import { internalError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,9 +51,6 @@ export async function GET(
       })),
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    return internalError("notes:versions", err);
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { newId, pool, ready, rowToNote, NoteRow } from "@/lib/db";
+import { internalError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,10 +102,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    return internalError("notes:item", err);
   }
 }
 
@@ -124,9 +122,6 @@ export async function DELETE(
     );
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    return internalError("notes:item", err);
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { newId, pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { generateNoteMeta } from "@/lib/titleModel";
+import { internalError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,10 +20,7 @@ export async function GET() {
     );
     return NextResponse.json({ notes: rows.map(rowToNote) });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    return internalError("notes:list-create", err);
   }
 }
 
@@ -67,9 +65,6 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ note: rowToNote(rows[0]) }, { status: 201 });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "DB error" },
-      { status: 500 },
-    );
+    return internalError("notes:list-create", err);
   }
 }
