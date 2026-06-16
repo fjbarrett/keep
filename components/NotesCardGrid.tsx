@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Note } from "@/lib/types";
 import { previewText } from "@/lib/inferTitle";
+import { noteFileExtension } from "@/lib/detectLanguage";
 import { noteColorVar } from "@/lib/noteColors";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { DotsIcon, PinIcon, PinFilledIcon } from "@/components/Icons";
@@ -44,6 +45,7 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
   // Prefer the AI-generated description; fall back to a cleaned body preview
   // for notes that don't have one yet (guests, imports, legacy notes).
   const preview = note.summary?.trim() || bodyPreview(note.body);
+  const ext = noteFileExtension(note.body);
 
   return (
     <div className="group relative">
@@ -66,6 +68,11 @@ function NoteCard({ note, actions }: { note: Note; actions: CardActions }) {
           <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-[var(--color-muted)]">
             {preview}
           </p>
+        )}
+        {ext !== "txt" && (
+          <span className="mt-3 inline-block rounded border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[10px] lowercase text-[var(--color-subtle)]">
+            .{ext}
+          </span>
         )}
       </button>
 
