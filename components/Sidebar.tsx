@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { previewText } from "@/lib/inferTitle";
 import { detectCodeLanguage, languageLabel } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
@@ -105,6 +105,35 @@ export function Sidebar({
   const filteredTitle =
     viewMode === "archive" ? "Archive" : viewMode === "trash" ? "Trash" : null;
 
+  // A single accent highlight that springs up/down to the active row, instead
+  // of each row painting its own background.
+  const listRef = useRef<HTMLDivElement>(null);
+  const [indicator, setIndicator] = useState<
+    { top: number; height: number; animate: boolean } | null
+  >(null);
+  const orderKey = useMemo(() => filtered.map((n) => n.id).join(","), [filtered]);
+
+  useEffect(() => {
+    const container = listRef.current;
+    const row =
+      container && activeNoteId
+        ? container.querySelector<HTMLElement>(
+            `[data-note-id="${CSS.escape(activeNoteId)}"]`,
+          )
+        : null;
+    if (!row) {
+      setIndicator(null);
+      return;
+    }
+    const top = row.offsetTop;
+    const height = row.offsetHeight;
+    setIndicator((prev) =>
+      prev && prev.top === top && prev.height === height
+        ? prev
+        : { top, height, animate: prev != null },
+    );
+  }, [activeNoteId, orderKey, hydrated]);
+
   return (
     <aside
       aria-label="Text sidebar"
@@ -143,7 +172,21 @@ export function Sidebar({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <div ref={listRef} className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+        {indicator && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-2 right-2 top-0 rounded-md bg-[var(--color-accent)]"
+            style={{
+              height: indicator.height,
+              transform: `translateY(${indicator.top}px)`,
+              transition: indicator.animate
+                ? "transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1), height 200ms ease"
+                : "none",
+              willChange: "transform",
+            }}
+          />
+        )}
         {!hydrated ? (
           <div className="space-y-2 px-2 pt-3">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -294,10 +337,9 @@ function SidebarNoteRow({
 
   return (
     <li
+      data-note-id={note.id}
       className={`group relative flex items-center rounded-md ${
-        active
-          ? "bg-[var(--color-accent)]"
-          : "hover:bg-[var(--color-surface-hover)]"
+        active ? "" : "hover:bg-[var(--color-surface-hover)]"
       }`}
     >
       {isRenaming ? (
@@ -319,7 +361,7 @@ function SidebarNoteRow({
             type="button"
             onClick={onOpen}
             aria-current={active ? "true" : undefined}
-            className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm ${
+            className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
               active ? "text-[var(--color-accent-fg)]" : "text-[var(--color-text)]"
             }`}
           >
