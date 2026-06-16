@@ -606,7 +606,7 @@ export function NotesView({
   return (
     <>
       {/* Desktop: sidebar (or mini rail) + editor side by side */}
-      <div className="hidden min-h-0 flex-1 md:flex">
+      <div className="hidden min-h-0 flex-1 bg-[var(--color-canvas)] md:flex">
         {sidebarCollapsed ? (
           <MiniRail
             onNewNote={sidebarProps.onNewNote}
@@ -624,7 +624,7 @@ export function NotesView({
             />
           </>
         )}
-        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-tl-2xl border-l border-t border-[var(--color-border)] bg-[var(--color-background)]">
           {editorPanel}
         </main>
       </div>
