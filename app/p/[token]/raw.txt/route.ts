@@ -1,5 +1,6 @@
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
+import { noteFileExtension } from "@/lib/detectLanguage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,12 +25,13 @@ export async function GET(
   const title = needsInferredTitle(note.title, note.body)
     ? inferNoteTitle(note.body || note.title) || "note"
     : note.title || "note";
+  const ext = noteFileExtension(note.body);
 
   return new Response(note.body, {
     status: 200,
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Content-Disposition": `inline; filename="${safeFilename(title)}.txt"`,
+      "Content-Disposition": `inline; filename="${safeFilename(title)}.${ext}"`,
       "Cache-Control": "no-store",
     },
   });

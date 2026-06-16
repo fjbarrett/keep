@@ -11,12 +11,14 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // /p/<token>.txt → /p/<token>/raw.txt — keeps the public-facing URL short
-  // and gives the browser a real .txt extension to download against.
-  const txt = pathname.match(/^\/p\/([^/]+)\.txt$/);
-  if (txt) {
+  // /p/<token>.<ext> → /p/<token>/raw.txt — keeps the public-facing URL short
+  // and lets the browser download against the extension Keep detected (.py,
+  // .md, …), not just .txt. Share tokens never contain a dot, so a dotted
+  // suffix here is always the download extension.
+  const raw = pathname.match(/^\/p\/([^/]+)\.[A-Za-z0-9]+$/);
+  if (raw) {
     const url = req.nextUrl.clone();
-    url.pathname = `/p/${txt[1]}/raw.txt`;
+    url.pathname = `/p/${raw[1]}/raw.txt`;
     return NextResponse.rewrite(url);
   }
 
