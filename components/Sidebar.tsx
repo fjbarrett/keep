@@ -254,7 +254,7 @@ export function Sidebar({
               height: indicator.height,
               transform: `translateY(${indicator.top}px)`,
               transition: indicator.animate
-                ? "transform 300ms cubic-bezier(0.34, 1.25, 0.64, 1), height 160ms ease"
+                ? "transform 300ms cubic-bezier(0.33, 1, 0.68, 1), height 160ms ease"
                 : "none",
               willChange: "transform",
             }}
@@ -414,13 +414,7 @@ function SidebarNoteRow({
   return (
     <li
       data-note-id={note.id}
-      className={`group relative flex items-center rounded-md ${
-        active
-          ? slidingIn
-            ? "bg-[var(--color-accent)]"
-            : ""
-          : "hover:bg-[var(--color-surface-hover)]"
-      }`}
+      className="group relative flex items-center rounded-md"
     >
       {isRenaming ? (
         <input
@@ -442,7 +436,7 @@ function SidebarNoteRow({
             onClick={onOpen}
             aria-current={active ? "true" : undefined}
             className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
-              active
+              active && !slidingIn
                 ? "text-[var(--color-accent-fg)]"
                 : "text-[var(--color-text)]"
             }`}
@@ -450,7 +444,7 @@ function SidebarNoteRow({
             {noteColorVar(note.color) && (
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
-                  active ? "ring-1 ring-white/40" : ""
+                  active && !slidingIn ? "ring-1 ring-white/40" : ""
                 }`}
                 style={{ background: noteColorVar(note.color)! }}
                 aria-hidden
