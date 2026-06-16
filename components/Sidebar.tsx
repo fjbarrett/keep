@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { previewText } from "@/lib/inferTitle";
 import { detectCodeLanguage, languageLabel } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
+import { noteColorVar } from "@/lib/noteColors";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
@@ -317,6 +318,13 @@ function SidebarNoteRow({
             aria-current={active ? "true" : undefined}
             className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm text-[var(--color-text)]"
           >
+            {noteColorVar(note.color) && (
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ background: noteColorVar(note.color)! }}
+                aria-hidden
+              />
+            )}
             <span className="truncate">{previewText(note)}</span>
           </button>
           <button
