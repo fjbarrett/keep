@@ -552,6 +552,7 @@ export function NotesView({
               onTrash={trash}
               onColor={(id, color) => update(id, { color })}
               onInfo={(note) => setInfoNote(note)}
+              onRename={(id, title) => update(id, { title })}
             />
           </div>
         ) : (
