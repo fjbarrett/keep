@@ -48,3 +48,18 @@ Flag organically when natural — don't pile them on:
 - A handful of tests around non-trivial logic (title inference, autosave debounce, guest→user sync).
 - An accessibility pass on keyboard nav + focus rings.
 - Extract `Sidebar.tsx` / `MainPlaceholder.tsx` from `NotesView.tsx` once it grows past comfort.
+
+## Deploys
+
+Production runs on a DigitalOcean droplet (`keep-prod`, behind Caddy/HTTPS at
+keeptxt.com), not Vercel. To ship after merging to `main`:
+
+```bash
+scripts/deploy.sh        # ssh → pull main, build, restart; then screenshots the live site
+```
+
+**Always screenshot on deploy.** `scripts/deploy.sh` calls `scripts/screenshot.sh`,
+which captures keeptxt.com to `screenshots/keep-<timestamp>.png` (an archive kept
+in the repo so design changes can be reviewed over time) and refreshes
+`docs/screenshot.png` (the image shown in the README). Commit the refreshed
+`docs/screenshot.png` and the new `screenshots/` file with the deploy.
