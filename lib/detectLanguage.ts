@@ -89,6 +89,10 @@ export function detectCodeLanguage(code: string): string | null {
 
   if (/^(import|export)\s/.test(first) && /from\s+['"]/.test(first)) return "typescript";
   if (/^(const|let|var|function|class|interface|type)\s/.test(first)) return "typescript";
+  // Swift: a capitalized single-module import (import Foundation/SwiftUI) or an
+  // attribute like @main — checked before Python's bare `import` rule.
+  if (/^import\s+[A-Z]\w*\s*$/.test(first) || /^@(main|available|objc|MainActor)\b/.test(first))
+    return "swift";
   if (/^(import|from)\s/.test(first) || /^def\s|^class\s/.test(first))
     return "python";
   if (/^(package\s|func\s|import\s+\()/.test(first)) return "go";
