@@ -123,7 +123,7 @@ export function Sidebar({
           <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
             <PlusIcon className="h-3.5 w-3.5" />
           </span>
-          <span className="font-medium">New text</span>
+          <span className="font-medium">New</span>
         </button>
       </div>
 

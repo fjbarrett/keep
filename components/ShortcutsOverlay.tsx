@@ -16,7 +16,7 @@ const SHORTCUT_GROUPS = [
   {
     title: "Actions",
     items: [
-      { keys: ["n", "c"], label: "New text" },
+      { keys: ["n", "c"], label: "New" },
       { keys: ["p"], label: "Toggle pin" },
       { keys: ["a"], label: "Toggle archive" },
       { keys: ["⌘I"], label: "Get info" },
