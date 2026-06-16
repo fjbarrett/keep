@@ -19,6 +19,9 @@
   --color-accent-fg: #ffffff;
   --color-accent-hover: #527ef3;
   --color-accent-border: #2b60f2;
+  /* Fixed blue for the "blue" note label, so it stays blue when the accent
+     color is changed (the accent overrides --color-accent only). */
+  --color-blue: #2b60f2;
   --color-pink: #f80058;
   --color-pink-hover: #ff4d8d;
   --color-pink-light: #fb70a1;
@@ -51,6 +54,7 @@
   --color-accent-fg: #ffffff;
   --color-accent-hover: #0f4bee;
   --color-accent-border: #2b60f2;
+  --color-blue: #2b60f2;
   --color-pink: #f80058;
   --color-pink-hover: #cc0048;
   --color-pink-light: #fb4082;
