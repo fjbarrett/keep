@@ -7,7 +7,13 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
   const from = process.env.EMAIL_FROM ?? "Keep <onboarding@resend.dev>";
 
   if (!key) {
-    console.log(`[email] (no RESEND_API_KEY) verification link for ${to}: ${verifyUrl}`);
+    // The verify URL carries a single-use account token, so only log it in
+    // development; in production just note the misconfiguration.
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[email] (no RESEND_API_KEY) verification link for ${to}: ${verifyUrl}`);
+    } else {
+      console.error(`[email] RESEND_API_KEY unset — cannot send verification email to ${to}`);
+    }
     return;
   }
 
