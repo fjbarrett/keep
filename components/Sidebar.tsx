@@ -240,10 +240,10 @@ export function Sidebar({
         <button
           type="button"
           onClick={onNewNote}
-          className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+          className="new-button flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
         >
           <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
-            <PlusIcon className="h-3.5 w-3.5" />
+            <PlusIcon className="new-plus h-3.5 w-3.5" />
           </span>
           <span className="font-medium">New</span>
         </button>
