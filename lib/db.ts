@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { logger } from "@/lib/logger";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -156,7 +157,7 @@ async function migrateNoteIds(): Promise<void> {
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
       // Don't brick the app over one row — log and let the next boot retry it.
-      console.error(`note id migration failed for ${oldId}:`, err);
+      logger.error("note id migration failed", { oldId, err });
     } finally {
       client.release();
     }

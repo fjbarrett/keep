@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * Logs the real error server-side and returns a generic 500. Routes used to
@@ -6,7 +7,7 @@ import { NextResponse } from "next/server";
  * DATABASE_URL hint string from lib/db — none of which a client should see.
  */
 export function internalError(context: string, err: unknown) {
-  console.error(`[${context}]`, err);
+  logger.error("request failed", { context, err });
   return NextResponse.json({ error: "Internal error" }, { status: 500 });
 }
 
