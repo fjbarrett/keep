@@ -558,12 +558,9 @@ export function NotesView({
             onTrash={trash}
             onRestore={restore}
             onRemove={remove}
-            onShare={share}
-            onUnshare={unshare}
             onColor={(color) =>
               mainTarget.mode === "edit" && update(mainTarget.note.id, { color })
             }
-            canShare={!isGuest}
             presentation="panel"
           />
         ) : restoringFromUrl ? (
