@@ -1,10 +1,12 @@
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
+import { isAnalyticsOwner } from "@/lib/analyticsSummary";
 import { Logo } from "./Logo";
 
 export async function Header() {
   const session = await auth();
   const user = session?.user;
+  const owner = isAnalyticsOwner(user?.email);
 
   return (
     <header className="bg-[var(--color-canvas)]">
@@ -16,6 +18,15 @@ export async function Header() {
         <div className="flex-1" />
 
         {user ? (
+          <>
+            {owner && (
+              <a
+                href="/analytics"
+                className="hidden text-sm text-[var(--color-muted)] hover:text-[var(--color-text)] sm:block"
+              >
+                Analytics
+              </a>
+            )}
           <form
             action={async () => {
               "use server";
@@ -42,6 +53,7 @@ export async function Header() {
               Sign out
             </button>
           </form>
+          </>
         ) : (
           <a
             href="/signin?from=/"
