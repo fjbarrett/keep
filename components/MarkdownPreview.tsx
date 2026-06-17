@@ -47,7 +47,7 @@ export function MarkdownPreview({ body }: { body: string }) {
   const gfm = modules.gfm.default;
 
   return (
-    <div className="prose-invert-auto mx-auto min-h-[320px] w-full max-w-3xl xl:max-w-4xl flex-1 overflow-y-auto px-6 text-[17px] leading-relaxed">
+    <div className="prose-invert-auto mx-auto min-h-[320px] w-full max-w-3xl xl:max-w-4xl flex-1 overflow-y-auto px-6 text-[15px] leading-relaxed">
       <Markdown remarkPlugins={[gfm]} components={{ pre: MarkdownCodeBlock }}>
         {body}
       </Markdown>
