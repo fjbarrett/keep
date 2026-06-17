@@ -487,7 +487,7 @@ function SidebarNoteRow({
             className={`mr-1 grid h-6 w-6 place-items-center rounded transition-colors focus-visible:opacity-100 ${
               active
                 ? "text-white/75 hover:bg-white/20 hover:text-white"
-                : "text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-pink-light)]"
+                : "text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
             } ${menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
           >
             <DotsIcon className="h-3.5 w-3.5" />
