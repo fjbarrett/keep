@@ -322,7 +322,7 @@ export function NoteEditor({
   const isTrashed = target.mode === "edit" && target.note.trashed;
 
   const header = (
-    <div className="flex flex-wrap items-center gap-1 border-b border-[var(--color-border)] px-3 py-2">
+    <div className="flex flex-wrap items-center gap-1 px-3 py-2">
       {onBack && (
         <>
           <button
@@ -611,7 +611,7 @@ export function NoteEditor({
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
-              <div className="flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6">
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl xl:max-w-4xl flex-1 flex-col px-6">
                 <HighlightedEditor
                   ref={bodyRef}
                   value={body}
@@ -637,7 +637,7 @@ export function NoteEditor({
                 data-lpignore="true"
                 data-bwignore
                 data-form-type="other"
-                className="min-h-[320px] w-full max-w-3xl flex-1 resize-none overflow-y-auto border-0 bg-transparent px-6 text-base md:text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                className="mx-auto min-h-[320px] w-full max-w-3xl xl:max-w-4xl flex-1 resize-none overflow-y-auto border-0 bg-transparent px-6 text-base leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
             {uploading && (
