@@ -146,6 +146,22 @@ async function bootstrap(): Promise<void> {
     CREATE INDEX IF NOT EXISTS security_events_ts_idx ON security_events (ts DESC);
     CREATE INDEX IF NOT EXISTS security_events_user_idx ON security_events (user_id, ts DESC);
     CREATE INDEX IF NOT EXISTS security_events_event_idx ON security_events (event, ts DESC);
+
+    -- Privacy-first product analytics (see lib/analytics.ts). Anonymous: no
+    -- cookies, no stored IPs, dynamic paths collapsed to route patterns, and
+    -- "visitor" is a daily-rotating salted hash (not a persistent identifier).
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id        TEXT PRIMARY KEY,
+      ts        BIGINT NOT NULL,
+      type      TEXT NOT NULL,
+      path      TEXT,
+      referrer  TEXT,
+      visitor   TEXT,
+      device    TEXT
+    );
+    CREATE INDEX IF NOT EXISTS analytics_events_ts_idx ON analytics_events (ts DESC);
+    CREATE INDEX IF NOT EXISTS analytics_events_path_idx ON analytics_events (path, ts DESC);
+    CREATE INDEX IF NOT EXISTS analytics_events_visitor_idx ON analytics_events (visitor, ts DESC);
   `);
 }
 
