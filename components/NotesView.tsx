@@ -489,6 +489,7 @@ export function NotesView({
       setViewMode("active");
       setTarget({ mode: "new" });
     },
+    onOpenSearch: openSearch,
     onOpenSettings: () => setSettingsOpen(true),
     onOpenShortcuts: () => setShortcutsOpen(true),
     togglePin,

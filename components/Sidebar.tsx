@@ -13,6 +13,7 @@ import {
   KeyboardIcon,
   PanelLeftIcon,
   PlusIcon,
+  SearchIcon,
   SettingsIcon,
   XIcon,
 } from "@/components/Icons";
@@ -68,6 +69,7 @@ export function Sidebar({
   onExitFilteredView,
   onOpenNote,
   onNewNote,
+  onOpenSearch,
   onOpenSettings,
   onOpenShortcuts,
   togglePin,
@@ -90,6 +92,7 @@ export function Sidebar({
   onExitFilteredView: () => void;
   onOpenNote: (note: Note) => void;
   onNewNote: () => void;
+  onOpenSearch: () => void;
   onOpenSettings: () => void;
   onOpenShortcuts: () => void;
   togglePin: (id: string) => void;
@@ -244,6 +247,19 @@ export function Sidebar({
             <PlusIcon className="h-3.5 w-3.5" />
           </span>
           <span className="font-medium">New</span>
+        </button>
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+        >
+          <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <SearchIcon className="h-3.5 w-3.5" />
+          </span>
+          <span>Search</span>
+          <kbd className="ml-auto rounded border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-muted)]">
+            ⌘K
+          </kbd>
         </button>
       </div>
 
