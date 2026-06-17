@@ -13,7 +13,6 @@ import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
 import { EncryptionUnlock } from "@/components/EncryptionUnlock";
-import { NotesCardGrid } from "@/components/NotesCardGrid";
 import { KeyboardIcon, PanelLeftIcon, PlusIcon, SettingsIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
@@ -505,17 +504,17 @@ export function NotesView({
 
   // All open notes share one key ("note") so switching between them updates the
   // editor in place — no remount, so it doesn't re-run Shiki or flash. The key
-  // only changes for grid / compose / a note being open, which is what should
-  // replay an entrance animation.
+  // only changes for the empty placeholder / compose / a note being open, which
+  // is what should replay an entrance animation.
   const animKey = !mainTarget
-    ? "grid"
+    ? "empty"
     : mainTarget.mode === "new" || mainTarget.note.id === composedIdRef.current
       ? "compose"
       : "note";
 
-  // Opening from the grid/compose expands; switching between already-open notes
-  // updates in place with no animation (the editor stays mounted); the grid
-  // itself fades in.
+  // Opening from the placeholder/compose expands; switching between already-open
+  // notes updates in place with no animation (the editor stays mounted); the
+  // placeholder itself fades in.
   const animClass = !mainTarget
     ? "note-fade-in"
     : prevTargetRef.current
@@ -565,19 +564,6 @@ export function NotesView({
           />
         ) : restoringFromUrl ? (
           <div className="flex-1" aria-hidden />
-        ) : filtered.length > 0 ? (
-          <div className="overflow-y-auto p-2">
-            <NotesCardGrid
-              notes={filtered}
-              onOpen={openNote}
-              onTogglePin={togglePin}
-              onToggleArchive={toggleArchive}
-              onTrash={trash}
-              onColor={(id, color) => update(id, { color })}
-              onInfo={(note) => setInfoNote(note)}
-              onRename={(id, title) => update(id, { title })}
-            />
-          </div>
         ) : (
           <MainPlaceholder
             hasNotes={!hydrated || notes.length > 0}
