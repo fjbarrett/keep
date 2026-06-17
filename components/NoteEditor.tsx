@@ -17,7 +17,6 @@ import {
   HistoryIcon,
   PinFilledIcon,
   PinIcon,
-  ShareIcon,
   TrashIcon,
   UnarchiveIcon,
   XIcon,
@@ -56,10 +55,7 @@ export function NoteEditor({
   onTrash,
   onRestore,
   onRemove,
-  onShare,
-  onUnshare,
   onColor,
-  canShare,
   presentation = "modal",
 }: {
   target: EditorTarget;
@@ -70,10 +66,7 @@ export function NoteEditor({
   onTrash: (id: string) => void;
   onRestore: (id: string) => void;
   onRemove: (id: string) => void;
-  onShare: (id: string) => Promise<string | null>;
-  onUnshare: (id: string) => Promise<void>;
   onColor?: (color: string | null) => void;
-  canShare: boolean;
   presentation?: "modal" | "panel";
 }) {
   const [body, setBody] = useState("");
@@ -652,16 +645,6 @@ export function NoteEditor({
                 Uploading image...
               </p>
             )}
-            {target.mode === "edit" && canShare && (
-              <div className="absolute bottom-3 right-4 z-10">
-                <SharePopover
-                  placement="corner"
-                  note={target.note}
-                  onShare={() => onShare(target.note.id)}
-                  onUnshare={() => onUnshare(target.note.id)}
-                />
-              </div>
-            )}
           </div>
         )}
 
@@ -885,123 +868,3 @@ function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
     </div>
   );
 }
-
-function SharePopover({
-  note,
-  onShare,
-  onUnshare,
-  placement = "toolbar",
-}: {
-  note: Note;
-  onShare: () => Promise<string | null>;
-  onUnshare: () => Promise<void>;
-  placement?: "toolbar" | "corner";
-}) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const isShared = !!note.shareToken;
-  const isCorner = placement === "corner";
-  const url =
-    note.shareToken && typeof window !== "undefined"
-      ? `${window.location.origin}/p/${note.shareToken}`
-      : "";
-
-  async function handleClick() {
-    setOpen((v) => !v);
-    if (!isShared && !busy) {
-      setBusy(true);
-      await onShare();
-      setBusy(false);
-    }
-  }
-
-  async function handleCopy() {
-    if (!url) return;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
-  }
-
-  async function handleUnshare() {
-    setBusy(true);
-    await onUnshare();
-    setBusy(false);
-    setOpen(false);
-  }
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={handleClick}
-        className={
-          isCorner
-            ? `flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs shadow-sm transition-colors hover:bg-[var(--color-surface-hover)] ${
-                isShared ? "text-[var(--color-accent)]" : "text-[var(--color-text)]"
-              }`
-            : isShared
-              ? "grid h-8 w-8 place-items-center rounded-md text-[var(--color-accent)] transition-colors hover:bg-[var(--color-surface-hover)]"
-              : ICON_BUTTON
-        }
-        title={isShared ? "Shared — manage link" : "Share"}
-        aria-label={isShared ? "Shared — manage link" : "Share"}
-      >
-        <ShareIcon className="h-4 w-4" />
-        {isCorner && <span>{isShared ? "Shared" : "Share"}</span>}
-      </button>
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            className={`absolute right-0 z-20 w-80 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg ${
-              isCorner ? "bottom-full mb-2" : "top-full mt-1"
-            }`}
-          >
-            <p className="text-xs font-medium text-[var(--color-text)]">
-              Public link
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-              Anyone with the link can read this note.
-            </p>
-            {url ? (
-              <div className="mt-2 flex items-center gap-1.5">
-                <input
-                  readOnly
-                  value={url}
-                  onFocus={(e) => e.currentTarget.select()}
-                  className="min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 font-mono text-xs text-[var(--color-text)] focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-                >
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-[var(--color-muted)]">
-                {busy ? "Generating link..." : "No link yet."}
-              </p>
-            )}
-            {isShared && (
-              <button
-                type="button"
-                onClick={handleUnshare}
-                disabled={busy}
-                className="mt-2 text-xs text-[var(--color-danger)] hover:underline disabled:opacity-50"
-              >
-                Stop sharing
-              </button>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
