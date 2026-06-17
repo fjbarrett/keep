@@ -3,6 +3,8 @@ import { randomBytes } from "crypto";
 import { pool, ready, newId } from "@/lib/db";
 import { hashPassword, passwordIssue } from "@/lib/password";
 import { sendVerificationEmail } from "@/lib/email";
+import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
+import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
 
 export const runtime = "nodejs";
 
@@ -10,7 +12,22 @@ export const runtime = "nodejs";
 // indefinitely; users can re-register or re-request to get a fresh one.
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
+// Each call writes a user row and sends an email — cap per-IP so the endpoint
+// can't be used for signup spam or email-enumeration sweeps.
+const registerRateLimit = createTokenBucketRateLimiter({
+  limit: 6,
+  windowMs: 60_000,
+});
+
 export async function POST(req: Request) {
+  const limited = enforceIpRateLimit(
+    registerRateLimit,
+    req.headers,
+    "auth-register",
+    "Too many attempts. Try again shortly.",
+  );
+  if (limited) return limited;
+
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body?.password === "string" ? body.password : "";

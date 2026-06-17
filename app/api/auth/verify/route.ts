@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server";
 import { pool, ready } from "@/lib/db";
+import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
+import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
 
 export const runtime = "nodejs";
 
+// Tokens are 256-bit and unguessable, but still cap per-IP so the endpoint
+// can't be hammered as a redemption oracle or to load the DB.
+const verifyRateLimit = createTokenBucketRateLimiter({
+  limit: 20,
+  windowMs: 60_000,
+});
+
 export async function GET(req: Request) {
+  const limited = enforceIpRateLimit(
+    verifyRateLimit,
+    req.headers,
+    "auth-verify",
+    "Too many attempts. Try again shortly.",
+  );
+  if (limited) return limited;
+
   const base = (process.env.AUTH_URL ?? new URL(req.url).origin).replace(/\/$/, "");
   const token = new URL(req.url).searchParams.get("token");
   if (!token) {

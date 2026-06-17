@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  clientIpFromHeaders,
-  createTokenBucketRateLimiter,
-} from "@/lib/rateLimit";
+import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
+import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
 import { generateNoteMeta } from "@/lib/titleModel";
 import { internalError } from "@/lib/apiError";
 
@@ -17,22 +15,13 @@ const titleRateLimit = createTokenBucketRateLimiter({
 });
 
 export async function POST(req: Request) {
-  const rateLimit = titleRateLimit(
-    `notes-title:${clientIpFromHeaders(req.headers)}`,
+  const limited = enforceIpRateLimit(
+    titleRateLimit,
+    req.headers,
+    "notes-title",
+    "Too many title requests. Try again shortly.",
   );
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: "Too many title requests. Try again shortly." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(rateLimit.retryAfter),
-          "X-RateLimit-Limit": String(rateLimit.limit),
-          "X-RateLimit-Remaining": String(rateLimit.remaining),
-        },
-      },
-    );
-  }
+  if (limited) return limited;
 
   const contentLength = Number(req.headers.get("content-length") ?? 0);
   if (Number.isFinite(contentLength) && contentLength > MAX_TITLE_REQUEST_BYTES) {
