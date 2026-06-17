@@ -129,6 +129,23 @@ async function bootstrap(): Promise<void> {
       last_used_at  BIGINT
     );
     CREATE INDEX IF NOT EXISTS authenticators_user_idx ON authenticators (user_id);
+
+    -- Durable security audit trail (see lib/audit.ts). Rows are account-centric
+    -- events — failed/successful logins, registrations, new passkeys, share
+    -- link create/revoke — with masked IPs and no secrets. Queryable by user or
+    -- by event for abuse triage, unlike the ephemeral journald logs.
+    CREATE TABLE IF NOT EXISTS security_events (
+      id          TEXT PRIMARY KEY,
+      ts          BIGINT NOT NULL,
+      event       TEXT   NOT NULL,
+      user_id     TEXT,
+      ip          TEXT,
+      user_agent  TEXT,
+      meta        JSONB  NOT NULL DEFAULT '{}'
+    );
+    CREATE INDEX IF NOT EXISTS security_events_ts_idx ON security_events (ts DESC);
+    CREATE INDEX IF NOT EXISTS security_events_user_idx ON security_events (user_id, ts DESC);
+    CREATE INDEX IF NOT EXISTS security_events_event_idx ON security_events (event, ts DESC);
   `);
 }
 

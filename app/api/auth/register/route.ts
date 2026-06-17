@@ -6,6 +6,7 @@ import { sendVerificationEmail } from "@/lib/email";
 import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
 import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
 import { logger, maskEmail } from "@/lib/logger";
+import { recordSecurityEvent } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
@@ -54,6 +55,12 @@ export async function POST(req: Request) {
      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [id, email, null, hash, token, Date.now() + VERIFY_TOKEN_TTL_MS, Date.now()],
   );
+
+  void recordSecurityEvent("register", {
+    userId: id,
+    headers: req.headers,
+    meta: { email: maskEmail(email) },
+  });
 
   const origin = process.env.AUTH_URL ?? new URL(req.url).origin;
   const verifyUrl = `${origin.replace(/\/$/, "")}/api/auth/verify?token=${token}`;

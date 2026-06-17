@@ -12,6 +12,8 @@ import {
   rpConfig,
   updateAuthenticatorCounter,
 } from "@/lib/passkeys";
+import { recordSecurityEvent } from "@/lib/audit";
+import { maskEmail } from "@/lib/logger";
 
 export async function storeChallenge(challenge: string) {
   await ready();
@@ -80,7 +82,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
           requireUserVerification: false,
         });
-        if (!verification.verified) return null;
+        if (!verification.verified) {
+          void recordSecurityEvent("login.failure", {
+            userId: stored.user_id,
+            headers: request?.headers,
+            meta: { method: "passkey", reason: "verify_failed" },
+          });
+          return null;
+        }
 
         await updateAuthenticatorCounter(
           stored.credential_id,
@@ -88,6 +97,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
 
         const user = await getUser(stored.user_id);
+        void recordSecurityEvent("login.success", {
+          userId: stored.user_id,
+          headers: request?.headers,
+          meta: { method: "passkey" },
+        });
         return {
           id: stored.user_id,
           email: user?.email ?? null,
@@ -99,7 +113,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "password",
       name: "Email and password",
       credentials: { email: { type: "email" }, password: { type: "password" } },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = String(credentials?.email ?? "").trim().toLowerCase();
         const password = String(credentials?.password ?? "");
         if (!email || !password) return null;
@@ -115,13 +129,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           [email],
         );
         const user = rows[0];
-        if (!user?.password_hash) return null;
+        const fail = (reason: string) => {
+          void recordSecurityEvent("login.failure", {
+            userId: user?.id ?? null,
+            headers: request?.headers,
+            meta: { method: "password", reason, email: maskEmail(email) },
+          });
+          return null;
+        };
+        if (!user?.password_hash) return fail("no_account");
         const ok = await verifyPassword(password, user.password_hash);
-        if (!ok) return null;
+        if (!ok) return fail("bad_password");
         // Require a verified email before issuing a session. Fail the same way
         // as a bad password (null, not a distinct error) so we don't reveal
         // which addresses have registered-but-unverified accounts.
-        if (!user.email_verified) return null;
+        if (!user.email_verified) return fail("unverified");
+        void recordSecurityEvent("login.success", {
+          userId: user.id,
+          headers: request?.headers,
+          meta: { method: "password" },
+        });
         return { id: user.id, email: user.email, name: user.name };
       },
     }),
