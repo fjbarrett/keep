@@ -198,14 +198,28 @@ export function Sidebar({
   useEffect(() => {
     const container = listRef.current;
     if (!container) return;
-    const ro = new ResizeObserver(() => measureRef.current(false));
+    const snap = () => measureRef.current(false);
+    const ro = new ResizeObserver(snap);
     ro.observe(container);
     let cancelled = false;
+    // On first paint the selected row's geometry isn't settled yet (web-font
+    // swap, scrollbar appearing), so the initial snap can land a few px off and
+    // stay there until the next selection re-measures. Re-snap on the next
+    // frame and once fonts are ready so the pill lands exactly on load without
+    // needing a manual reselect.
+    const raf = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (!cancelled) snap();
+      }),
+    );
     document.fonts?.ready?.then(() => {
-      if (!cancelled) measureRef.current(false);
+      requestAnimationFrame(() => {
+        if (!cancelled) snap();
+      });
     });
     return () => {
       cancelled = true;
+      cancelAnimationFrame(raf);
       ro.disconnect();
     };
   }, []);
