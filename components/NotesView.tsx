@@ -596,7 +596,7 @@ export function NotesView({
             />
           </>
         )}
-        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-tl-2xl border-l border-t border-[var(--color-border)] bg-[var(--color-background)]">
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-canvas)]">
           {editorPanel}
         </main>
       </div>
@@ -604,7 +604,7 @@ export function NotesView({
       {/* Mobile: full-screen list or full-screen editor */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
         {mainTarget || restoringFromUrl ? (
-          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-background)]">
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-canvas)]">
             {editorPanel}
           </main>
         ) : (
