@@ -25,6 +25,8 @@ export default auth((req) => {
   if (req.auth) return;
 
   if (pathname === "/api/notes/title") return;
+  // Anonymous page-view beacons (no session, no cookies — see lib/analytics).
+  if (pathname === "/api/analytics") return;
   // Passkey sign-in runs before the session exists.
   if (pathname.startsWith("/api/passkeys/auth/")) return;
   if (pathname.startsWith("/api/")) {
