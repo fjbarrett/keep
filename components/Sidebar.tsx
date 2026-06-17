@@ -292,8 +292,14 @@ export function Sidebar({
             {filteredTitle ? `${filteredTitle} is empty.` : "No texts."}
           </p>
         ) : (
-          buckets.map((bucket) => (
-            <section key={bucket.label} className="mt-3 first:mt-2">
+          buckets.map((bucket, i) => (
+            // Tie the first section's tighter top margin to the data index, not
+            // CSS `:first-child` — the absolutely-positioned selection pill is
+            // also a child of this container, so once it mounts the first
+            // section stops matching `:first-child` and its margin jumps
+            // mt-2→mt-3 (4px). That shifts the row the pill just measured,
+            // leaving the pill 4px high until the next selection re-measures.
+            <section key={bucket.label} className={i === 0 ? "mt-2" : "mt-3"}>
               <h3 className="px-2.5 pb-1 text-xs font-medium text-[var(--color-muted)]">
                 {bucket.label}
               </h3>
