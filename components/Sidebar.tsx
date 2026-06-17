@@ -9,7 +9,6 @@ import { downloadNoteBody } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
-  DotsIcon,
   KeyboardIcon,
   PanelLeftIcon,
   PlusIcon,
@@ -490,33 +489,26 @@ function SidebarNoteRow({
               />
             )}
             <span className="min-w-0 flex-1 truncate">{previewText(note)}</span>
-            <span
-              aria-hidden
-              className={`shrink-0 font-mono text-[11px] lowercase ${
-                active && !slidingIn
-                  ? "text-[var(--color-accent-fg)]/70"
-                  : "text-[var(--color-subtle)]"
-              }`}
-            >
-              .{noteFileExtension(note.body)}
-            </span>
           </button>
+          {/* The file extension doubles as the row's context-menu trigger. Fixed
+              width + text-left so the badges form a left-aligned column pinned
+              to the far right, where the ⋯ button used to sit. */}
           <button
             type="button"
-            aria-label="More"
+            aria-label="Note options"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen((v) => !v);
             }}
-            className={`mr-1 grid h-6 w-6 place-items-center rounded transition-colors focus-visible:opacity-100 ${
-              active
-                ? "text-white/75 hover:bg-white/20 hover:text-white"
-                : "text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-            } ${menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+            className={`mr-2 w-10 shrink-0 text-left text-[11px] lowercase transition-colors ${
+              active && !slidingIn
+                ? "text-[var(--color-accent-fg)]/70 hover:text-[var(--color-accent-fg)]"
+                : "text-[var(--color-subtle)] hover:text-[var(--color-text)]"
+            }`}
           >
-            <DotsIcon className="h-3.5 w-3.5" />
+            .{noteFileExtension(note.body)}
           </button>
         </>
       )}
