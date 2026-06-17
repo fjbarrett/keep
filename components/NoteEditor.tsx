@@ -653,7 +653,10 @@ export function NoteEditor({
 
   if (presentation === "panel") {
     return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+      // The note surface tracks the body/controls column width (same
+      // max-w-3xl→xl:max-w-4xl), so the background shrinks to hug the note and
+      // centers on the canvas instead of spanning the whole pane.
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
         {editor}
       </div>
     );
