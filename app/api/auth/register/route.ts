@@ -5,6 +5,7 @@ import { hashPassword, passwordIssue } from "@/lib/password";
 import { sendVerificationEmail } from "@/lib/email";
 import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
 import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
+import { logger, maskEmail } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     await sendVerificationEmail(email, verifyUrl);
   } catch (err) {
     // Don't fail sign-up if the email send fails — the user can re-request.
-    console.error("verification email failed:", err);
+    logger.error("verification email failed", { route: "auth:register", err, to: maskEmail(email) });
   }
 
   return NextResponse.json({ ok: true });
