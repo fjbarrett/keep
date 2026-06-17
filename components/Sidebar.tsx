@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { previewText } from "@/lib/inferTitle";
-import { detectCodeLanguage, languageLabel } from "@/lib/detectLanguage";
+import { detectCodeLanguage, languageLabel, noteFileExtension } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
 import { downloadNoteBody } from "@/lib/downloadNote";
@@ -473,7 +473,17 @@ function SidebarNoteRow({
                 aria-hidden
               />
             )}
-            <span className="truncate">{previewText(note)}</span>
+            <span className="min-w-0 flex-1 truncate">{previewText(note)}</span>
+            <span
+              aria-hidden
+              className={`shrink-0 font-mono text-[11px] lowercase ${
+                active && !slidingIn
+                  ? "text-[var(--color-accent-fg)]/70"
+                  : "text-[var(--color-subtle)]"
+              }`}
+            >
+              .{noteFileExtension(note.body)}
+            </span>
           </button>
           <button
             type="button"
