@@ -9,6 +9,7 @@ import {
   rpConfig,
   upsertUser,
 } from "@/lib/passkeys";
+import { recordSecurityEvent } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
@@ -51,13 +52,20 @@ export async function POST(req: Request) {
   });
 
   const info = verification.registrationInfo;
+  const name = (body.name || defaultName()).slice(0, 64);
   await insertAuthenticator({
     credentialId: bytesToB64url(info.credentialID),
     userId,
     publicKey: info.credentialPublicKey,
     counter: info.counter ?? 0,
     transports: body.response.response.transports ?? [],
-    name: (body.name || defaultName()).slice(0, 64),
+    name,
+  });
+
+  void recordSecurityEvent("passkey.add", {
+    userId,
+    headers: req.headers,
+    meta: { name },
   });
 
   const res = NextResponse.json({ ok: true });

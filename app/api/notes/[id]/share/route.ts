@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { internalError, isUniqueViolation } from "@/lib/apiError";
+import { recordSecurityEvent } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ function newShareToken() {
 }
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } },
 ) {
   const session = await auth();
@@ -34,6 +35,11 @@ export async function POST(
     if (!rows[0]) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    void recordSecurityEvent("share.create", {
+      userId: session.user.id,
+      headers: req.headers,
+      meta: { noteId: params.id },
+    });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
     return internalError("notes:share", err);
@@ -41,7 +47,7 @@ export async function POST(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } },
 ) {
   const session = await auth();
@@ -60,6 +66,11 @@ export async function DELETE(
     if (!rows[0]) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    void recordSecurityEvent("share.revoke", {
+      userId: session.user.id,
+      headers: req.headers,
+      meta: { noteId: params.id },
+    });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
     return internalError("notes:share", err);
@@ -100,6 +111,11 @@ export async function PUT(
     if (!rows[0]) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    void recordSecurityEvent("share.create", {
+      userId: session.user.id,
+      headers: req.headers,
+      meta: { noteId: params.id, custom: true },
+    });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
     // Two concurrent PUTs can both pass the SELECT above and race on the
