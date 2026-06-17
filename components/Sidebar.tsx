@@ -81,7 +81,6 @@ export function Sidebar({
   onColor,
   onCollapse,
   mobile,
-  width,
 }: {
   hydrated: boolean;
   filtered: Note[];
@@ -104,7 +103,6 @@ export function Sidebar({
   onColor: (id: string, color: string | null) => void;
   onCollapse?: () => void;
   mobile?: boolean;
-  width?: number;
 }) {
   const buckets = bucketByDate(filtered);
   const filteredTitle =
@@ -229,7 +227,6 @@ export function Sidebar({
   return (
     <aside
       aria-label="Text sidebar"
-      style={!mobile && width ? { width } : undefined}
       className={
         mobile
           ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"

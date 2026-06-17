@@ -75,7 +75,6 @@ export function NotesView({
     "active",
   );
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(260);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [infoNote, setInfoNote] = useState<Note | null>(null);
   // True while a /note/<id> deep link is still resolving — keeps the main pane
@@ -94,37 +93,12 @@ export function NotesView({
   const prevTargetRef = useRef(false);
 
   useEffect(() => {
-    const stored = parseInt(localStorage.getItem("keep.sidebarWidth") ?? "", 10);
-    if (!isNaN(stored)) setSidebarWidth(stored);
     setSidebarCollapsed(localStorage.getItem("keep.sidebarCollapsed") === "1");
   }, []);
 
   function toggleSidebar(collapsed: boolean) {
     setSidebarCollapsed(collapsed);
     localStorage.setItem("keep.sidebarCollapsed", collapsed ? "1" : "0");
-  }
-
-  function startSidebarResize(e: React.MouseEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = sidebarWidth;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-
-    function onMove(ev: MouseEvent) {
-      const w = Math.min(400, Math.max(160, startWidth + ev.clientX - startX));
-      setSidebarWidth(w);
-    }
-    function onUp(ev: MouseEvent) {
-      const w = Math.min(400, Math.max(160, startWidth + ev.clientX - startX));
-      localStorage.setItem("keep.sidebarWidth", String(w));
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
   }
 
   const counts = useMemo(
@@ -587,14 +561,7 @@ export function NotesView({
             onExpand={() => toggleSidebar(false)}
           />
         ) : (
-          <>
-            <Sidebar {...sidebarProps} width={sidebarWidth} />
-            <div
-              onMouseDown={startSidebarResize}
-              className="w-[3px] shrink-0 cursor-col-resize"
-              aria-hidden
-            />
-          </>
+          <Sidebar {...sidebarProps} />
         )}
         <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-canvas)]">
           {editorPanel}
