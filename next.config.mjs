@@ -1,7 +1,7 @@
-// Low-risk hardening headers applied to every response. A strict CSP is
-// intentionally omitted: the app ships inline bootstrap scripts (theme +
-// accent) that a nonce-less CSP would block, so a real CSP needs nonce
-// plumbing through middleware — a separate change. HSTS is handled by Caddy.
+// Low-risk hardening headers applied to every response. The Content-Security-
+// Policy is set per-request in middleware.ts instead (it needs a fresh nonce
+// for the inline bootstrap scripts, which a static header can't carry). HSTS is
+// handled by Caddy.
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
