@@ -28,6 +28,10 @@ targets:
       properties:
         # Point the app at your deployment (e.g. https://keeptxt.com).
         KEEP_BASE_URL: "http://localhost:3000"
+        # Allow cleartext to localhost/.local for dev against http://localhost:3000.
+        # Production (https) needs no exception.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
