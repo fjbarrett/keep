@@ -18,11 +18,11 @@ enum APIError: Error, LocalizedError {
 
 /// Thin client over the existing Next.js API (`/api/notes`).
 ///
-/// Auth: the web app uses NextAuth session cookies. This client relies on a
-/// shared `URLSession` cookie jar — see `AuthController` for how the session is
-/// established (a sign-in WebView is the simplest first step; a token endpoint
-/// would be the cleaner long-term option). Endpoints here assume an
-/// authenticated session is already present.
+/// Auth: the web app uses NextAuth session cookies. This client relies on the
+/// shared `URLSession` cookie jar — `AuthClient` signs in natively against the
+/// NextAuth endpoints (no web view) and the resulting session cookie is sent
+/// automatically here. A 401 surfaces as `.unauthorized`, which `NotesStore`
+/// turns into the sign-in sheet.
 actor KeepAPI {
     private let session: URLSession
     private let decoder = JSONDecoder()

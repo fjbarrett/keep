@@ -8,11 +8,15 @@ final class NotesStore {
     private(set) var notes: [Note] = []
     private(set) var isLoading = false
     var errorMessage: String?
+    /// Set when the API returns 401 — RootView presents the sign-in sheet.
+    private(set) var needsAuth = false
 
     private let api: KeepAPI
+    private let auth: AuthClient
 
-    init(api: KeepAPI = KeepAPI()) {
+    init(api: KeepAPI = KeepAPI(), auth: AuthClient = AuthClient()) {
         self.api = api
+        self.auth = auth
     }
 
     /// Pinned first, then most-recently-updated — matches the web ordering.
@@ -29,21 +33,21 @@ final class NotesStore {
         isLoading = true
         defer { isLoading = false }
         do { notes = try await api.listNotes() }
-        catch { errorMessage = error.localizedDescription }
+        catch { handle(error) }
     }
 
     func create(body: String) async {
         do {
             let note = try await api.create(body: body)
             notes.insert(note, at: 0)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { handle(error) }
     }
 
     func update(_ id: String, patch: [String: Any]) async {
         do {
             let updated = try await api.update(id: id, patch: patch)
             if let i = notes.firstIndex(where: { $0.id == id }) { notes[i] = updated }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { handle(error) }
     }
 
     func togglePin(_ note: Note) async {
@@ -54,6 +58,35 @@ final class NotesStore {
         do {
             try await api.trash(id: note.id)
             notes.removeAll { $0.id == note.id }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { handle(error) }
+    }
+
+    // MARK: - Auth
+
+    /// Signs in, then reloads. Returns an error message to show, or nil on success.
+    func signIn(email: String, password: String) async -> String? {
+        do {
+            try await auth.signIn(email: email, password: password)
+            needsAuth = false
+            await load()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func signOut() async {
+        await auth.signOut()
+        notes = []
+        needsAuth = true
+    }
+
+    /// A 401 means "sign in" (surface the sheet); anything else is a real error.
+    private func handle(_ error: Error) {
+        if case APIError.unauthorized = error {
+            needsAuth = true
+        } else {
+            errorMessage = error.localizedDescription
+        }
     }
 }
