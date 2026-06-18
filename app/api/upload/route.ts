@@ -25,7 +25,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "File too large (max 4 MB)" }, { status: 400 });
   }
 
-  const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+  // Raster formats only. SVG is deliberately excluded: it can carry inline
+  // <script>, so a stored .svg served from our storage origin is a stored-XSS
+  // vector if a victim opens it directly. Re-add only behind sanitization.
+  const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
   if (!allowed.includes(file.type)) {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }

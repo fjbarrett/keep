@@ -18,9 +18,25 @@ export type TokenBucketOptions = {
 
 const DEFAULT_MAX_ENTRIES = 10_000;
 
+// How many proxies we operate sit in front of the app (Caddy in prod = 1). Only
+// the right-most TRUSTED_PROXY_HOPS entries of X-Forwarded-For are appended by
+// hops we control; everything to their left is client-supplied and spoofable.
+function trustedProxyHops(): number {
+  const n = Number(process.env.TRUSTED_PROXY_HOPS);
+  return Number.isInteger(n) && n >= 1 ? n : 1;
+}
+
 export function clientIpFromHeaders(headers: Headers) {
-  const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  if (forwarded) return forwarded;
+  const forwarded = headers.get("x-forwarded-for");
+  if (forwarded) {
+    const chain = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
+    // Count in from the right to the IP our own edge proxy actually observed,
+    // so a spoofed leading "X-Forwarded-For: 1.2.3.4" can't masquerade as the
+    // client. Too-short a chain (misconfigured hop count) yields undefined and
+    // falls through to the safe "unknown" rather than trusting a spoofed value.
+    const ip = chain[chain.length - trustedProxyHops()];
+    if (ip) return ip;
+  }
 
   const realIp = headers.get("x-real-ip")?.trim();
   return realIp || "unknown";
