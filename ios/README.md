@@ -4,6 +4,11 @@ A native SwiftUI client for the Keep web app, talking to the existing
 Next.js API (`/api/notes`). This is an early **scaffold**: models, an API
 client, an observable store, and list/editor views.
 
+![Keep on iOS](docs/screenshot.png)
+
+> The shot above currently shows the no-backend state (the client has no native
+> auth yet — see below). It refreshes automatically once the app connects.
+
 ## Requirements
 
 - Xcode 15+ (iOS 17 deployment target; uses the `@Observable` macro)
@@ -36,6 +41,26 @@ Keep/
   Views/RootView.swift     NavigationStack + initial load
   Views/NotesListView.swift List, swipe pin/trash, compose
   Views/NoteEditorView.swift Debounced autosave editor (new→edit bridge)
+```
+
+## Screenshots
+
+`scripts/ios-screenshot.sh` builds the app, boots a simulator, launches it, and
+captures a screenshot — the mobile analog of `scripts/screenshot.sh` for the web
+app. It archives under `ios/screenshots/` and refreshes `ios/docs/screenshot.png`
+(the image above).
+
+```bash
+scripts/ios-screenshot.sh            # first available iPhone simulator
+IOS_SIM_NAME="iPhone 17 Pro" scripts/ios-screenshot.sh
+```
+
+On every merge to `main`, the `ios-screenshot` CI job re-captures and commits the
+refreshed image. It runs on a macOS runner, so it's gated behind a repo variable
+to avoid spending macOS minutes until you opt in:
+
+```bash
+gh variable set IOS_SCREENSHOT --body true
 ```
 
 ## Not done yet (intentionally)
