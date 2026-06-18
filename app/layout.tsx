@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorker";
@@ -23,6 +24,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // CSP nonce minted per-request in middleware; both inline bootstrap scripts
+  // carry it so they survive the script-src nonce policy (see middleware.ts).
+  const nonce = headers().get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -31,11 +35,12 @@ export default function RootLayout({
     >
       <head>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);else if(window.matchMedia("(prefers-color-scheme:light)").matches)document.documentElement.setAttribute("data-theme","light")})()`,
           }}
         />
-        <script dangerouslySetInnerHTML={{ __html: accentBootstrapScript() }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: accentBootstrapScript() }} />
       </head>
       <body className="h-full flex flex-col bg-[var(--color-background)] text-[var(--color-text)]">
         {children}
