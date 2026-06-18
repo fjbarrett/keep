@@ -14,6 +14,8 @@ import {
 } from "@/lib/passkeys";
 import { recordSecurityEvent } from "@/lib/audit";
 import { maskEmail } from "@/lib/logger";
+import { clientIpFromHeaders } from "@/lib/rateLimit";
+import { checkLoginThrottle } from "@/lib/loginThrottle";
 
 export async function storeChallenge(challenge: string) {
   await ready();
@@ -46,6 +48,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials, request) {
         const raw = credentials?.assertion;
         if (typeof raw !== "string") return null;
+
+        // The account isn't known until we resolve the assertion, so throttle by
+        // IP only — enough to stop a flood of passkey-verify work from one host.
+        const ip = request?.headers ? clientIpFromHeaders(request.headers) : "unknown";
+        if (!checkLoginThrottle(ip, null).allowed) {
+          void recordSecurityEvent("login.failure", {
+            headers: request?.headers,
+            meta: { method: "passkey", reason: "rate_limited" },
+          });
+          return null;
+        }
+
         let assertion: AuthenticationResponseJSON;
         try {
           assertion = JSON.parse(raw);
@@ -117,6 +131,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(credentials?.email ?? "").trim().toLowerCase();
         const password = String(credentials?.password ?? "");
         if (!email || !password) return null;
+
+        // Throttle before the DB hit and scrypt: per-IP stops a spray (and the
+        // scrypt CPU-DoS), per-account slows targeted guessing across rotating
+        // IPs. Blocked attempts fail the same null way as a bad password.
+        const ip = request?.headers ? clientIpFromHeaders(request.headers) : "unknown";
+        const throttle = checkLoginThrottle(ip, email);
+        if (!throttle.allowed) {
+          void recordSecurityEvent("login.failure", {
+            headers: request?.headers,
+            meta: { method: "password", reason: "rate_limited", scope: throttle.scope, email: maskEmail(email) },
+          });
+          return null;
+        }
         await ready();
         const { rows } = await pool().query<{
           id: string;
