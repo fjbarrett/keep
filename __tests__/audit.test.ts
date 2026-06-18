@@ -8,7 +8,9 @@ describe("buildAuditRow", () => {
     const row = buildAuditRow("id1", 1000, "login.failure", {
       userId: "u1",
       headers: headers({
-        "x-forwarded-for": "203.0.113.42, 10.0.0.1",
+        // Right-most entry is the real client our proxy appended; the leading
+        // value is treated as spoofable and ignored.
+        "x-forwarded-for": "10.0.0.1, 203.0.113.42",
         "user-agent": "x".repeat(500),
       }),
       meta: { method: "password", reason: "bad_password" },
