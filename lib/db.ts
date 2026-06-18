@@ -1,5 +1,17 @@
+import { readFileSync } from "fs";
 import { Pool } from "pg";
 import { logger } from "@/lib/logger";
+
+// CA certificate for verifying the Postgres server's TLS cert. DATABASE_CA_CERT
+// may be the PEM contents inline or a path to a .pem/.crt file. When set, the
+// connection verifies the server identity (rejectUnauthorized: true); when
+// unset we fall back to encrypt-but-don't-verify for self-signed localhost.
+export function caCert(): string | undefined {
+  const raw = process.env.DATABASE_CA_CERT;
+  if (!raw || !raw.trim()) return undefined;
+  // Inline PEM is used verbatim; anything else is treated as a file path.
+  return raw.includes("BEGIN CERTIFICATE") ? raw : readFileSync(raw.trim(), "utf8");
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -30,11 +42,13 @@ function makePool(): Pool {
   url.searchParams.delete("sslmode");
   const connectionString = url.toString();
 
-  // Self-signed certs on a self-installed Postgres are the norm — trust the
-  // host and encrypt the wire. (DO-managed clusters give you a real CA cert
-  // you could pin instead; we don't have that here.)
-  const ssl =
-    wantSSL || sslmode !== null
+  // With a CA cert configured, verify the server's identity (defends against a
+  // MITM on the DB connection). Without one, fall back to encrypt-but-don't-
+  // verify — the norm for a self-signed Postgres on the same host.
+  const ca = caCert();
+  const ssl = ca
+    ? { ca, rejectUnauthorized: true }
+    : wantSSL || sslmode !== null
       ? { rejectUnauthorized: false }
       : undefined;
 
