@@ -55,9 +55,10 @@ scripts/ios-screenshot.sh            # first available iPhone simulator
 IOS_SIM_NAME="iPhone 17 Pro" scripts/ios-screenshot.sh
 ```
 
-On every merge to `main`, the `ios-screenshot` CI job re-captures and commits the
-refreshed image. It runs on a macOS runner, so it's gated behind a repo variable
-to avoid spending macOS minutes until you opt in:
+On every merge to `main`, the `ios-screenshot` CI job re-captures, archives the
+shot under `ios/screenshots/`, and commits the refreshed image. It runs on a
+macOS runner, so it's gated behind a repo variable to avoid spending macOS
+minutes until you opt in:
 
 ```bash
 gh variable set IOS_SCREENSHOT --body true

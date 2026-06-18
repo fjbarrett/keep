@@ -73,8 +73,9 @@ jobs:
   # Screenshot the iOS app on every merge to main, mirroring the web shot
   # (scripts/screenshot.sh). Needs a macOS runner for the iOS Simulator, so it's
   # gated behind the IOS_SCREENSHOT repo variable to avoid spending macOS minutes
-  # until you opt in: `gh variable set IOS_SCREENSHOT --body true`. Commits the
-  # refreshed ios/docs/screenshot.png back to main.
+  # until you opt in: `gh variable set IOS_SCREENSHOT --body true`. Archives every
+  # shot under ios/screenshots/ and refreshes ios/docs/screenshot.png, committed
+  # back to main.
   ios-screenshot:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.IOS_SCREENSHOT == 'true'
     runs-on: macos-15
@@ -88,14 +89,12 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Capture screenshot
-        env:
-          IOS_SHOT_ARCHIVE: "0" # CI refreshes only the README image; no per-merge archive
         run: scripts/ios-screenshot.sh
-      - name: Commit refreshed screenshot
+      - name: Commit screenshot
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ios/docs/screenshot.png
+          git add ios/docs/screenshot.png ios/screenshots/
           if git diff --cached --quiet; then
             echo "::notice::iOS screenshot unchanged."
           else
