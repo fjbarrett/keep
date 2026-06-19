@@ -9,12 +9,14 @@ const { auth } = NextAuth(authConfig);
 // Per-request Content-Security-Policy. script-src is locked to a fresh nonce
 // (plus 'strict-dynamic', so the nonce'd Next.js bootstrap can load its own
 // chunks) — there is no 'unsafe-inline', so an injected <script> can't run.
+// 'wasm-unsafe-eval' lets Shiki compile its oniguruma WASM (the syntax
+// highlighter needs it); it permits WebAssembly only, not arbitrary eval().
 // style-src keeps 'unsafe-inline' because Next and the app set inline style
 // attributes with no nonce hook; the XSS leverage there is far lower.
 function buildCsp(nonce: string): string {
   return [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
     `style-src 'self' 'unsafe-inline'`,
     // data: favicon + pasted images, blob: object URLs, https: uploaded and
     // markdown-referenced images (served from the storage origin / anywhere).
