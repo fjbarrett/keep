@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Native sign-in form (no web view). Collects email + password and hands them
-/// to `NotesStore.signIn`, which establishes the session via `AuthClient`.
-/// Google/passkey aren't offered here yet — email + password is the native path.
+/// Native sign-in. Collects email + password (handed to `NotesStore.signIn`,
+/// which establishes the session via `AuthClient`) and offers Google sign-in
+/// through the system browser (`NotesStore.signInWithGoogle`). Passkeys aren't
+/// offered in the native flow yet.
 struct SignInView: View {
     @Environment(NotesStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -10,7 +11,11 @@ struct SignInView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var error: String?
+    @State private var googleError: String?
     @State private var submitting = false
+    @State private var googleSubmitting = false
+
+    private var busy: Bool { submitting || googleSubmitting }
 
     var body: some View {
         NavigationStack {
@@ -40,7 +45,28 @@ struct SignInView: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .disabled(submitting || email.isEmpty || password.isEmpty)
+                    .disabled(busy || email.isEmpty || password.isEmpty)
+                }
+
+                Section {
+                    Button(action: { Task { await googleSignIn() } }) {
+                        HStack(spacing: 8) {
+                            if googleSubmitting {
+                                ProgressView()
+                            } else {
+                                GoogleGlyph().frame(width: 16, height: 16)
+                            }
+                            Text("Continue with Google").fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .disabled(busy)
+                } header: {
+                    Text("or")
+                } footer: {
+                    if let googleError {
+                        Text(googleError).foregroundStyle(.red)
+                    }
                 }
             }
             .navigationTitle("Sign in to Keep")
@@ -51,10 +77,28 @@ struct SignInView: View {
     }
 
     private func submit() async {
-        guard !submitting, !email.isEmpty, !password.isEmpty else { return }
+        guard !busy, !email.isEmpty, !password.isEmpty else { return }
         submitting = true
         defer { submitting = false }
         error = await store.signIn(email: email, password: password)
         if error == nil { dismiss() }
+    }
+
+    private func googleSignIn() async {
+        guard !busy else { return }
+        googleSubmitting = true
+        defer { googleSubmitting = false }
+        googleError = await store.signInWithGoogle()
+        if googleError == nil && !store.needsAuth { dismiss() }
+    }
+}
+
+/// A Google-blue "G" mark on the sign-in button. Kept to a single brand color
+/// for now; the full four-color wordmark (as on the web) is a polish follow-up.
+private struct GoogleGlyph: View {
+    var body: some View {
+        Image(systemName: "g.circle.fill")
+            .resizable()
+            .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
     }
 }

@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import Observation
 
@@ -13,6 +14,7 @@ final class NotesStore {
 
     private let api: KeepAPI
     private let auth: AuthClient
+    private let google = GoogleSignIn()
 
     init(api: KeepAPI = KeepAPI(), auth: AuthClient = AuthClient()) {
         self.api = api
@@ -69,6 +71,23 @@ final class NotesStore {
             try await auth.signIn(email: email, password: password)
             needsAuth = false
             await load()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    /// Google sign-in via the system browser, then reloads. Returns an error
+    /// message to show, or nil on success. A user-cancelled flow returns nil so
+    /// it surfaces no error.
+    func signInWithGoogle() async -> String? {
+        do {
+            try await google.signIn()
+            needsAuth = false
+            await load()
+            return nil
+        } catch let error as ASWebAuthenticationSessionError
+            where error.code == .canceledLogin {
             return nil
         } catch {
             return error.localizedDescription

@@ -38,6 +38,7 @@ Keep/
   Models/Note.swift        Mirrors lib/types.ts Note
   Services/KeepAPI.swift   URLSession client over /api/notes
   Services/AuthClient.swift Native NextAuth sign-in (csrf + credentials)
+  Services/GoogleSignIn.swift Google via ASWebAuthenticationSession + bridge
   Services/NotesStore.swift @Observable view-model (sorted pinned-first)
   Views/RootView.swift     NavigationStack + initial load
   Views/SignInView.swift   Native email/password sign-in sheet
@@ -55,9 +56,17 @@ shared `URLSession` cookie jar carries the resulting session cookie to
 Against `http://localhost:3000`, the Info.plist allows local-network cleartext
 (`NSAllowsLocalNetworking`); production over HTTPS needs no exception.
 
-Google and passkey aren't wired into the native flow yet — Google OAuth needs an
-`ASWebAuthenticationSession`, and passkeys need the `AuthenticationServices`
-APIs. Email/password covers getting the app signed in today.
+**Google** sign-in is native too, but bridges through the server because Google
+forbids OAuth in an embedded web view. `GoogleSignIn` opens the system browser
+via `ASWebAuthenticationSession` at `/native/google` (the same Google flow the
+web uses); on success the server's `/native/bridge` mints a single-use code and
+redirects to `keep://auth-callback?code=…`, which `GoogleSignIn` trades at
+`/api/native/exchange` for the session cookie — landing it in the shared
+`URLSession` jar so `/api/notes` is authenticated. (The `keep://` scheme needs no
+Info.plist registration; the auth session claims it for the flow's duration.)
+
+Passkeys aren't wired into the native flow yet (they need the
+`AuthenticationServices` credential APIs).
 
 ## Screenshots
 
@@ -82,15 +91,15 @@ gh variable set IOS_SCREENSHOT --body true
 
 ## Not done yet (intentionally)
 
-- Google / passkey native sign-in (email + password works today).
+- Passkey native sign-in (email + password and Google work today).
 - Offline cache / sync, search, markdown rendering, color picker, version
   history, E2E encryption — all present on web, not yet ported.
 - App icon / launch assets.
 
 ## Roadmap (suggested)
 
-1. ~~Auth (sign-in → session cookie)~~ — done for email/password
-2. Google (`ASWebAuthenticationSession`) + passkey (`AuthenticationServices`)
+1. ~~Auth (sign-in → session cookie)~~ — done for email/password + Google
+2. Passkey (`AuthenticationServices`)
 3. Offline cache (SwiftData) + optimistic updates
 4. Markdown preview + syntax highlighting
 5. Pin/color/archive parity with web context menus
