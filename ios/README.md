@@ -24,7 +24,9 @@ open Keep.xcodeproj
 ```
 
 Set the backend in `project.yml` → `KEEP_BASE_URL` (defaults to
-`http://localhost:3000`). `Config.swift` reads it from the Info.plist.
+`https://keeptxt.com` so the app works out of the box; flip to
+`http://localhost:3000` for local dev). `Config.swift` reads it from the
+Info.plist.
 
 > Note: the loose `.swift` files show "cannot find type" in editors until the
 > Xcode target exists — they only compile as a built target, not in isolation.

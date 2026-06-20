@@ -26,10 +26,11 @@ targets:
     info:
       path: Keep/Info.plist
       properties:
-        # Point the app at your deployment (e.g. https://keeptxt.com).
-        KEEP_BASE_URL: "http://localhost:3000"
-        # Allow cleartext to localhost/.local for dev against http://localhost:3000.
-        # Production (https) needs no exception.
+        # Backend the app talks to. Defaults to production so the app works out
+        # of the box (no local server). Flip to http://localhost:3000 for dev.
+        KEEP_BASE_URL: "https://keeptxt.com"
+        # Production is HTTPS and needs no exception; this only relaxes ATS for
+        # local/.local addresses so switching KEEP_BASE_URL back to localhost works.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         UILaunchScreen: {}
