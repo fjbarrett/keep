@@ -114,6 +114,19 @@ async function bootstrap(): Promise<void> {
       expires_at  BIGINT NOT NULL
     );
 
+    -- Short-lived handoff codes for native (iOS) Google sign-in. The native app
+    -- can't read the session cookie out of ASWebAuthenticationSession's browser
+    -- jar, so the /native/bridge route mints a single-use code bound to the
+    -- freshly-issued session cookie; /api/native/exchange trades it back for the
+    -- cookie. High-entropy, ~60s TTL, deleted on use — never leaves the server
+    -- in a URL. Like passkey_challenges, expired rows are swept lazily on write.
+    CREATE TABLE IF NOT EXISTS native_auth_codes (
+      code         TEXT PRIMARY KEY,
+      cookie_name  TEXT   NOT NULL,
+      cookie_value TEXT   NOT NULL,
+      expires_at   BIGINT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS users (
       id         TEXT PRIMARY KEY,
       email      TEXT,

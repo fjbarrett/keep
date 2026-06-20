@@ -61,11 +61,13 @@ export default auth((req) => {
   }
 
   if (pathname.startsWith("/api/")) {
-    // Anonymous endpoints: page-view beacons, title inference, and passkey
-    // sign-in (which runs before a session exists). Everything else is private.
+    // Anonymous endpoints: page-view beacons, title inference, passkey sign-in,
+    // and the native sign-in code exchange (all run before a session exists).
+    // Everything else is private.
     const publicApi =
       pathname === "/api/notes/title" ||
       pathname === "/api/analytics" ||
+      pathname === "/api/native/exchange" ||
       pathname.startsWith("/api/passkeys/auth/");
     if (!req.auth && !publicApi) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
