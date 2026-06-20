@@ -57,7 +57,7 @@ private struct NoteRow: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(note.displayTitle).font(.body).lineLimit(1)
-                if let summary = note.summary, !summary.isEmpty {
+                if let summary = note.displaySummary {
                     Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
