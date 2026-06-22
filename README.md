@@ -28,7 +28,7 @@ A small, opinionated notes app — autosave, pin/archive/trash, full-text search
 - Markdown preview and opt-in Shiki syntax highlighting per note
 - Version history with line diffs and one-click restore
 - Public share links (`/p/<token>`) with revocation
-- Passkey sign-in alongside Google OAuth
+- Sign in with Google or email + password
 - Google Keep Takeout import (Takeout ZIP or single `.json`)
 - Plain-text export — single `.txt` per note, or a ZIP of everything
 - Graceful DB-error banner with retry — the app stays usable even when Postgres is unreachable
@@ -71,7 +71,7 @@ components/
   SearchOverlay.tsx  ⌘K full-text search modal
   SettingsPane.tsx   Views (Archive/Trash) + Data (import/export) sections
   ShortcutsOverlay.tsx  `?` keyboard reference
-  ...                Markdown preview, Shiki editor, passkeys, theme toggle
+  ...                Markdown preview, Shiki editor, theme toggle
 lib/
   db.ts              pg Pool + SSL handling + idempotent schema bootstrap
   types.ts           Note shape
@@ -81,7 +81,6 @@ lib/
   titleModel.ts      OpenAI-backed title generation
   googleKeepImport.ts  Takeout parser
   noteExport.ts      Plain-text / ZIP export
-  passkeys.ts        WebAuthn registration + auth helpers
 __tests__/           Vitest: title inference, Takeout import, autosave
 auth.ts              NextAuth config
 ```
