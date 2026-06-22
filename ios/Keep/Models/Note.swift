@@ -20,11 +20,19 @@ struct Note: Identifiable, Codable, Equatable {
 
     var updatedDate: Date { Date(timeIntervalSince1970: updatedAt / 1000) }
 
-    /// First non-empty line, used as a display title when `title` is empty.
+    /// Display title, matching the web: infers from the body when the stored
+    /// title is missing, too long/wordy, or just equals the body (e.g. legacy
+    /// notes whose title is `enc:` ciphertext over a plaintext body).
     var displayTitle: String {
-        if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return title }
-        let firstLine = body.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
-        return firstLine.isEmpty ? "Untitled note" : firstLine
+        NoteTitle.preview(title: title, body: body)
+    }
+
+    /// Card caption, or nil when there's nothing readable to show — including a
+    /// legacy `enc:` summary we can't decrypt natively (showing the ciphertext
+    /// would read as garbage, so hide it like the web does when locked).
+    var displaySummary: String? {
+        guard let summary, !summary.isEmpty, !summary.hasPrefix("enc:") else { return nil }
+        return summary
     }
 }
 
