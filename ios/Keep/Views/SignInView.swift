@@ -95,10 +95,40 @@ struct SignInView: View {
 
 /// A Google-blue "G" mark on the sign-in button. Kept to a single brand color
 /// for now; the full four-color wordmark (as on the web) is a polish follow-up.
+/// The four-color Google "G": a ring split into the brand's blue/green/yellow/
+/// red arcs with a blue crossbar, drawn so the button matches the web sign-in.
 private struct GoogleGlyph: View {
+    private static let blue = Color(red: 0.259, green: 0.522, blue: 0.957)
+    private static let green = Color(red: 0.204, green: 0.659, blue: 0.325)
+    private static let yellow = Color(red: 0.984, green: 0.737, blue: 0.020)
+    private static let red = Color(red: 0.918, green: 0.263, blue: 0.208)
+
     var body: some View {
-        Image(systemName: "g.circle.fill")
-            .resizable()
-            .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
+        Canvas { ctx, size in
+            let s = min(size.width, size.height)
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let stroke = s * 0.26
+            let radius = (s - stroke) / 2
+
+            func arc(_ from: Double, _ to: Double, _ color: Color) {
+                var p = Path()
+                p.addArc(center: center, radius: radius,
+                         startAngle: .degrees(from), endAngle: .degrees(to),
+                         clockwise: false)
+                ctx.stroke(p, with: .color(color),
+                           style: StrokeStyle(lineWidth: stroke, lineCap: .butt))
+            }
+
+            arc(17, 158, Self.green)    // bottom
+            arc(158, 202, Self.yellow)  // left
+            arc(202, 270, Self.red)     // top-left → top
+            arc(270, 343, Self.blue)    // top-right down toward the crossbar gap
+
+            // Blue crossbar from the center out to the right edge, with a rounded
+            // outer end so it reads as the G's bar rather than a plain rectangle.
+            let bar = CGRect(x: center.x - stroke * 0.1, y: center.y - stroke / 2,
+                             width: radius + stroke * 0.6, height: stroke)
+            ctx.fill(Path(roundedRect: bar, cornerRadius: stroke * 0.18), with: .color(Self.blue))
+        }
     }
 }
