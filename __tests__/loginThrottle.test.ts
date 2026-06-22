@@ -65,7 +65,7 @@ describe("createLoginThrottle", () => {
     expect(check("1.1.1.1", "b@x.com", 0).allowed).toBe(true);
   });
 
-  it("checks only the IP budget for accountless (passkey) attempts", () => {
+  it("checks only the IP budget for accountless attempts", () => {
     const check = createLoginThrottle({
       ipLimit: 2,
       ipWindowMs: 1000,

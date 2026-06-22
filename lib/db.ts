@@ -109,17 +109,12 @@ async function bootstrap(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS note_versions_note_idx ON note_versions (note_id, created_at DESC);
 
-    CREATE TABLE IF NOT EXISTS passkey_challenges (
-      challenge   TEXT PRIMARY KEY,
-      expires_at  BIGINT NOT NULL
-    );
-
     -- Short-lived handoff codes for native (iOS) Google sign-in. The native app
     -- can't read the session cookie out of ASWebAuthenticationSession's browser
     -- jar, so the /native/bridge route mints a single-use code bound to the
     -- freshly-issued session cookie; /api/native/exchange trades it back for the
     -- cookie. High-entropy, ~60s TTL, deleted on use — never leaves the server
-    -- in a URL. Like passkey_challenges, expired rows are swept lazily on write.
+    -- in a URL. Expired rows are swept lazily on write.
     CREATE TABLE IF NOT EXISTS native_auth_codes (
       code         TEXT PRIMARY KEY,
       cookie_name  TEXT   NOT NULL,
@@ -145,22 +140,15 @@ async function bootstrap(): Promise<void> {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token_expires BIGINT;
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (lower(email)) WHERE email IS NOT NULL;
 
-    CREATE TABLE IF NOT EXISTS authenticators (
-      credential_id TEXT PRIMARY KEY,
-      user_id       TEXT   NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      public_key    BYTEA  NOT NULL,
-      counter       BIGINT NOT NULL DEFAULT 0,
-      transports    TEXT   NOT NULL DEFAULT '[]',
-      name          TEXT   NOT NULL DEFAULT '',
-      created_at    BIGINT NOT NULL,
-      last_used_at  BIGINT
-    );
-    CREATE INDEX IF NOT EXISTS authenticators_user_idx ON authenticators (user_id);
+    -- Passkeys were removed; drop their tables idempotently so existing installs
+    -- shed the now-unused credentials and challenge rows on next boot.
+    DROP TABLE IF EXISTS authenticators;
+    DROP TABLE IF EXISTS passkey_challenges;
 
     -- Durable security audit trail (see lib/audit.ts). Rows are account-centric
-    -- events — failed/successful logins, registrations, new passkeys, share
-    -- link create/revoke — with masked IPs and no secrets. Queryable by user or
-    -- by event for abuse triage, unlike the ephemeral journald logs.
+    -- events — failed/successful logins, registrations, share-link create/revoke
+    -- — with masked IPs and no secrets. Queryable by user or by event for abuse
+    -- triage, unlike the ephemeral journald logs.
     CREATE TABLE IF NOT EXISTS security_events (
       id          TEXT PRIMARY KEY,
       ts          BIGINT NOT NULL,

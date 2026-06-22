@@ -67,9 +67,6 @@ redirects to `keep://auth-callback?code=…`, which `GoogleSignIn` trades at
 `URLSession` jar so `/api/notes` is authenticated. (The `keep://` scheme needs no
 Info.plist registration; the auth session claims it for the flow's duration.)
 
-Passkeys aren't wired into the native flow yet (they need the
-`AuthenticationServices` credential APIs).
-
 ## Screenshots
 
 `scripts/ios-screenshot.sh` builds the app, boots a simulator, launches it, and
@@ -93,7 +90,6 @@ gh variable set IOS_SCREENSHOT --body true
 
 ## Not done yet (intentionally)
 
-- Passkey native sign-in (email + password and Google work today).
 - Offline cache / sync, search, markdown rendering, color picker, version
   history, E2E encryption — all present on web, not yet ported.
 - App icon / launch assets.
@@ -101,8 +97,7 @@ gh variable set IOS_SCREENSHOT --body true
 ## Roadmap (suggested)
 
 1. ~~Auth (sign-in → session cookie)~~ — done for email/password + Google
-2. Passkey (`AuthenticationServices`)
-3. Offline cache (SwiftData) + optimistic updates
-4. Markdown preview + syntax highlighting
-5. Pin/color/archive parity with web context menus
-6. Share extension ("Save to Keep")
+2. Offline cache (SwiftData) + optimistic updates
+3. Markdown preview + syntax highlighting
+4. Pin/color/archive parity with web context menus
+5. Share extension ("Save to Keep")

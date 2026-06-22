@@ -2,8 +2,8 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
 
-// Use an edge-safe slice of the config here — the full auth.ts pulls in pg
-// and @simplewebauthn/server, which can't run in the Edge runtime.
+// Use an edge-safe slice of the config here — the full auth.ts pulls in pg,
+// which can't run in the Edge runtime.
 const { auth } = NextAuth(authConfig);
 
 // Per-request Content-Security-Policy. script-src is locked to a fresh nonce
@@ -61,14 +61,13 @@ export default auth((req) => {
   }
 
   if (pathname.startsWith("/api/")) {
-    // Anonymous endpoints: page-view beacons, title inference, passkey sign-in,
-    // and the native sign-in code exchange (all run before a session exists).
-    // Everything else is private.
+    // Anonymous endpoints: page-view beacons, title inference, and the native
+    // sign-in code exchange (all run before a session exists). Everything else
+    // is private.
     const publicApi =
       pathname === "/api/notes/title" ||
       pathname === "/api/analytics" ||
-      pathname === "/api/native/exchange" ||
-      pathname.startsWith("/api/passkeys/auth/");
+      pathname === "/api/native/exchange";
     if (!req.auth && !publicApi) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

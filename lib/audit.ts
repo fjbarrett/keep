@@ -6,7 +6,7 @@ import { logger, maskIp } from "@/lib/logger";
 // table (created in lib/db's bootstrap). Distinct from the operational logs in
 // lib/logger: those are ephemeral journald lines for debugging; these are
 // queryable rows answering "who did what, when, from where" — failed logins,
-// registrations, new passkeys, share-link lifecycle.
+// registrations, share-link lifecycle.
 //
 // High-volume signals like rate-limit blocks deliberately stay in the logs
 // only — a row per blocked request would amplify the very flood we defend
@@ -15,7 +15,6 @@ export type SecurityEvent =
   | "login.success"
   | "login.failure"
   | "register"
-  | "passkey.add"
   | "share.create"
   | "share.revoke";
 

@@ -8,7 +8,6 @@ import {
   UploadIcon,
   XIcon,
 } from "@/components/Icons";
-import { PasskeysSection } from "@/components/PasskeysSection";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccentPicker } from "@/components/AccentPicker";
 
@@ -172,15 +171,6 @@ export function SettingsPane({
               <span>Export texts</span>
               <DownloadIcon className="h-4 w-4" />
             </button>
-          )}
-
-          {!isGuest && (
-            <>
-              <h3 className="pt-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-                Security
-              </h3>
-              <PasskeysSection />
-            </>
           )}
         </div>
       </section>

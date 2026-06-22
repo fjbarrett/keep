@@ -2,7 +2,6 @@ import { signIn, auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { Logo } from "@/components/Logo";
-import { PasskeySignIn } from "@/components/PasskeySignIn";
 import { EmailPasswordSignIn } from "@/components/EmailPasswordSignIn";
 
 export default async function SignInPage({
@@ -60,12 +59,6 @@ export default async function SignInPage({
             Continue with Google
           </button>
         </form>
-        <div className="relative my-5 flex items-center">
-          <div className="flex-1 border-t border-[var(--color-border)]" />
-          <span className="px-3 text-xs text-[var(--color-muted)]">or</span>
-          <div className="flex-1 border-t border-[var(--color-border)]" />
-        </div>
-        <PasskeySignIn redirectTo={safeFrom} />
       </div>
     </main>
   );
