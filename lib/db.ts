@@ -139,6 +139,11 @@ async function bootstrap(): Promise<void> {
     -- Expiry for verify_token so a leaked link can't be redeemed indefinitely.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token_expires BIGINT;
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (lower(email)) WHERE email IS NOT NULL;
+    -- Username + passphrase auth (Tor-friendly: no email, so no verification
+    -- step). The stored value keeps the user's chosen capitalization for display;
+    -- identity and uniqueness key on lower(username), like the email index above.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users (lower(username)) WHERE username IS NOT NULL;
 
     -- Passkeys were removed; drop their tables idempotently so existing installs
     -- shed the now-unused credentials and challenge rows on next boot.

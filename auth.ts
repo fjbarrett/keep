@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { pool, ready } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
+import { normalizeUsername } from "@/lib/username";
 import { recordSecurityEvent } from "@/lib/audit";
 import { maskEmail } from "@/lib/logger";
 import { clientIpFromHeaders } from "@/lib/rateLimit";
@@ -65,6 +66,60 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           meta: { method: "password" },
         });
         return { id: user.id, email: user.email, name: user.name };
+      },
+    }),
+    Credentials({
+      id: "username",
+      name: "Username and passphrase",
+      credentials: { username: { type: "text" }, password: { type: "password" } },
+      async authorize(credentials, request) {
+        const username = normalizeUsername(String(credentials?.username ?? ""));
+        const password = String(credentials?.password ?? "");
+        if (!username || !password) return null;
+
+        // Same pre-hash throttle as the password path; the account key is the
+        // normalized username. On an onion service the client IP is always
+        // "unknown" (no source IP survives the rendezvous), so the per-account
+        // budget is what actually slows targeted guessing there.
+        const ip = request?.headers ? clientIpFromHeaders(request.headers) : "unknown";
+        const throttle = checkLoginThrottle(ip, `username:${username}`);
+        if (!throttle.allowed) {
+          void recordSecurityEvent("login.failure", {
+            headers: request?.headers,
+            meta: { method: "username", reason: "rate_limited", scope: throttle.scope, username },
+          });
+          return null;
+        }
+        await ready();
+        const { rows } = await pool().query<{
+          id: string;
+          username: string | null;
+          password_hash: string | null;
+        }>(
+          "SELECT id, username, password_hash FROM users WHERE lower(username) = $1",
+          [username],
+        );
+        const user = rows[0];
+        const fail = (reason: string) => {
+          void recordSecurityEvent("login.failure", {
+            userId: user?.id ?? null,
+            headers: request?.headers,
+            meta: { method: "username", reason, username },
+          });
+          return null;
+        };
+        if (!user?.password_hash) return fail("no_account");
+        const ok = await verifyPassword(password, user.password_hash);
+        if (!ok) return fail("bad_password");
+        // No email_verified gate: username accounts have no email by design, so
+        // there's nothing to verify — they're usable the moment they're created.
+        void recordSecurityEvent("login.success", {
+          userId: user.id,
+          headers: request?.headers,
+          meta: { method: "username" },
+        });
+        // name carries the display capitalization so the header shows it.
+        return { id: user.id, email: null, name: user.username };
       },
     }),
   ],
