@@ -13,8 +13,11 @@ echo "-> Deploying latest main to ${HOST}"
 ssh "$HOST" 'set -e
   cd /opt/keep
   git fetch origin main -q && git reset --hard origin/main -q
-  rm -rf .next
-  npm ci --no-audit --no-fund >/dev/null 2>&1
+  if [ ! -d node_modules ] || ! git diff --quiet ORIG_HEAD HEAD -- package-lock.json; then
+    npm ci --no-audit --no-fund >/dev/null 2>&1
+  fi
+  # Wipe stale build output but keep .next/cache so next build is incremental.
+  find .next -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} + 2>/dev/null || true
   npm run build >/dev/null 2>&1
   systemctl restart keep
   sleep 5
