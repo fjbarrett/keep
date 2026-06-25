@@ -181,6 +181,12 @@ textarea:focus-visible {
   position: relative;
   padding-left: 3.5em;
 }
+/* A blank code line is an empty block that would collapse to zero height,
+   hiding the line and shifting the highlighted layer out of sync with the
+   textarea. A zero-width space gives it a real line box at full line-height. */
+.highlighted-editor-pre .line:empty::after {
+  content: "\200B";
+}
 .highlighted-editor-pre .line::before {
   counter-increment: line;
   content: counter(line);
