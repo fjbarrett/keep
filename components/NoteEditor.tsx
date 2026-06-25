@@ -24,7 +24,7 @@ import {
 
 export type EditorTarget =
   | { mode: "new" }
-  | { mode: "edit"; note: Note }
+  | { mode: "edit"; note: Note; highlightQuery?: string }
   | null;
 
 const ICON_BUTTON =
@@ -87,7 +87,9 @@ export function NoteEditor({
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
   const targetKey =
-    target?.mode === "edit" ? target.note.id : target?.mode ?? "closed";
+    target?.mode === "edit"
+      ? `${target.note.id}${target.highlightQuery ? `:q:${target.highlightQuery}` : ""}`
+      : target?.mode ?? "closed";
   const isPanel = presentation === "panel";
 
   useEffect(() => {
@@ -118,14 +120,26 @@ export function NoteEditor({
     setColorMenuOpen(false);
     createdIdRef.current = null;
     creatingRef.current = false;
+    const query =
+      target.mode === "edit" ? target.highlightQuery?.trim() : undefined;
+    const matchAt =
+      query && target.mode === "edit"
+        ? target.note.body.toLowerCase().indexOf(query.toLowerCase())
+        : -1;
     setTimeout(() => {
       bodyRef.current?.focus();
       plainRef.current?.focus();
       // The editor is reused across notes, so it keeps the previous note's
-      // caret/scroll. Reset to the top so a note always opens at its start.
+      // caret/scroll. When opened from search, select the first match so it's
+      // highlighted and scrolled into view; otherwise reset to the top.
       const ta = scrollRef.current?.querySelector("textarea");
-      if (ta) ta.selectionStart = ta.selectionEnd = 0;
-      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      if (ta && query && matchAt >= 0) {
+        ta.focus();
+        ta.setSelectionRange(matchAt, matchAt + query.length);
+      } else {
+        if (ta) ta.selectionStart = ta.selectionEnd = 0;
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      }
     }, 30);
   }, [targetKey]);
 
