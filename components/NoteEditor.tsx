@@ -123,6 +123,15 @@ export function NoteEditor({
     }, 30);
   }, [targetKey]);
 
+  // Grow the plain editor to fit its content so short notes hug the text and
+  // the box expands as lines are added (the highlight editor self-sizes).
+  useEffect(() => {
+    const ta = plainRef.current;
+    if (!ta || highlight || previewOpen) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [body, highlight, previewOpen, targetKey]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!target) return;
@@ -322,7 +331,7 @@ export function NoteEditor({
   const isTrashed = target.mode === "edit" && target.note.trashed;
 
   const header = (
-    <div className="mx-auto flex w-full max-w-3xl xl:max-w-4xl flex-wrap items-center gap-1 px-3 py-2">
+    <div className="mx-auto flex w-full max-w-3xl xl:max-w-4xl shrink-0 flex-wrap items-center gap-1 px-3 py-2">
       {onBack && (
         <>
           <button
@@ -607,11 +616,11 @@ export function NoteEditor({
             onClose={() => setHistoryOpen(false)}
           />
         ) : (
-          <div className="relative flex flex-col min-h-0 flex-1 pt-6 pb-4">
+          <div className="relative min-h-0 overflow-y-auto pt-6 pb-4">
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl xl:max-w-4xl flex-1 flex-col px-6">
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col px-6">
                 <HighlightedEditor
                   ref={bodyRef}
                   value={body}
@@ -637,7 +646,7 @@ export function NoteEditor({
                 data-lpignore="true"
                 data-bwignore
                 data-form-type="other"
-                className="mx-auto min-h-[320px] w-full max-w-3xl xl:max-w-4xl flex-1 resize-none overflow-y-auto border-0 bg-transparent px-6 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                className="mx-auto min-h-[6rem] w-full max-w-3xl xl:max-w-4xl resize-none overflow-hidden border-0 bg-transparent px-6 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
             {uploading && (
@@ -656,7 +665,7 @@ export function NoteEditor({
       // The note surface tracks the body/controls column width (same
       // max-w-3xl→xl:max-w-4xl), so the background shrinks to hug the note and
       // centers on the canvas instead of spanning the whole pane.
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div className="mx-auto flex max-h-full min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
         {editor}
       </div>
     );
@@ -669,7 +678,7 @@ export function NoteEditor({
         onClick={close}
       />
 
-      <div className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+      <div className="relative z-10 flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         {editor}
       </div>
     </div>
