@@ -438,6 +438,11 @@ function SidebarNoteRow({
     <li
       data-note-id={note.id}
       className="group relative flex items-center rounded-md"
+      onContextMenu={(e) => {
+        if (isRenaming) return;
+        e.preventDefault();
+        setMenuOpen(true);
+      }}
     >
       {isRenaming ? (
         <input
@@ -456,7 +461,17 @@ function SidebarNoteRow({
         <>
           <button
             type="button"
-            onClick={onOpen}
+            onClick={(e) => {
+              // Finder-style: a fresh click opens the note; clicking the row
+              // that's already selected renames it. e.detail === 1 skips the
+              // second hit of a fast double-click so habitual double-clicks
+              // don't trip a rename.
+              if (active && !trashMode && e.detail === 1) {
+                startRename();
+              } else {
+                onOpen();
+              }
+            }}
             aria-current={active ? "true" : undefined}
             className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
               active && !slidingIn
