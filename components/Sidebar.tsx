@@ -9,6 +9,7 @@ import { downloadNoteBody } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
+  KeyboardIcon,
   PanelLeftIcon,
   PlusIcon,
   SearchIcon,
@@ -69,6 +70,7 @@ export function Sidebar({
   onNewNote,
   onOpenSearch,
   onOpenSettings,
+  onOpenShortcuts,
   togglePin,
   toggleArchive,
   trash,
@@ -90,6 +92,7 @@ export function Sidebar({
   onNewNote: () => void;
   onOpenSearch: () => void;
   onOpenSettings: () => void;
+  onOpenShortcuts: () => void;
   togglePin: (id: string) => void;
   toggleArchive: (id: string) => void;
   trash: (id: string) => void;
@@ -360,6 +363,17 @@ export function Sidebar({
             >
               <SettingsIcon className="h-4 w-4" />
             </button>
+            {!mobile && (
+              <button
+                type="button"
+                onClick={onOpenShortcuts}
+                className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
+                title="Keyboard shortcuts"
+                aria-label="Keyboard shortcuts"
+              >
+                <KeyboardIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
