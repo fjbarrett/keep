@@ -6,6 +6,7 @@ import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
 import { CopyNoteButton } from "@/components/CopyNoteButton";
 import { MarkdownCodeBlock } from "@/components/MarkdownCodeBlock";
+import { Logo } from "@/components/Logo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,84 +90,99 @@ export default async function SharedNotePage({
   const hasTags = note.tags && note.tags.length > 0;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[680px] flex-col px-5 py-10 sm:px-8 sm:py-16">
-      <article className="my-auto">
-        <header className="mb-8 sm:mb-10">
-          <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight text-[var(--color-text)] sm:text-4xl">
-            {title}
-          </h1>
-          <div className="mt-3 flex items-start justify-between gap-3">
-            <div className="space-y-2">
-              <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-[var(--color-muted)]">
+    <div className="flex min-h-screen flex-col bg-[var(--color-canvas)]">
+      <header className="bg-[var(--color-canvas)]">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-4 px-5 py-4 sm:px-6">
+          <a href="/" className="flex items-center gap-2">
+            <Logo />
+          </a>
+          <div className="flex-1" />
+          <a
+            href="/"
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
+          >
+            Open Keep
+          </a>
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col px-4 pb-10 pt-2 sm:px-6 sm:pb-16">
+        <article className="mx-auto w-full max-w-3xl rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-8 sm:px-10 sm:py-10">
+          <header className="mb-7">
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight text-[var(--color-text)] sm:text-[2rem]">
+                {title}
+              </h1>
+              <div className="flex shrink-0 items-center gap-2 pt-1">
+                <a
+                  href={`/p/${params.token}.${downloadExt}`}
+                  download
+                  aria-label={`Download as .${downloadExt}`}
+                  title={`Download as .${downloadExt}`}
+                  className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                >
+                  <DownloadMark />
+                </a>
+                <CopyNoteButton
+                  text={note.body}
+                  contentSelector={isMarkdown ? "[data-note-content]" : undefined}
+                />
+              </div>
+            </div>
+            <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-[var(--color-muted)]">
+              <div className="flex gap-1.5">
+                <dt>Created</dt>
+                <dd>{formatDate(note.createdAt)}</dd>
+              </div>
+              {!sameDay && (
                 <div className="flex gap-1.5">
-                  <dt>Created</dt>
-                  <dd>{formatDate(note.createdAt)}</dd>
-                </div>
-                {!sameDay && (
-                  <div className="flex gap-1.5">
-                    <dt>Updated</dt>
-                    <dd>{formatDate(note.updatedAt)}</dd>
-                  </div>
-                )}
-              </dl>
-              {hasTags && (
-                <div className="flex flex-wrap gap-1.5">
-                  {note.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-[var(--color-surface-hover)] px-2.5 py-0.5 text-xs text-[var(--color-muted)]"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                  <dt>Updated</dt>
+                  <dd>{formatDate(note.updatedAt)}</dd>
                 </div>
               )}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <a
-                href={`/p/${params.token}.${downloadExt}`}
-                download
-                aria-label={`Download as .${downloadExt}`}
-                title={`Download as .${downloadExt}`}
-                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-              >
-                <DownloadMark />
-              </a>
-              <CopyNoteButton
-                text={note.body}
-                contentSelector={isMarkdown ? "[data-note-content]" : undefined}
-              />
-            </div>
-          </div>
-        </header>
+            </dl>
+            {hasTags && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {note.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-[var(--color-surface-hover)] px-2.5 py-0.5 text-xs text-[var(--color-muted)]"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </header>
 
-        <div className="mb-8 border-t border-[var(--color-border)]" />
+          <div className="mb-7 border-t border-[var(--color-border)]" />
 
-        {isMarkdown ? (
-          <div
-            data-note-content
-            className="prose-invert-auto max-w-none text-base leading-relaxed sm:text-[17px] sm:leading-[1.75]"
-          >
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{ pre: MarkdownCodeBlock }}
+          {isMarkdown ? (
+            <div
+              data-note-content
+              className="prose-invert-auto max-w-none text-base leading-relaxed sm:text-[17px] sm:leading-[1.75]"
             >
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{ pre: MarkdownCodeBlock }}
+              >
+                {note.body}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <div className="whitespace-pre-wrap text-[17px] leading-[1.75] text-[var(--color-text)] sm:text-lg sm:leading-[1.8]">
               {note.body}
-            </ReactMarkdown>
-          </div>
-        ) : (
-          <div className="whitespace-pre-wrap text-[17px] leading-[1.75] text-[var(--color-text)] sm:text-lg sm:leading-[1.8]">
-            {note.body}
-          </div>
-        )}
-      </article>
+            </div>
+          )}
+        </article>
 
-      <footer className="mt-16 border-t border-[var(--color-border)] pt-4 text-xs text-[var(--color-muted)]">
-        Shared via{" "}
-        <a href="/" className="text-[var(--color-link)] hover:underline">
-          Keep
-        </a>
-      </footer>
-    </main>
+        <footer className="mx-auto mt-6 w-full max-w-3xl px-1 text-xs text-[var(--color-muted)]">
+          Shared via{" "}
+          <a href="/" className="text-[var(--color-link)] hover:underline">
+            Keep
+          </a>
+        </footer>
+      </main>
+    </div>
   );
 }
