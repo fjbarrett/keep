@@ -94,9 +94,16 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     }, [value]);
 
     useEffect(() => {
+      // Shiki separates its <span class="line"> rows with literal "\n". The CSS
+      // renders each .line as a block (so wrapped rows hang past the gutter), so
+      // strip those newlines or every line would double-space.
+      const render = (hl: Highlighter) =>
+        hl
+          .codeToHtml(value || " ", { theme, lang })
+          .replace(/\n(<span class="line">)/g, "$1");
       if (hlRef.current) {
         try {
-          setHtml(hlRef.current.codeToHtml(value || " ", { theme, lang }));
+          setHtml(render(hlRef.current));
         } catch { /* lang not loaded */ }
         return;
       }
@@ -105,7 +112,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
         hlRef.current = hl;
         if (!cancelled) {
           try {
-            setHtml(hl.codeToHtml(value || " ", { theme, lang }));
+            setHtml(render(hl));
           } catch { /* lang not loaded */ }
         }
       });

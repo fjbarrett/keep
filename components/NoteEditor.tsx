@@ -626,7 +626,7 @@ export function NoteEditor({
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
-              <div className="mx-auto flex min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col px-6">
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col pl-3 pr-6">
                 <HighlightedEditor
                   ref={bodyRef}
                   value={body}
