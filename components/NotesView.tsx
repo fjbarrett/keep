@@ -145,13 +145,13 @@ export function NotesView({
     searchRef.current?.blur();
   }
 
-  function openNote(note: Note | null) {
+  function openNote(note: Note | null, highlightQuery?: string) {
     if (!note) return;
     composedIdRef.current = null;
     setSearchOpen(false);
     setQuery("");
     setActiveNoteId(note.id);
-    setTarget({ mode: "edit", note });
+    setTarget({ mode: "edit", note, highlightQuery });
   }
 
   async function handleCreate(partial: Partial<Note>) {
@@ -360,7 +360,7 @@ export function NotesView({
 
         if (searchFocused && event.key === "Enter") {
           event.preventDefault();
-          openNote(activeNote ?? visibleNotes[0] ?? null);
+          openNote(activeNote ?? visibleNotes[0] ?? null, query);
           return;
         }
 
@@ -423,13 +423,14 @@ export function NotesView({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeNote, activeNoteId, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
+  }, [activeNote, activeNoteId, query, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
 
   const mainTarget: EditorTarget =
     target?.mode === "edit"
       ? {
           mode: "edit",
           note: decryptedNotes.find((n) => n.id === target.note.id) ?? target.note,
+          highlightQuery: target.highlightQuery,
         }
       : target;
 
@@ -556,7 +557,7 @@ export function NotesView({
           results={visibleNotes}
           activeId={activeNoteId}
           setActiveId={setActiveNoteId}
-          onOpen={openNote}
+          onOpen={(note) => openNote(note, query)}
           onClose={closeSearch}
         />
       )}
