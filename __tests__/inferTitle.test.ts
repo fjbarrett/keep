@@ -4,11 +4,17 @@ import {
   needsInferredTitle,
   previewText,
   searchableText,
+  stripEmDashes,
 } from "@/lib/inferTitle";
 
 describe("inferNoteTitle", () => {
   it("returns the first non-empty line", () => {
     expect(inferNoteTitle("Hello world\nmore text")).toBe("Hello world");
+  });
+
+  it("never keeps em dashes in the title", () => {
+    expect(inferNoteTitle("Roadmap — Q3 plan")).toBe("Roadmap - Q3 plan");
+    expect(inferNoteTitle("Budget—2026")).toBe("Budget - 2026");
   });
 
   it("strips bullet prefixes", () => {
@@ -119,5 +125,16 @@ describe("previewText", () => {
 
   it("returns fallback for blank note", () => {
     expect(previewText({ body: "", title: "" })).toBe("Untitled text");
+  });
+});
+
+describe("stripEmDashes", () => {
+  it("replaces em and en dashes with a spaced hyphen", () => {
+    expect(stripEmDashes("a — b")).toBe("a - b");
+    expect(stripEmDashes("a–b")).toBe("a - b");
+  });
+
+  it("leaves plain text untouched", () => {
+    expect(stripEmDashes("nothing fancy here")).toBe("nothing fancy here");
   });
 });

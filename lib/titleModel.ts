@@ -1,4 +1,4 @@
-import { inferNoteTitle } from "./inferTitle";
+import { inferNoteTitle, stripEmDashes } from "./inferTitle";
 
 // Anthropic Haiku is the primary provider for note metadata. One call returns
 // both the short title and the one-line card description, so the card grid
@@ -74,7 +74,7 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
         max_tokens: 200,
         system:
           "Return ONLY a JSON object describing a note, with two string fields: " +
-          '"title" — a concise 3–6 word title in sentence case (capitalize only the first word plus genuine proper nouns/acronyms), no quotes or trailing punctuation; and ' +
+          '"title" — a concise 3-6 word title in sentence case (capitalize only the first word plus genuine proper nouns/acronyms), no quotes, no trailing punctuation, and never an em dash or en dash; and ' +
           '"summary" — a concise, descriptive caption of at most ~90 characters that says what the note is about. ' +
           "Describe the content/subject directly, like a caption. Do NOT narrate the act of writing or use any " +
           'first/second/third person or meta references (never "I", "you", "the user", "this note", "the author"). ' +
@@ -91,7 +91,8 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
     const data = await res.json();
     const raw = "{" + (data.content?.[0]?.text ?? "");
     const parsed = JSON.parse(raw) as { title?: unknown; summary?: unknown };
-    const title = typeof parsed.title === "string" ? clean(parsed.title, 80) : "";
+    const title =
+      typeof parsed.title === "string" ? stripEmDashes(clean(parsed.title, 80)) : "";
     const summary =
       typeof parsed.summary === "string" ? clean(parsed.summary, MAX_SUMMARY) : "";
     return {
