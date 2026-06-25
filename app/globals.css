@@ -130,8 +130,8 @@ textarea:focus-visible {
 .highlighted-editor {
   font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas,
     "DejaVu Sans Mono", monospace;
-  font-size: 16px;
-  line-height: 1.625;
+  font-size: 13px;
+  line-height: 1.6;
   tab-size: 2;
 }
 .highlighted-editor-pre,
@@ -169,25 +169,29 @@ textarea:focus-visible {
   -webkit-text-fill-color: transparent;
 }
 
-/* IDE-style line numbers. Shiki wraps each row in <span class="line">, so a CSS
-   counter prints a number in a 3em left gutter ahead of each line. The .line
-   stays inline (the inter-line "\n" already breaks rows — making it a block
-   would double the line height). The textarea gets matching left padding so its
-   text and caret line up with the highlighted layer. */
+/* IDE-style line numbers. Shiki wraps each row in <span class="line">; a CSS
+   counter prints the number in a tight left gutter. Each .line is a block with a
+   left padding equal to the gutter so wrapped rows hang under the code (not the
+   number); the textarea gets the same padding so its text/caret stay aligned. */
 .highlighted-editor-pre code {
   counter-reset: line;
+}
+.highlighted-editor-pre .line {
+  display: block;
+  position: relative;
+  padding-left: 2.5em;
 }
 .highlighted-editor-pre .line::before {
   counter-increment: line;
   content: counter(line);
-  display: inline-block;
-  width: 2em;
-  margin-right: 1em;
+  position: absolute;
+  left: 0;
+  width: 1.75em;
   text-align: right;
   color: var(--color-subtle);
 }
 .highlighted-editor-textarea {
-  padding-left: 3em;
+  padding-left: 2.5em;
 }
 
 /* Markdown preview prose */
