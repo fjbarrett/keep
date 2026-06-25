@@ -253,6 +253,7 @@ export function NotesView({
 
   useEffect(() => {
     if (localStorage.getItem("keep.shortcutsSeen")) return;
+    if (window.matchMedia("(max-width: 767px)").matches) return;
     const timer = window.setTimeout(() => setShortcutsOpen(true), 800);
     return () => window.clearTimeout(timer);
   }, []);
