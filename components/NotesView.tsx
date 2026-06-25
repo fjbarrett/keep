@@ -11,9 +11,8 @@ import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { Sidebar, NoteInfoModal } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
-import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
 import { EncryptionUnlock } from "@/components/EncryptionUnlock";
-import { KeyboardIcon, PanelLeftIcon, PlusIcon, SettingsIcon, StackIcon, XIcon } from "@/components/Icons";
+import { PanelLeftIcon, PlusIcon, SettingsIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -67,7 +66,6 @@ export function NotesView({
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -252,18 +250,6 @@ export function NotesView({
   }
 
   useEffect(() => {
-    if (localStorage.getItem("keep.shortcutsSeen")) return;
-    if (window.matchMedia("(max-width: 767px)").matches) return;
-    const timer = window.setTimeout(() => setShortcutsOpen(true), 800);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  function closeShortcuts() {
-    localStorage.setItem("keep.shortcutsSeen", "1");
-    setShortcutsOpen(false);
-  }
-
-  useEffect(() => {
     if (!searchOpen) return;
     const focusTimer = window.setTimeout(() => {
       searchRef.current?.focus();
@@ -344,24 +330,7 @@ export function NotesView({
         return;
       }
 
-      // ⌘/ (and ⌘?) toggles the shortcuts sheet even while typing.
-      if ((event.metaKey || event.ctrlKey) && (key === "/" || event.key === "?")) {
-        event.preventDefault();
-        if (shortcutsOpen) closeShortcuts();
-        else setShortcutsOpen(true);
-        return;
-      }
-
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-
-      // Bare "?" opens the sheet whenever the user isn't typing in a field —
-      // including when a note is open (which previously swallowed it).
-      if (!typing && (event.key === "?" || (event.shiftKey && key === "/"))) {
-        event.preventDefault();
-        if (shortcutsOpen) closeShortcuts();
-        else setShortcutsOpen(true);
-        return;
-      }
 
       if (typing || target) {
         if (searchFocused && event.key === "ArrowDown") {
@@ -441,7 +410,7 @@ export function NotesView({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeNote, activeNoteId, remove, searchOpen, shortcutsOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
+  }, [activeNote, activeNoteId, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
 
   const mainTarget: EditorTarget =
     target?.mode === "edit"
@@ -466,7 +435,6 @@ export function NotesView({
     },
     onOpenSearch: openSearch,
     onOpenSettings: () => setSettingsOpen(true),
-    onOpenShortcuts: () => setShortcutsOpen(true),
     togglePin,
     toggleArchive,
     trash,
@@ -558,7 +526,6 @@ export function NotesView({
           <MiniRail
             onNewNote={sidebarProps.onNewNote}
             onOpenSettings={sidebarProps.onOpenSettings}
-            onOpenShortcuts={sidebarProps.onOpenShortcuts}
             onExpand={() => toggleSidebar(false)}
           />
         ) : (
@@ -624,10 +591,6 @@ export function NotesView({
 
       {encStatus === "locked" && (
         <EncryptionUnlock onUnlock={unlock} onReset={disableEncryption} />
-      )}
-
-      {shortcutsOpen && (
-        <ShortcutsOverlay onClose={closeShortcuts} isGuest={isGuest} />
       )}
 
       {infoNote && (
@@ -757,12 +720,10 @@ function DbError({
 function MiniRail({
   onNewNote,
   onOpenSettings,
-  onOpenShortcuts,
   onExpand,
 }: {
   onNewNote: () => void;
   onOpenSettings: () => void;
-  onOpenShortcuts: () => void;
   onExpand: () => void;
 }) {
   const iconBtn =
@@ -784,15 +745,6 @@ function MiniRail({
       <div className="flex flex-col items-center gap-0.5">
         <button type="button" onClick={onOpenSettings} title="Settings" aria-label="Settings" className={iconBtn}>
           <SettingsIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onOpenShortcuts}
-          title="Keyboard shortcuts"
-          aria-label="Keyboard shortcuts"
-          className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
-        >
-          <KeyboardIcon className="h-4 w-4" />
         </button>
         <button type="button" onClick={onExpand} title="Show sidebar" aria-label="Show sidebar" className={iconBtn}>
           <PanelLeftIcon className="h-4 w-4" />
