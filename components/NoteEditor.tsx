@@ -83,6 +83,7 @@ export function NoteEditor({
   const bodyRef = useRef<HighlightedEditorHandle>(null);
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
   const targetKey =
@@ -120,6 +121,11 @@ export function NoteEditor({
     setTimeout(() => {
       bodyRef.current?.focus();
       plainRef.current?.focus();
+      // The editor is reused across notes, so it keeps the previous note's
+      // caret/scroll. Reset to the top so a note always opens at its start.
+      const ta = scrollRef.current?.querySelector("textarea");
+      if (ta) ta.selectionStart = ta.selectionEnd = 0;
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
     }, 30);
   }, [targetKey]);
 
@@ -616,7 +622,7 @@ export function NoteEditor({
             onClose={() => setHistoryOpen(false)}
           />
         ) : (
-          <div className="relative min-h-0 overflow-y-auto pt-6 pb-4">
+          <div ref={scrollRef} className="relative min-h-0 overflow-y-auto pt-6 pb-4">
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
