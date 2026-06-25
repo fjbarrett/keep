@@ -179,7 +179,7 @@ textarea:focus-visible {
 .highlighted-editor-pre .line {
   display: block;
   position: relative;
-  padding-left: 2.5em;
+  padding-left: 3.5em;
 }
 .highlighted-editor-pre .line::before {
   counter-increment: line;
@@ -191,7 +191,7 @@ textarea:focus-visible {
   color: var(--color-subtle);
 }
 .highlighted-editor-textarea {
-  padding-left: 2.5em;
+  padding-left: 3.5em;
 }
 
 /* Markdown preview prose */
