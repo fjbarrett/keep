@@ -137,7 +137,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     );
 
     return (
-      <div className="highlighted-editor relative min-h-[16rem] w-full flex flex-col">
+      <div className="highlighted-editor relative min-h-[32rem] w-full flex flex-col">
         <pre
           ref={preRef}
           className="highlighted-editor-pre pointer-events-none absolute inset-0 overflow-hidden"
