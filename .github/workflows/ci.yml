@@ -15,6 +15,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Reuse Next's incremental build cache across runs so the gate build is warm.
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
       - run: npx tsc --noEmit
       - run: npm test
       - run: npm run build
@@ -55,8 +63,10 @@ jobs:
             "set -e
              cd '$DEPLOY_PATH'
              git fetch origin main -q && git reset --hard origin/main -q
-             rm -rf .next
-             npm ci --no-audit --no-fund
+             if [ ! -d node_modules ] || ! git diff --quiet ORIG_HEAD HEAD -- package-lock.json; then
+               npm ci --no-audit --no-fund
+             fi
+             find .next -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} + 2>/dev/null || true
              npm run build
              systemctl restart '$DEPLOY_SERVICE'
              sleep 5
