@@ -25,6 +25,10 @@ function buildCsp(nonce: string): string {
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'unsafe-inline'`,
+    // Same-origin worker for client-side PDF text extraction (pdfjs). An explicit
+    // worker-src is needed because script-src's 'strict-dynamic' otherwise
+    // ignores 'self' for the worker script.
+    `worker-src 'self' blob:`,
     // data: favicon + pasted images, blob: object URLs, https: uploaded and
     // markdown-referenced images (served from the storage origin / anywhere).
     `img-src 'self' data: blob: https:`,

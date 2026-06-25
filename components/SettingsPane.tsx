@@ -130,7 +130,7 @@ export function SettingsPane({
           <input
             ref={importTextsRef}
             type="file"
-            accept=".txt,.md,.markdown,.zip,text/plain,application/zip"
+            accept=".txt,.md,.markdown,.pdf,.zip,text/plain,application/pdf,application/zip"
             onChange={onImportTexts}
             className="hidden"
           />
@@ -140,7 +140,7 @@ export function SettingsPane({
             disabled={importing}
             className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
           >
-            <span>{importing ? "Importing..." : "Import texts (.txt / .zip)"}</span>
+            <span>{importing ? "Importing..." : "Import texts (.txt / .pdf / .zip)"}</span>
             <UploadIcon className="h-4 w-4" />
           </button>
 
