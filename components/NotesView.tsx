@@ -83,12 +83,9 @@ export function NotesView({
   const importTextsRef = useRef<HTMLInputElement>(null);
   const didRestoreFromUrlRef = useRef(false);
   // Id of the note created from the current compose session. Lets the editor's
-  // entrance-animation key stay stable across the new → edit autosave bridge so
-  // the editor isn't remounted (which would discard in-flight keystrokes).
+  // remount key stay stable across the new → edit autosave bridge so the editor
+  // isn't remounted (which would discard in-flight keystrokes).
   const composedIdRef = useRef<string | null>(null);
-  // Whether the previous render showed a text (vs the grid), to choose the
-  // entrance animation.
-  const prevTargetRef = useRef(false);
 
   useEffect(() => {
     setSidebarCollapsed(localStorage.getItem("keep.sidebarCollapsed") === "1");
@@ -448,26 +445,12 @@ export function NotesView({
 
   // All open notes share one key ("note") so switching between them updates the
   // editor in place — no remount, so it doesn't re-run Shiki or flash. The key
-  // only changes for the empty placeholder / compose / a note being open, which
-  // is what should replay an entrance animation.
-  const animKey = !mainTarget
+  // only changes for the empty placeholder / compose / a note being open.
+  const editorKey = !mainTarget
     ? "empty"
     : mainTarget.mode === "new" || mainTarget.note.id === composedIdRef.current
       ? "compose"
       : "note";
-
-  // Opening from the placeholder/compose expands; switching between already-open
-  // notes updates in place with no animation (the editor stays mounted); the
-  // placeholder itself fades in.
-  const animClass = !mainTarget
-    ? "note-fade-in"
-    : prevTargetRef.current
-      ? ""
-      : "note-expand-in";
-
-  useEffect(() => {
-    prevTargetRef.current = !!mainTarget;
-  });
 
   const editorPanel = (
     <>
@@ -488,8 +471,8 @@ export function NotesView({
       )}
 
       <div
-        key={animKey}
-        className={`${animClass} flex min-h-0 flex-1 flex-col p-4`}
+        key={editorKey}
+        className="flex min-h-0 flex-1 flex-col p-4"
       >
         {mainTarget ? (
           <NoteEditor
