@@ -31,32 +31,19 @@ export function downloadNoteBody(body: string) {
 }
 
 /**
- * Renders the note body to a paginated PDF and downloads it. jsPDF is loaded on
- * demand so it never ships in the main bundle. The note's own line breaks are
- * kept; long lines wrap to the page width.
+ * Renders the note body to a paginated PDF and downloads it. The Markdown is
+ * lexed and laid out with real typography (headings, emphasis, lists, code,
+ * tables) rather than dumping the raw syntax — see `notePdf.ts`. jsPDF, marked
+ * and the renderer are all loaded on demand so none ship in the main bundle.
  */
 export async function downloadNotePdf(body: string) {
   if (!body.trim()) return;
-  const { jsPDF } = await import("jspdf");
+  const [{ jsPDF }, { lexer }, { renderMarkdownPdf }] = await Promise.all([
+    import("jspdf"),
+    import("marked"),
+    import("./notePdf"),
+  ]);
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const margin = 56;
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const maxW = pageW - margin * 2;
-  const lineH = 16;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  let y = margin;
-  for (const raw of body.split("\n")) {
-    const wrapped = raw.trim() ? doc.splitTextToSize(raw, maxW) : [""];
-    for (const line of wrapped) {
-      if (y + lineH > pageH - margin) {
-        doc.addPage();
-        y = margin;
-      }
-      doc.text(line, margin, y);
-      y += lineH;
-    }
-  }
+  renderMarkdownPdf(doc, lexer(body));
   doc.save(`${noteBaseName(body)}.pdf`);
 }
