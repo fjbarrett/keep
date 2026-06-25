@@ -127,17 +127,23 @@ export function NoteEditor({
         ? target.note.body.toLowerCase().indexOf(query.toLowerCase())
         : -1;
     setTimeout(() => {
-      bodyRef.current?.focus();
-      plainRef.current?.focus();
       // The editor is reused across notes, so it keeps the previous note's
-      // caret/scroll. When opened from search, select the first match so it's
-      // highlighted and scrolled into view; otherwise reset to the top.
+      // caret/scroll. Three open behaviours:
+      //  - from search: focus and select the match so it's highlighted in view;
+      //  - a new note: focus so the user can type immediately;
+      //  - opening an existing note: don't grab focus — no blinking cursor or
+      //    stray selection. The user clicks into the body to place the caret.
       const ta = scrollRef.current?.querySelector("textarea");
       if (ta && query && matchAt >= 0) {
         ta.focus();
         ta.setSelectionRange(matchAt, matchAt + query.length);
-      } else {
+      } else if (target.mode === "new") {
+        bodyRef.current?.focus();
+        plainRef.current?.focus();
         if (ta) ta.selectionStart = ta.selectionEnd = 0;
+      } else if (ta) {
+        ta.selectionStart = ta.selectionEnd = 0;
+        ta.blur();
         if (scrollRef.current) scrollRef.current.scrollTop = 0;
       }
     }, 30);
