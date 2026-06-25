@@ -13,16 +13,23 @@ const { auth } = NextAuth(authConfig);
 // highlighter needs it); it permits WebAssembly only, not arbitrary eval().
 // style-src keeps 'unsafe-inline' because Next and the app set inline style
 // attributes with no nonce hook; the XSS leverage there is far lower.
+//
+// Dev-only relaxations: `next dev` evaluates modules with eval() and hot-reloads
+// over a websocket, so without 'unsafe-eval' / ws: the client never hydrates and
+// nothing interactive works locally. Both are gated to development; production
+// stays strict.
+const isDev = process.env.NODE_ENV !== "production";
+
 function buildCsp(nonce: string): string {
   return [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'unsafe-inline'`,
     // data: favicon + pasted images, blob: object URLs, https: uploaded and
     // markdown-referenced images (served from the storage origin / anywhere).
     `img-src 'self' data: blob: https:`,
     `font-src 'self'`,
-    `connect-src 'self'`,
+    `connect-src 'self'${isDev ? " ws:" : ""}`,
     `base-uri 'self'`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
