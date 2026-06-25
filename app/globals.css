@@ -169,6 +169,27 @@ textarea:focus-visible {
   -webkit-text-fill-color: transparent;
 }
 
+/* IDE-style line numbers. Shiki wraps each row in <span class="line">, so a CSS
+   counter prints a number in a 3em left gutter ahead of each line. The .line
+   stays inline (the inter-line "\n" already breaks rows — making it a block
+   would double the line height). The textarea gets matching left padding so its
+   text and caret line up with the highlighted layer. */
+.highlighted-editor-pre code {
+  counter-reset: line;
+}
+.highlighted-editor-pre .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 2em;
+  margin-right: 1em;
+  text-align: right;
+  color: var(--color-subtle);
+}
+.highlighted-editor-textarea {
+  padding-left: 3em;
+}
+
 /* Markdown preview prose */
 .prose-invert-auto {
   color: var(--color-text);
