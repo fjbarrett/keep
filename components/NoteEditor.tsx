@@ -646,7 +646,7 @@ export function NoteEditor({
                 data-lpignore="true"
                 data-bwignore
                 data-form-type="other"
-                className="mx-auto min-h-[16rem] w-full max-w-3xl xl:max-w-4xl resize-none overflow-hidden border-0 bg-transparent px-6 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                className="mx-auto min-h-[32rem] w-full max-w-3xl xl:max-w-4xl resize-none overflow-hidden border-0 bg-transparent px-6 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
               />
             )}
             {uploading && (
