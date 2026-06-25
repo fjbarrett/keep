@@ -30,9 +30,16 @@ function cleanLine(line: string) {
   return inlineChecklist > 0 ? stripped.slice(0, inlineChecklist).trim() : stripped;
 }
 
+// Titles never carry em/en dashes — swap them for a plain hyphen (the model
+// loves an em dash, and they read poorly in the compact sidebar/card titles).
+export function stripEmDashes(text: string): string {
+  return text.replace(/\s*[—–]\s*/g, " - ").replace(/\s{2,}/g, " ").trim();
+}
+
 function trimTitle(title: string) {
-  const words = title.split(/\s+/).filter(Boolean);
-  const capped = words.length > WORD_LIMIT ? words.slice(0, WORD_LIMIT).join(" ") : title;
+  const normalized = stripEmDashes(title);
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const capped = words.length > WORD_LIMIT ? words.slice(0, WORD_LIMIT).join(" ") : normalized;
   return capped.length > CHAR_LIMIT ? `${capped.slice(0, CHAR_LIMIT - 1).trim()}…` : capped;
 }
 
