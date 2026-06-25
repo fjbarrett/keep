@@ -5,7 +5,7 @@ import { previewText } from "@/lib/inferTitle";
 import { detectCodeLanguage, languageLabel, noteFileExtension } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
-import { downloadNoteBody } from "@/lib/downloadNote";
+import { downloadNoteBody, downloadNotePdf } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
@@ -607,6 +607,14 @@ function SidebarNoteRow({
                   }}
                 >
                   Download as .{noteFileExtension(note.body)}
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    downloadNotePdf(note.body);
+                    setMenuOpen(false);
+                  }}
+                >
+                  Download as PDF
                 </MenuItem>
                 <div className="my-1 border-t border-[var(--color-border)]" />
                 <MenuItem
