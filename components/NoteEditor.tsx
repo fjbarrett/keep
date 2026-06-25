@@ -631,8 +631,8 @@ export function NoteEditor({
                 placeholder="Start writing..."
                 name="note-body"
                 autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
+                autoCorrect="on"
+                autoCapitalize="sentences"
                 data-1p-ignore
                 data-lpignore="true"
                 data-bwignore
