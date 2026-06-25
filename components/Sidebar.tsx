@@ -577,7 +577,7 @@ function SidebarNoteRow({
                     setMenuOpen(false);
                   }}
                 >
-                  Download
+                  Download as .{noteFileExtension(note.body)}
                 </MenuItem>
                 <div className="my-1 border-t border-[var(--color-border)]" />
                 <MenuItem
