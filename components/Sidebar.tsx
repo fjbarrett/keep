@@ -363,15 +363,17 @@ export function Sidebar({
             >
               <SettingsIcon className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={onOpenShortcuts}
-              className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
-              title="Keyboard shortcuts"
-              aria-label="Keyboard shortcuts"
-            >
-              <KeyboardIcon className="h-4 w-4" />
-            </button>
+            {!mobile && (
+              <button
+                type="button"
+                onClick={onOpenShortcuts}
+                className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
+                title="Keyboard shortcuts"
+                aria-label="Keyboard shortcuts"
+              >
+                <KeyboardIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
