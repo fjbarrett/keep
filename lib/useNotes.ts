@@ -433,6 +433,9 @@ export function useNotes() {
             bodies.push(await entry.async("string"));
           }
         }
+      } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
+        const { extractPdfText } = await import("./pdfText");
+        bodies.push(await extractPdfText(file));
       } else {
         bodies.push(await file.text());
       }
