@@ -85,8 +85,9 @@ jobs:
   # scripts/deploy.sh -> scripts/screenshot.mjs flow. The script seeds guest data
   # and opens a code note, so the image shows the real populated UI rather than an
   # empty/sign-in screen. Chrome is preinstalled on the runner (screenshot.mjs
-  # launches it via Playwright's `chrome` channel). KEEP_SHOT_ARCHIVE=0 skips the
-  # timestamped archive so the repo isn't bloated with one PNG per merge.
+  # launches it via Playwright's `chrome` channel). Every shot is archived under
+  # screenshots/keep-<ts>.png (committed alongside docs/screenshot.png) so the
+  # design progression can be reviewed shot by shot over time.
   desktop-screenshot:
     needs: deploy
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -106,16 +107,20 @@ jobs:
       - name: Capture screenshot
         env:
           KEEP_URL: ${{ vars.DEPLOY_URL || 'https://keeptxt.com' }}
-          KEEP_SHOT_ARCHIVE: "0"
         run: node scripts/screenshot.mjs
       - name: Commit screenshot
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Stage the README image first. If it's byte-identical to the last one,
+          # the UI didn't change — skip the commit and let the fresh archive be
+          # discarded. Otherwise it's a new version: keep its timestamped archive
+          # too, so screenshots/ accumulates one frame per distinct design state.
           git add docs/screenshot.png
           if git diff --cached --quiet; then
-            echo "::notice::Desktop screenshot unchanged."
+            echo "::notice::Desktop screenshot unchanged — no new archive."
           else
+            git add screenshots/
             git commit -m "chore: refresh desktop screenshot [skip ci]"
             git push
           fi
