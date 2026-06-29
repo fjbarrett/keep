@@ -527,8 +527,9 @@ function SidebarNoteRow({
             )}
             <span className="min-w-0 flex-1 truncate">{previewText(note)}</span>
           </button>
-          {/* Kebab opens the row's options menu — the only menu trigger on
-              touch, so it stays rendered (muted) rather than hover-only. */}
+          {/* Kebab opens the row's options menu. Hidden until the row is
+              hovered (or the menu is open / the button is focused for keyboard
+              nav); on touch, long-press still fires the context menu. */}
           <button
             type="button"
             aria-label="Note options"
@@ -538,7 +539,11 @@ function SidebarNoteRow({
               e.stopPropagation();
               setMenuOpen((v) => !v);
             }}
-            className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors ${
+            className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md transition-opacity ${
+              menuOpen
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            } ${
               active && !slidingIn
                 ? "text-[var(--color-accent-fg)]/70 hover:text-[var(--color-accent-fg)]"
                 : "text-[var(--color-subtle)] hover:text-[var(--color-text)]"
