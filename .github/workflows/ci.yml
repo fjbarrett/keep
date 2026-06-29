@@ -80,34 +80,42 @@ jobs:
           echo "GET $DEPLOY_URL -> $code"
           [ "$code" = "200" ] || echo "::warning::smoke check returned $code"
 
-  # Screenshot the iOS app on every merge to main, mirroring the web shot
-  # (scripts/screenshot.sh). Needs a macOS runner for the iOS Simulator, so it's
-  # gated behind the IOS_SCREENSHOT repo variable to avoid spending macOS minutes
-  # until you opt in: `gh variable set IOS_SCREENSHOT --body true`. Archives every
-  # shot under ios/screenshots/ and refreshes ios/docs/screenshot.png, committed
-  # back to main.
-  ios-screenshot:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.IOS_SCREENSHOT == 'true'
-    runs-on: macos-15
+  # Refresh the desktop screenshot (docs/screenshot.png, shown in the README) on
+  # every merge to main, after the deploy lands — the CI analog of the manual
+  # scripts/deploy.sh -> scripts/screenshot.mjs flow. The script seeds guest data
+  # and opens a code note, so the image shows the real populated UI rather than an
+  # empty/sign-in screen. Chrome is preinstalled on the runner (screenshot.mjs
+  # launches it via Playwright's `chrome` channel). KEEP_SHOT_ARCHIVE=0 skips the
+  # timestamped archive so the repo isn't bloated with one PNG per merge.
+  desktop-screenshot:
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     concurrency:
-      group: ios-screenshot
+      group: desktop-screenshot
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - name: Capture screenshot
-        run: scripts/ios-screenshot.sh
+        env:
+          KEEP_URL: ${{ vars.DEPLOY_URL || 'https://keeptxt.com' }}
+          KEEP_SHOT_ARCHIVE: "0"
+        run: node scripts/screenshot.mjs
       - name: Commit screenshot
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ios/docs/screenshot.png ios/screenshots/
+          git add docs/screenshot.png
           if git diff --cached --quiet; then
-            echo "::notice::iOS screenshot unchanged."
+            echo "::notice::Desktop screenshot unchanged."
           else
-            git commit -m "chore: refresh iOS screenshot [skip ci]"
+            git commit -m "chore: refresh desktop screenshot [skip ci]"
             git push
           fi
