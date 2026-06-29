@@ -100,15 +100,6 @@ async function bootstrap(): Promise<void> {
     CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS notes_share_token_idx ON notes (share_token) WHERE share_token IS NOT NULL;
 
-    CREATE TABLE IF NOT EXISTS note_versions (
-      id          TEXT PRIMARY KEY,
-      note_id     TEXT NOT NULL,
-      body        TEXT NOT NULL DEFAULT '',
-      title       TEXT NOT NULL DEFAULT '',
-      created_at  BIGINT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS note_versions_note_idx ON note_versions (note_id, created_at DESC);
-
     -- Short-lived handoff codes for native (iOS) Google sign-in. The native app
     -- can't read the session cookie out of ASWebAuthenticationSession's browser
     -- jar, so the /native/bridge route mints a single-use code bound to the
@@ -181,7 +172,7 @@ async function bootstrap(): Promise<void> {
 }
 
 // Re-IDs any note that predates the 8-hex-char convention (old 12-char ids,
-// GK-import ids, …) to a fresh 8-char id, carrying its note_versions along.
+// GK-import ids, …) to a fresh 8-char id.
 // Idempotent: once every id matches ^[0-9a-f]{8}$ this is a no-op. Each note is
 // migrated in its own transaction so a failure mid-run is safe and resumable.
 async function migrateNoteIds(): Promise<void> {
@@ -199,7 +190,6 @@ async function migrateNoteIds(): Promise<void> {
     const client = await pool().connect();
     try {
       await client.query("BEGIN");
-      await client.query(`UPDATE note_versions SET note_id = $1 WHERE note_id = $2`, [next, oldId]);
       await client.query(`UPDATE notes SET id = $1 WHERE id = $2`, [next, oldId]);
       await client.query("COMMIT");
     } catch (err) {
