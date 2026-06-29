@@ -9,6 +9,7 @@ import { downloadNoteBody, downloadNotePdf } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import {
+  DotsIcon,
   KeyboardIcon,
   PanelLeftIcon,
   PlusIcon,
@@ -125,6 +126,15 @@ export function Sidebar({
   const [sliding, setSliding] = useState(false);
   const pendingTimer = useRef<number | null>(null);
 
+  // The list scrollbar is hidden; a bottom fade is the only hint that more rows
+  // sit below the fold, so show it whenever the list isn't scrolled to the end.
+  const [showBottomFade, setShowBottomFade] = useState(false);
+  const updateFade = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    setShowBottomFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+
   // Follow external active changes (keyboard nav, deep links, deferred open).
   useEffect(() => {
     setPillId(activeNoteId);
@@ -187,7 +197,8 @@ export function Sidebar({
   // A user selection (or the list reordering) springs the highlight into place.
   useEffect(() => {
     measure(true);
-  }, [measure, orderKey, hydrated]);
+    updateFade();
+  }, [measure, updateFade, orderKey, hydrated]);
 
   // Web fonts loading and sidebar resizes shift row offsets; re-measure and
   // snap (no slide) so the pill lands exactly. Mounted ONCE via a ref —
@@ -198,7 +209,10 @@ export function Sidebar({
   useEffect(() => {
     const container = listRef.current;
     if (!container) return;
-    const snap = () => measureRef.current(false);
+    const snap = () => {
+      measureRef.current(false);
+      updateFade();
+    };
     const ro = new ResizeObserver(snap);
     ro.observe(container);
     let cancelled = false;
@@ -222,7 +236,7 @@ export function Sidebar({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, []);
+  }, [updateFade]);
 
   return (
     <aside
@@ -253,9 +267,6 @@ export function Sidebar({
             <SearchIcon className="h-3.5 w-3.5" />
           </span>
           <span>Search</span>
-          <kbd className="ml-auto rounded border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-muted)]">
-            ⌘K
-          </kbd>
         </button>
       </div>
 
@@ -274,7 +285,11 @@ export function Sidebar({
         </div>
       )}
 
-      <div ref={listRef} className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <div
+        ref={listRef}
+        onScroll={updateFade}
+        className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto px-2 pb-2"
+      >
         {indicator && (
           <div
             aria-hidden
@@ -338,6 +353,14 @@ export function Sidebar({
             </section>
           ))
         )}
+        {/* Pinned to the list's bottom edge (sticky + negative margin so it adds
+            no layout height); fades in only when more rows sit below the fold. */}
+        <div
+          aria-hidden
+          className={`pointer-events-none sticky bottom-0 -mt-10 h-10 bg-gradient-to-t from-[var(--color-canvas)] to-transparent transition-opacity duration-200 ${
+            showBottomFade ? "opacity-100" : "opacity-0"
+          }`}
+        />
       </div>
 
       <div className="p-2">
@@ -504,9 +527,8 @@ function SidebarNoteRow({
             )}
             <span className="min-w-0 flex-1 truncate">{previewText(note)}</span>
           </button>
-          {/* The file extension doubles as the row's context-menu trigger. Fixed
-              width + text-left so the badges form a left-aligned column pinned
-              to the far right, where the ⋯ button used to sit. */}
+          {/* Kebab opens the row's options menu — the only menu trigger on
+              touch, so it stays rendered (muted) rather than hover-only. */}
           <button
             type="button"
             aria-label="Note options"
@@ -516,13 +538,13 @@ function SidebarNoteRow({
               e.stopPropagation();
               setMenuOpen((v) => !v);
             }}
-            className={`mr-2 w-10 shrink-0 text-left text-[11px] lowercase transition-colors ${
+            className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors ${
               active && !slidingIn
                 ? "text-[var(--color-accent-fg)]/70 hover:text-[var(--color-accent-fg)]"
                 : "text-[var(--color-subtle)] hover:text-[var(--color-text)]"
             }`}
           >
-            .{noteFileExtension(note.body)}
+            <DotsIcon className="h-4 w-4" />
           </button>
         </>
       )}
