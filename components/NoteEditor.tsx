@@ -14,7 +14,6 @@ import {
   ChevronLeftIcon,
   CopyIcon,
   DownloadIcon,
-  HistoryIcon,
   PinFilledIcon,
   PinIcon,
   TrashIcon,
@@ -75,8 +74,6 @@ export function NoteEditor({
   const [dirty, setDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [versions, setVersions] = useState<{ id: string; body: string; title: string; createdAt: number }[]>([]);
   const [copied, setCopied] = useState(false);
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
@@ -113,8 +110,6 @@ export function NoteEditor({
       setHighlight(false);
     }
     setDirty(false);
-    setHistoryOpen(false);
-    setVersions([]);
     setCopied(false);
     setCopyMenuOpen(false);
     setColorMenuOpen(false);
@@ -217,23 +212,6 @@ export function NoteEditor({
   function toggleArchived() {
     setArchived((value) => !value);
     setDirty(true);
-  }
-
-  async function loadHistory() {
-    if (!target || target.mode !== "edit") return;
-    try {
-      const res = await fetch(`/api/notes/${target.note.id}/versions`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setVersions(data.versions ?? []);
-      setHistoryOpen(true);
-    } catch { /* ignore */ }
-  }
-
-  function restoreVersion(versionBody: string) {
-    setBody(versionBody);
-    setDirty(true);
-    setHistoryOpen(false);
   }
 
   async function uploadImage(file: File) {
@@ -400,17 +378,6 @@ export function NoteEditor({
               </span>
             </button>
           </div>
-          {target.mode === "edit" && (
-            <button
-              type="button"
-              onClick={loadHistory}
-              className={iconToggle(historyOpen)}
-              title="Version history"
-              aria-label="Version history"
-            >
-              <HistoryIcon className="h-4 w-4" />
-            </button>
-          )}
         </>
       ) : (
         <span className="px-1 text-xs font-medium text-[var(--color-muted)]">
@@ -632,17 +599,9 @@ export function NoteEditor({
 
   const editor = (
     <>
-        {!historyOpen && header}
+        {header}
 
-        {historyOpen ? (
-          <VersionHistory
-            versions={versions}
-            currentBody={body}
-            onRestore={restoreVersion}
-            onClose={() => setHistoryOpen(false)}
-          />
-        ) : (
-          <div ref={scrollRef} className="relative min-h-0 overflow-y-auto pt-6 pb-4">
+        <div ref={scrollRef} className="relative min-h-0 overflow-y-auto pt-6 pb-4">
             {previewOpen ? (
               <MarkdownPreview body={body} />
             ) : highlight ? (
@@ -681,7 +640,6 @@ export function NoteEditor({
               </p>
             )}
           </div>
-        )}
 
     </>
   );
@@ -707,202 +665,6 @@ export function NoteEditor({
       <div className="relative z-10 flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         {editor}
       </div>
-    </div>
-  );
-}
-
-function VersionHistory({
-  versions,
-  currentBody,
-  onRestore,
-  onClose,
-}: {
-  versions: { id: string; body: string; title: string; createdAt: number }[];
-  currentBody: string;
-  onRestore: (body: string) => void;
-  onClose: () => void;
-}) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
-  const [descLoading, setDescLoading] = useState<Set<string>>(new Set());
-  const [showRawDiffId, setShowRawDiffId] = useState<string | null>(null);
-
-  function wordDelta(older: string, newer: string) {
-    const d =
-      newer.trim().split(/\s+/).filter(Boolean).length -
-      older.trim().split(/\s+/).filter(Boolean).length;
-    if (d === 0) return null;
-    return d > 0 ? `+${d} words` : `${d} words`;
-  }
-
-  async function fetchDescription(id: string, oldBody: string, newBody: string) {
-    if (descriptions[id] !== undefined || descLoading.has(id)) return;
-    setDescLoading((prev) => new Set(prev).add(id));
-    try {
-      const res = await fetch("/api/notes/describe-diff", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ oldBody, newBody }),
-      });
-      const data = res.ok ? await res.json() : null;
-      setDescriptions((prev) => ({
-        ...prev,
-        [id]: data?.description ?? "Unable to describe changes.",
-      }));
-    } catch {
-      setDescriptions((prev) => ({
-        ...prev,
-        [id]: "Unable to describe changes.",
-      }));
-    } finally {
-      setDescLoading((prev) => {
-        const s = new Set(prev);
-        s.delete(id);
-        return s;
-      });
-    }
-  }
-
-  const header = (
-    <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
-      <button
-        type="button"
-        onClick={onClose}
-        className="flex items-center gap-1 rounded-md px-1.5 py-1 text-sm text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-        aria-label="Back to editor"
-      >
-        <ChevronLeftIcon className="h-4 w-4" />
-        Back
-      </button>
-      <span className="text-sm font-medium text-[var(--color-text)]">
-        Version history
-      </span>
-    </div>
-  );
-
-  if (versions.length === 0) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        {header}
-        <p className="px-4 py-8 text-center text-sm text-[var(--color-muted)]">
-          No previous versions yet
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {header}
-      <ul className="flex-1 divide-y divide-[var(--color-border)] overflow-y-auto">
-        {versions.map((v, i) => {
-          const expanded = expandedId === v.id;
-          const newerBody = i === 0 ? currentBody : versions[i - 1].body;
-          const delta = wordDelta(v.body, newerBody);
-          const description = descriptions[v.id];
-          const loading = descLoading.has(v.id);
-          const showRaw = showRawDiffId === v.id;
-          return (
-            <li key={v.id} className="px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = expanded ? null : v.id;
-                    setExpandedId(next);
-                    if (next) fetchDescription(next, v.body, newerBody);
-                  }}
-                  className="min-w-0 text-left"
-                >
-                  <p className="truncate text-sm font-medium text-[var(--color-text)]">
-                    {v.title || "Untitled"}
-                  </p>
-                  <p className="flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
-                    {new Date(v.createdAt).toLocaleString()}
-                    {delta && (
-                      <span
-                        className={
-                          delta.startsWith("+")
-                            ? "text-[var(--color-diff-add)]"
-                            : "text-[var(--color-diff-remove)]"
-                        }
-                      >
-                        {delta}
-                      </span>
-                    )}
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRestore(v.body)}
-                  className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs font-medium text-[var(--color-link)] hover:bg-[var(--color-surface-hover)]"
-                >
-                  Restore
-                </button>
-              </div>
-              {expanded && (
-                <div className="mt-2 space-y-2">
-                  {loading ? (
-                    <p className="animate-pulse text-xs text-[var(--color-muted)]">
-                      Describing changes…
-                    </p>
-                  ) : (
-                    <p className="text-xs leading-relaxed text-[var(--color-text)]">
-                      {description}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowRawDiffId(showRaw ? null : v.id)}
-                    className="text-xs text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-text)] hover:underline"
-                  >
-                    {showRaw ? "Hide diff" : "Show diff"}
-                  </button>
-                  {showRaw && <DiffView oldText={v.body} newText={newerBody} />}
-                </div>
-              )}
-              {!expanded && (
-                <p className="mt-1 line-clamp-1 text-xs text-[var(--color-muted)]">
-                  {v.body.slice(0, 120)}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
-  const oldSet = new Set(oldText.split("\n"));
-  const newSet = new Set(newText.split("\n"));
-  const diffLines: { type: "add" | "remove"; text: string }[] = [
-    ...oldText.split("\n").filter((l) => !newSet.has(l)).map((text) => ({ type: "remove" as const, text })),
-    ...newText.split("\n").filter((l) => !oldSet.has(l)).map((text) => ({ type: "add" as const, text })),
-  ];
-
-  if (diffLines.length === 0) {
-    return <p className="text-xs text-[var(--color-muted)]">No line-level changes</p>;
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-background)] font-mono text-xs">
-      {diffLines.map((line, i) => (
-        <div
-          key={i}
-          className={`whitespace-pre-wrap px-3 py-0.5 ${
-            line.type === "add"
-              ? "bg-[var(--color-diff-add-bg)] text-[var(--color-diff-add)]"
-              : "bg-[var(--color-diff-remove-bg)] text-[var(--color-diff-remove)]"
-          }`}
-        >
-          <span className="mr-2 inline-block w-3 select-none text-right opacity-60">
-            {line.type === "add" ? "+" : "−"}
-          </span>
-          {line.text || " "}
-        </div>
-      ))}
     </div>
   );
 }
