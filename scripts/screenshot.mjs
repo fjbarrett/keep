@@ -43,10 +43,22 @@ const page = await ctx.newPage();
 await page.goto(`${url}/note/${DEMO_ID}`, { waitUntil: "networkidle", timeout: 30000 });
 await page.waitForTimeout(2000); // let Shiki paint + the entrance animation settle
 
-const ts = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
-fs.mkdirSync(path.join(root, "screenshots"), { recursive: true });
-const archive = path.join(root, "screenshots", `keep-${ts}.png`);
-await page.screenshot({ path: archive });
-fs.copyFileSync(archive, path.join(root, "docs", "screenshot.png"));
-await browser.close();
-console.log(`Archived ${archive} and refreshed docs/screenshot.png`);
+const docs = path.join(root, "docs", "screenshot.png");
+fs.mkdirSync(path.dirname(docs), { recursive: true });
+
+// CI refreshes the README image on every merge to main; archiving one PNG per
+// merge would bloat the repo, so KEEP_SHOT_ARCHIVE=0 skips the timestamped copy
+// (mirrors IOS_SHOT_ARCHIVE in scripts/ios-screenshot.sh).
+if (process.env.KEEP_SHOT_ARCHIVE === "0") {
+  await page.screenshot({ path: docs });
+  await browser.close();
+  console.log(`Refreshed ${docs}`);
+} else {
+  const ts = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+  fs.mkdirSync(path.join(root, "screenshots"), { recursive: true });
+  const archive = path.join(root, "screenshots", `keep-${ts}.png`);
+  await page.screenshot({ path: archive });
+  fs.copyFileSync(archive, docs);
+  await browser.close();
+  console.log(`Archived ${archive} and refreshed ${docs}`);
+}
