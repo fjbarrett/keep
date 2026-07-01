@@ -456,8 +456,23 @@ function SidebarNoteRow({
   onColor: (color: string | null) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [flipUp, setFlipUp] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const rowRef = useRef<HTMLLIElement>(null);
+
+  // Open the options menu, flipping it above the row when there isn't enough
+  // room below (rows near the bottom of the list would otherwise clip it).
+  function openMenu() {
+    const rect = rowRef.current?.getBoundingClientRect();
+    if (rect) {
+      const estimatedMenuHeight = trashMode ? 150 : 300;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      setFlipUp(spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow);
+    }
+    setMenuOpen(true);
+  }
 
   function startRename() {
     setRenameValue(previewText(note));
@@ -473,12 +488,13 @@ function SidebarNoteRow({
 
   return (
     <li
+      ref={rowRef}
       data-note-id={note.id}
       className="group relative flex items-center rounded-md"
       onContextMenu={(e) => {
         if (isRenaming) return;
         e.preventDefault();
-        setMenuOpen(true);
+        openMenu();
       }}
     >
       {isRenaming ? (
@@ -537,7 +553,8 @@ function SidebarNoteRow({
             aria-expanded={menuOpen}
             onClick={(e) => {
               e.stopPropagation();
-              setMenuOpen((v) => !v);
+              if (menuOpen) setMenuOpen(false);
+              else openMenu();
             }}
             className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md transition-opacity ${
               menuOpen
@@ -561,7 +578,9 @@ function SidebarNoteRow({
           />
           <div
             role="menu"
-            className="absolute right-1 top-7 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg"
+            className={`absolute right-1 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg ${
+              flipUp ? "bottom-7" : "top-7"
+            }`}
           >
             {trashMode ? (
               <>
