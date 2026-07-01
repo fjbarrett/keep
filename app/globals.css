@@ -200,6 +200,20 @@ textarea:focus-visible {
   padding-left: 3.5em;
 }
 
+/* Search matches painted behind the transparent-background plain editor. The
+   backdrop mirrors the textarea text (invisible) so only these boxes show
+   through, hugging the matching words. */
+.search-hit {
+  color: transparent;
+  border-radius: 2px;
+  background-color: rgba(255, 213, 0, 0.26);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 213, 0, 0.85);
+}
+.search-hit-active {
+  background-color: rgba(255, 213, 0, 0.5);
+  box-shadow: inset 0 0 0 2px rgb(255, 213, 0);
+}
+
 /* Markdown preview prose */
 .prose-invert-auto {
   color: var(--color-text);

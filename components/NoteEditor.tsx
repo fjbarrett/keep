@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { marked } from "marked";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
@@ -46,6 +46,33 @@ function segmentButton(active: boolean) {
   }`;
 }
 
+// Split the body into plain text and <mark> spans for each search match, for
+// the overlay painted behind the transparent editor. The active match carries
+// a ref so it can be scrolled into view and gets a stronger box.
+function renderSearchHits(
+  text: string,
+  matches: [number, number][],
+  active: number,
+) {
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  matches.forEach(([start, end], i) => {
+    if (start > last) nodes.push(text.slice(last, start));
+    nodes.push(
+      <mark
+        key={i}
+        data-search-active={i === active ? "" : undefined}
+        className={i === active ? "search-hit search-hit-active" : "search-hit"}
+      >
+        {text.slice(start, end)}
+      </mark>,
+    );
+    last = end;
+  });
+  nodes.push(text.slice(last));
+  return nodes;
+}
+
 export function NoteEditor({
   target,
   onClose,
@@ -85,6 +112,20 @@ export function NoteEditor({
   const scrollRef = useRef<HTMLDivElement>(null);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
+  // Search highlighting: when a note is opened from search, paint a yellow box
+  // on every match and let Tab cycle through them (see the plain-editor overlay).
+  const [findQuery, setFindQuery] = useState<string | null>(null);
+  const [findActive, setFindActive] = useState(0);
+  const matches = useMemo<[number, number][]>(() => {
+    const q = findQuery?.toLowerCase();
+    if (!q) return [];
+    const hay = body.toLowerCase();
+    const out: [number, number][] = [];
+    for (let i = hay.indexOf(q); i !== -1; i = hay.indexOf(q, i + q.length)) {
+      out.push([i, i + q.length]);
+    }
+    return out;
+  }, [body, findQuery]);
   const targetKey =
     target?.mode === "edit"
       ? `${target.note.id}${target.highlightQuery ? `:q:${target.highlightQuery}` : ""}`
@@ -123,6 +164,12 @@ export function NoteEditor({
       query && target.mode === "edit"
         ? target.note.body.toLowerCase().indexOf(query.toLowerCase())
         : -1;
+    if (query && matchAt >= 0) {
+      setFindQuery(query);
+      setFindActive(0);
+    } else {
+      setFindQuery(null);
+    }
     setTimeout(() => {
       // The editor is reused across notes, so it keeps the previous note's
       // caret/scroll. Three open behaviours:
@@ -132,8 +179,11 @@ export function NoteEditor({
       //    stray selection. The user clicks into the body to place the caret.
       const ta = scrollRef.current?.querySelector("textarea");
       if (ta && query && matchAt >= 0) {
-        ta.focus();
-        ta.setSelectionRange(matchAt, matchAt + query.length);
+        // Focus with the caret at the match (no native selection — the yellow
+        // overlay is the highlight). preventScroll so the focus doesn't fight
+        // the scroll-to-active effect, which positions the first match.
+        ta.focus({ preventScroll: true });
+        ta.setSelectionRange(matchAt, matchAt);
       } else if (target.mode === "new") {
         bodyRef.current?.focus();
         plainRef.current?.focus();
@@ -155,18 +205,52 @@ export function NoteEditor({
     ta.style.height = `${ta.scrollHeight}px`;
   }, [body, highlight, previewOpen, targetKey]);
 
+  // Bring the active match into view whenever it changes (open, or Tab cycle).
+  useEffect(() => {
+    if (!findQuery || matches.length === 0) return;
+    scrollRef.current
+      ?.querySelector<HTMLElement>("[data-search-active]")
+      ?.scrollIntoView({ block: "nearest" });
+  }, [findQuery, findActive, matches.length]);
+
+  // While a search is live, Tab / Shift+Tab step through matches instead of
+  // moving focus. Capture phase so it beats the textarea's default.
+  useEffect(() => {
+    if (!findQuery || matches.length === 0) return;
+    function onTab(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setFindActive((i) =>
+        e.shiftKey
+          ? (i - 1 + matches.length) % matches.length
+          : (i + 1) % matches.length,
+      );
+    }
+    window.addEventListener("keydown", onTab, true);
+    return () => window.removeEventListener("keydown", onTab, true);
+  }, [findQuery, matches.length]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!target) return;
       // Defer to the search overlay when it's mounted — Escape and ⌘K belong to it.
       if (document.querySelector("[data-search-overlay]")) return;
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        // First Escape clears the search highlight; a second one closes.
+        if (findQuery) {
+          e.preventDefault();
+          setFindQuery(null);
+          return;
+        }
+        close();
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") close();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, body, pinned, archived]);
+  }, [target, body, pinned, archived, findQuery]);
 
   useEffect(() => {
     if (!target || !dirty) return;
@@ -204,6 +288,8 @@ export function NoteEditor({
   function markBody(value: string) {
     setBody(value);
     setDirty(true);
+    // Editing ends the search session (matches would shift out from under it).
+    if (findQuery) setFindQuery(null);
   }
 
   function togglePinned() {
@@ -640,23 +726,33 @@ export function NoteEditor({
                 />
               </div>
             ) : (
-              <textarea
-                ref={plainRef}
-                value={body}
-                onChange={(e) => markBody(e.target.value)}
-                onPaste={handlePlainPaste}
-                onDrop={handlePlainDrop}
-                placeholder="Start writing..."
-                name="note-body"
-                autoComplete="off"
-                autoCorrect="on"
-                autoCapitalize="sentences"
-                data-1p-ignore
-                data-lpignore="true"
-                data-bwignore
-                data-form-type="other"
-                className="mx-auto min-h-[32rem] w-full max-w-3xl xl:max-w-4xl resize-none overflow-hidden border-0 bg-transparent px-6 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
-              />
+              <div className="relative mx-auto min-h-[32rem] w-full max-w-3xl xl:max-w-4xl">
+                {findQuery && matches.length > 0 && (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 select-none whitespace-pre-wrap break-words px-6 text-[15px] leading-relaxed text-transparent"
+                  >
+                    {renderSearchHits(body, matches, findActive)}
+                  </div>
+                )}
+                <textarea
+                  ref={plainRef}
+                  value={body}
+                  onChange={(e) => markBody(e.target.value)}
+                  onPaste={handlePlainPaste}
+                  onDrop={handlePlainDrop}
+                  placeholder="Start writing..."
+                  name="note-body"
+                  autoComplete="off"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-bwignore
+                  data-form-type="other"
+                  className="relative block min-h-[32rem] w-full resize-none overflow-hidden border-0 bg-transparent px-6 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                />
+              </div>
             )}
             {uploading && (
               <p className="absolute bottom-3 left-4 text-xs text-[var(--color-muted)] animate-pulse">
