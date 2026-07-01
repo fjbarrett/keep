@@ -16,7 +16,10 @@ struct RootView: View {
                     }
                 }
         }
-        .task { await store.load() }
+        .task {
+            await store.load()
+            SpotlightIndexer.sync(store.notes)
+        }
         // A 401 from the API flips needsAuth; present the native sign-in sheet.
         .onChange(of: store.needsAuth) { _, needs in showSignIn = needs }
         // Keep Spotlight in step with the notes, and open the note a Spotlight

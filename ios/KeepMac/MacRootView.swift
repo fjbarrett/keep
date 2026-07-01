@@ -85,7 +85,10 @@ struct MacRootView: View {
                 )
             }
         }
-        .task { await store.load() }
+        .task {
+            await store.load()
+            SpotlightIndexer.sync(store.notes)
+        }
         .onChange(of: store.needsAuth) { _, needs in showSignIn = needs }
         .onChange(of: store.notes) { _, notes in SpotlightIndexer.sync(notes) }
         .onReceive(NotificationCenter.default.publisher(for: .keepNewNote)) { _ in
