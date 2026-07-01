@@ -122,5 +122,17 @@ jobs:
           else
             git add screenshots/
             git commit -m "chore: refresh desktop screenshot [skip ci]"
-            git push
+            # Rapid merges to main can advance the branch between our checkout
+            # and this push, rejecting it as a non-fast-forward. Rebase onto the
+            # latest main and retry a few times before giving up.
+            pushed=false
+            for attempt in 1 2 3; do
+              if git push; then pushed=true; break; fi
+              echo "push rejected (attempt $attempt) — rebasing on origin/main"
+              git pull --rebase origin main
+            done
+            if [ "$pushed" != true ]; then
+              echo "::error::screenshot push failed after retries"
+              exit 1
+            fi
           fi
