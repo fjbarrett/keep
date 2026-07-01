@@ -122,17 +122,25 @@ jobs:
           else
             git add screenshots/
             git commit -m "chore: refresh desktop screenshot [skip ci]"
-            # Rapid merges to main can advance the branch between our checkout
-            # and this push, rejecting it as a non-fast-forward. Rebase onto the
-            # latest main and retry a few times before giving up.
+            # Concurrent runs (several merges in a row) can advance main between
+            # our checkout and push. Retry: replay our commit onto the latest
+            # main. The only file that can conflict is docs/screenshot.png (the
+            # "latest" pointer) — keep our fresh capture; timestamped archives
+            # have unique names and never collide. If we still lose the race
+            # after retries, another run already refreshed the archive, so warn
+            # instead of failing the build.
             pushed=false
-            for attempt in 1 2 3; do
+            for attempt in 1 2 3 4 5; do
               if git push; then pushed=true; break; fi
-              echo "push rejected (attempt $attempt) — rebasing on origin/main"
-              git pull --rebase origin main
+              echo "push rejected (attempt $attempt) — rebasing onto origin/main"
+              git fetch origin main
+              if ! git rebase origin/main; then
+                git checkout --theirs docs/screenshot.png || true
+                git add docs/screenshot.png
+                GIT_EDITOR=true git rebase --continue || git rebase --abort
+              fi
             done
             if [ "$pushed" != true ]; then
-              echo "::error::screenshot push failed after retries"
-              exit 1
+              echo "::warning::screenshot archive not pushed; another run likely refreshed it"
             fi
           fi
