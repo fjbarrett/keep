@@ -119,16 +119,27 @@ export function NotesView({
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
         return b.updatedAt - a.updatedAt;
       });
-    const fuse = new Fuse(viewFiltered, {
+    // Require every query token to appear literally, so results always contain
+    // what was typed. Fuse on its own is fuzzy enough to surface notes that
+    // don't contain the query at all; use it only to rank the notes that do.
+    const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const contains = viewFiltered.filter((n) => {
+      const hay = `${n.title}\n${n.body}`.toLowerCase();
+      return tokens.every((t) => hay.includes(t));
+    });
+    const fuse = new Fuse(contains, {
       keys: [
         { name: "title", getFn: (n: Note) => searchableText(n) },
         "body",
       ],
-      threshold: 0.35,
+      threshold: 0.5,
       ignoreLocation: true,
       minMatchCharLength: 2,
     });
-    return fuse.search(q).map((r) => r.item);
+    const ranked = fuse.search(q).map((r) => r.item);
+    const seen = new Set(ranked.map((n) => n.id));
+    // Keep any containing note Fuse didn't rank (e.g. a match only in the body).
+    return [...ranked, ...contains.filter((n) => !seen.has(n.id))];
   }, [decryptedNotes, query, searchOpen, viewMode]);
 
   const visibleNotes = filtered;
