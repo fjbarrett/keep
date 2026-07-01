@@ -55,7 +55,12 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keeptxt.keep.mac
         CODE_SIGN_ENTITLEMENTS: KeepMac/Keep.entitlements
-        ENABLE_HARDENED_RUNTIME: YES
+        # Automatic signing (especially a free/personal team) rewrites the
+        # sandbox entitlements to what it's allowed to grant; permit that so
+        # local builds sign instead of failing "entitlements modified".
+        CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
+        # Hardened runtime is a distribution/notarization concern and only
+        # complicates local signing — leave it off for now.
         COMBINE_HIDPI_IMAGES: YES
     info:
       path: KeepMac/Info.plist
