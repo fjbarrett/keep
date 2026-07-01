@@ -284,7 +284,19 @@ textarea:focus-visible {
   padding-left: 1.5em;
   margin: 0.5em 0;
 }
-.prose-invert-auto li { margin: 0.25em 0; }
+.prose-invert-auto ul { list-style-type: disc; }
+.prose-invert-auto ul ul { list-style-type: circle; }
+.prose-invert-auto ul ul ul { list-style-type: square; }
+.prose-invert-auto ol { list-style-type: decimal; }
+.prose-invert-auto li { margin: 0.25em 0; padding-left: 0.25em; }
+.prose-invert-auto li::marker { color: var(--color-subtle); }
+/* GFM task lists carry their own checkbox — drop the bullet and hanging indent. */
+.prose-invert-auto ul.contains-task-list { list-style: none; padding-left: 0; }
+.prose-invert-auto li.task-list-item { padding-left: 0; }
+.prose-invert-auto li.task-list-item::marker { content: ""; }
+.prose-invert-auto li.task-list-item input[type="checkbox"] {
+  margin-right: 0.5em;
+}
 .prose-invert-auto hr {
   border: none;
   border-top: 1px solid var(--color-border);
