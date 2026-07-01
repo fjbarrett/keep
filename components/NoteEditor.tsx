@@ -5,6 +5,7 @@ import { marked } from "marked";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
+import { renderSearchHits } from "./renderSearchHits";
 import { ColorSwatchRow } from "./ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
 import { noteFileExtension } from "@/lib/detectLanguage";
@@ -46,32 +47,6 @@ function segmentButton(active: boolean) {
   }`;
 }
 
-// Split the body into plain text and <mark> spans for each search match, for
-// the overlay painted behind the transparent editor. The active match carries
-// a ref so it can be scrolled into view and gets a stronger box.
-function renderSearchHits(
-  text: string,
-  matches: [number, number][],
-  active: number,
-) {
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  matches.forEach(([start, end], i) => {
-    if (start > last) nodes.push(text.slice(last, start));
-    nodes.push(
-      <mark
-        key={i}
-        data-search-active={i === active ? "" : undefined}
-        className={i === active ? "search-hit search-hit-active" : "search-hit"}
-      >
-        {text.slice(start, end)}
-      </mark>,
-    );
-    last = end;
-  });
-  nodes.push(text.slice(last));
-  return nodes;
-}
 
 export function NoteEditor({
   target,
@@ -713,7 +688,11 @@ export function NoteEditor({
 
         <div ref={scrollRef} className="relative min-h-0 overflow-y-auto pt-6 pb-4">
             {previewOpen ? (
-              <MarkdownPreview body={body} />
+              <MarkdownPreview
+                body={body}
+                query={findQuery}
+                activeMatch={findActive}
+              />
             ) : highlight ? (
               <div className="mx-auto flex min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col pl-3 pr-6">
                 <HighlightedEditor
@@ -723,6 +702,8 @@ export function NoteEditor({
                   onPaste={handlePlainPaste}
                   onDrop={handlePlainDrop}
                   placeholderText="Start writing..."
+                  searchMatches={findQuery ? matches : null}
+                  activeMatch={findActive}
                 />
               </div>
             ) : (
@@ -730,7 +711,7 @@ export function NoteEditor({
                 {findQuery && matches.length > 0 && (
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-0 select-none whitespace-pre-wrap break-words px-6 text-[15px] leading-relaxed text-transparent"
+                    className="search-backdrop pointer-events-none absolute inset-0 select-none whitespace-pre-wrap break-words px-6 text-[15px] leading-relaxed"
                   >
                     {renderSearchHits(body, matches, findActive)}
                   </div>

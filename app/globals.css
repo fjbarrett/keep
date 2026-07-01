@@ -199,12 +199,24 @@ textarea:focus-visible {
 .highlighted-editor-textarea {
   padding-left: 3.5em;
 }
+/* Search-match layer for the syntax editor: same text metrics + gutter as the
+   textarea so its boxes land on the matching code. */
+.highlighted-editor-search {
+  font: inherit;
+  line-height: inherit;
+  tab-size: inherit;
+  letter-spacing: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding-left: 3.5em;
+}
 
-/* Search matches painted behind the transparent-background plain editor. The
-   backdrop mirrors the textarea text (invisible) so only these boxes show
-   through, hugging the matching words. */
+/* Yellow box on a search match. Shown three ways: painted behind the plain and
+   syntax editors (a mirror backdrop whose text is invisible so the real input
+   shows through) and inline in the markdown preview (where the mark itself is
+   the visible text). */
 .search-hit {
-  color: transparent;
   border-radius: 2px;
   background-color: rgba(255, 213, 0, 0.26);
   box-shadow: inset 0 0 0 1.5px rgba(255, 213, 0, 0.85);
@@ -212,6 +224,12 @@ textarea:focus-visible {
 .search-hit-active {
   background-color: rgba(255, 213, 0, 0.5);
   box-shadow: inset 0 0 0 2px rgb(255, 213, 0);
+}
+/* Editor backdrops: mirror text (marks included) must be invisible. */
+.search-backdrop,
+.search-backdrop .search-hit {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Markdown preview prose */

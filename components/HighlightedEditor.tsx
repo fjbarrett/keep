@@ -11,6 +11,7 @@ import {
 import type { Highlighter, ThemeRegistrationAny } from "shiki";
 import { COMMON_LANGS, detectLanguage } from "@/lib/detectLanguage";
 import { keepPaletteThemeDark, keepPaletteThemeLight } from "@/lib/shikiTheme";
+import { renderSearchHits } from "./renderSearchHits";
 
 function currentShikiTheme(): string {
   if (typeof document === "undefined") return "keep-palette-dark";
@@ -46,10 +47,15 @@ interface Props {
   onPaste?: (e: React.ClipboardEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
   placeholderText?: string;
+  searchMatches?: [number, number][] | null;
+  activeMatch?: number;
 }
 
 export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
-  function HighlightedEditor({ value, onChange, onPaste, onDrop, placeholderText }, ref) {
+  function HighlightedEditor(
+    { value, onChange, onPaste, onDrop, placeholderText, searchMatches, activeMatch = 0 },
+    ref,
+  ) {
     const [html, setHtml] = useState("");
     const [lang, setLang] = useState<string>(() => detectLanguage(value));
     const [theme, setTheme] = useState<string>(currentShikiTheme);
@@ -151,6 +157,14 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
           aria-hidden
           dangerouslySetInnerHTML={{ __html: html }}
         />
+        {searchMatches && searchMatches.length > 0 && (
+          <div
+            aria-hidden
+            className="highlighted-editor-search search-backdrop pointer-events-none absolute inset-0 z-[5] overflow-hidden"
+          >
+            {renderSearchHits(value, searchMatches, activeMatch)}
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={value}
