@@ -7,9 +7,7 @@ struct NotesListView: View {
     var body: some View {
         List {
             ForEach(store.sorted) { note in
-                NavigationLink {
-                    NoteEditorView(note: note)
-                } label: {
+                NavigationLink(value: note.id) {
                     NoteRow(note: note)
                 }
                 .swipeActions(edge: .leading) {
