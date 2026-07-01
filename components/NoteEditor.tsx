@@ -13,6 +13,7 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   CopyIcon,
+  DotsIcon,
   DownloadIcon,
   PinFilledIcon,
   PinIcon,
@@ -77,6 +78,7 @@ export function NoteEditor({
   const [copied, setCopied] = useState(false);
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const bodyRef = useRef<HighlightedEditorHandle>(null);
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
@@ -389,6 +391,8 @@ export function NoteEditor({
 
       {!isTrashed ? (
         <>
+          {actionsOpen && (
+          <>
           <button
             type="button"
             onClick={togglePinned}
@@ -541,6 +545,26 @@ export function NoteEditor({
               </button>
             </>
           )}
+          </>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              setActionsOpen((v) => {
+                if (v) {
+                  setColorMenuOpen(false);
+                  setCopyMenuOpen(false);
+                }
+                return !v;
+              })
+            }
+            className={iconToggle(actionsOpen)}
+            title={actionsOpen ? "Hide actions" : "More actions"}
+            aria-label={actionsOpen ? "Hide actions" : "More actions"}
+            aria-expanded={actionsOpen}
+          >
+            <DotsIcon className="h-4 w-4" />
+          </button>
         </>
       ) : (
         <div className="flex items-center gap-1.5">
