@@ -31,6 +31,24 @@ export type EditorTarget =
 const ICON_BUTTON =
   "grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
 
+// Text metrics for the plain editor. The search backdrop mirrors the textarea
+// pixel-for-pixel, so both must share these classes or match boxes drift.
+const PLAIN_METRICS = "px-6 sm:px-10 text-base leading-7";
+
+function formatEdited(ts: number) {
+  const d = new Date(ts);
+  const date = d.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }),
+  });
+  const time = d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${date} at ${time}`;
+}
+
 function iconToggle(active: boolean) {
   return active
     ? "grid h-8 w-8 place-items-center rounded-md bg-[var(--color-surface-hover)] text-[var(--color-text)]"
@@ -397,8 +415,19 @@ export function NoteEditor({
 
   const isTrashed = target.mode === "edit" && target.note.trashed;
 
+  function focusBodyEnd(e: React.MouseEvent) {
+    // Clicking the empty canvas around or below the text drops the caret at
+    // the end, like native notes apps. Only direct hits on the canvas — child
+    // clicks (the textarea itself, the preview) keep their own behaviour.
+    if (e.target !== e.currentTarget) return;
+    const ta = scrollRef.current?.querySelector("textarea");
+    if (!ta) return;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }
+
   const header = (
-    <div className="mx-auto flex w-full max-w-3xl xl:max-w-4xl shrink-0 flex-wrap items-center gap-1 px-3 py-2">
+    <div className="mx-auto flex w-full max-w-3xl xl:max-w-4xl shrink-0 flex-wrap items-center gap-1 border-b border-[var(--color-border-muted)] px-4 py-2">
       {onBack && (
         <>
           <button
@@ -686,7 +715,16 @@ export function NoteEditor({
     <>
         {header}
 
-        <div ref={scrollRef} className="relative min-h-0 overflow-y-auto pt-6 pb-4">
+        <div
+          ref={scrollRef}
+          onClick={focusBodyEnd}
+          className={`relative min-h-0 overflow-y-auto pt-5 pb-8 ${previewOpen ? "" : "cursor-text"}`}
+        >
+            {target.mode === "edit" && (
+              <p className="mb-4 select-none text-center text-xs text-[var(--color-subtle)]">
+                Edited {formatEdited(target.note.updatedAt)}
+              </p>
+            )}
             {previewOpen ? (
               <MarkdownPreview
                 body={body}
@@ -707,11 +745,11 @@ export function NoteEditor({
                 />
               </div>
             ) : (
-              <div className="relative mx-auto min-h-[32rem] w-full max-w-3xl xl:max-w-4xl">
+              <div className="relative mx-auto min-h-[32rem] w-full max-w-2xl">
                 {findQuery && matches.length > 0 && (
                   <div
                     aria-hidden
-                    className="search-backdrop pointer-events-none absolute inset-0 select-none whitespace-pre-wrap break-words px-6 text-[15px] leading-relaxed"
+                    className={`search-backdrop pointer-events-none absolute inset-0 select-none whitespace-pre-wrap break-words ${PLAIN_METRICS}`}
                   >
                     {renderSearchHits(body, matches, findActive)}
                   </div>
@@ -731,7 +769,7 @@ export function NoteEditor({
                   data-lpignore="true"
                   data-bwignore
                   data-form-type="other"
-                  className="relative block min-h-[32rem] w-full resize-none overflow-hidden border-0 bg-transparent px-6 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
+                  className={`relative block min-h-[32rem] w-full resize-none overflow-hidden border-0 bg-transparent caret-[var(--color-accent)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none ${PLAIN_METRICS}`}
                 />
               </div>
             )}
