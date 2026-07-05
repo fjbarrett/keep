@@ -1,8 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { Note } from "@/lib/types";
 import { needsInferredTitle, previewText } from "@/lib/inferTitle";
 import { noteColorVar } from "@/lib/noteColors";
+import { ColorSwatchRow } from "./ColorSwatchRow";
+import {
+  ArchiveIcon,
+  PinFilledIcon,
+  PinIcon,
+  TrashIcon,
+  UnarchiveIcon,
+} from "./Icons";
 
 // The card body skips the line the title came from — either still-uninferred
 // or already materialized by useNotes — so the title isn't printed twice.
@@ -23,15 +32,53 @@ function snippetFor(note: Note, title: string) {
     .trim();
 }
 
-function GridCard({ note, onOpen }: { note: Note; onOpen: () => void }) {
+const CARD_ICON =
+  "grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
+
+type GridHandlers = {
+  onOpen: (note: Note) => void;
+  onTogglePin: (id: string) => void;
+  onToggleArchive: (id: string) => void;
+  onTrash: (id: string) => void;
+  onRestore: (id: string) => void;
+  onRemove: (id: string) => void;
+  onColor: (id: string, color: string | null) => void;
+};
+
+function GridCard({
+  note,
+  trashMode,
+  onOpen,
+  onTogglePin,
+  onToggleArchive,
+  onTrash,
+  onRestore,
+  onRemove,
+  onColor,
+}: { note: Note; trashMode: boolean } & GridHandlers) {
+  const [colorOpen, setColorOpen] = useState(false);
   const color = noteColorVar(note.color);
   const title = previewText(note);
   const snippet = snippetFor(note, title);
+
+  const act = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
+
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="mb-3 block w-full break-inside-avoid rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-left transition-colors hover:bg-[var(--color-surface-hover)]"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(note)}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(note);
+        }
+      }}
+      className="group relative mb-3 block w-full cursor-pointer break-inside-avoid rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-left"
     >
       <span className="flex items-center gap-2">
         {color && (
@@ -49,7 +96,108 @@ function GridCard({ note, onOpen }: { note: Note; onOpen: () => void }) {
           {snippet}
         </span>
       )}
-    </button>
+      <span className="invisible mt-2 flex h-7 items-center gap-0.5 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+        {trashMode ? (
+          <>
+            <button
+              type="button"
+              onClick={act(() => onRestore(note.id))}
+              className={CARD_ICON}
+              title="Restore"
+              aria-label="Restore"
+            >
+              <UnarchiveIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={act(() => {
+                if (confirm("Permanently delete this text?")) onRemove(note.id);
+              })}
+              className={`${CARD_ICON} hover:text-[var(--color-danger)]`}
+              title="Delete forever"
+              aria-label="Delete forever"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={act(() => onTogglePin(note.id))}
+              className={CARD_ICON}
+              title={note.pinned ? "Unpin" : "Pin"}
+              aria-label={note.pinned ? "Unpin" : "Pin"}
+            >
+              {note.pinned ? (
+                <PinFilledIcon className="h-4 w-4" />
+              ) : (
+                <PinIcon className="h-4 w-4" />
+              )}
+            </button>
+            <span className="relative">
+              <button
+                type="button"
+                onClick={act(() => setColorOpen((v) => !v))}
+                className={CARD_ICON}
+                title="Color label"
+                aria-label="Color label"
+                aria-haspopup="menu"
+                aria-expanded={colorOpen}
+              >
+                <span
+                  className="h-3.5 w-3.5 rounded-full border border-[var(--color-border)]"
+                  style={{ background: color ?? "transparent" }}
+                />
+              </button>
+              {colorOpen && (
+                <>
+                  <span
+                    className="fixed inset-0 z-10"
+                    onClick={act(() => setColorOpen(false))}
+                  />
+                  <span
+                    role="menu"
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-8 left-0 z-20 block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+                  >
+                    <ColorSwatchRow
+                      selected={note.color ?? null}
+                      onPick={(c) => {
+                        onColor(note.id, c);
+                        setColorOpen(false);
+                      }}
+                    />
+                  </span>
+                </>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={act(() => onToggleArchive(note.id))}
+              className={CARD_ICON}
+              title={note.archived ? "Unarchive" : "Archive"}
+              aria-label={note.archived ? "Unarchive" : "Archive"}
+            >
+              {note.archived ? (
+                <UnarchiveIcon className="h-4 w-4" />
+              ) : (
+                <ArchiveIcon className="h-4 w-4" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={act(() => onTrash(note.id))}
+              className={`${CARD_ICON} hover:text-[var(--color-danger)]`}
+              title="Move to Trash"
+              aria-label="Move to Trash"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </>
+        )}
+      </span>
+    </div>
   );
 }
 
@@ -57,17 +205,23 @@ const COLUMNS = "columns-1 gap-3 sm:columns-2 xl:columns-3";
 
 export function NotesGrid({
   notes,
-  onOpen,
+  trashMode,
+  ...handlers
 }: {
   notes: Note[];
-  onOpen: (note: Note) => void;
-}) {
+  trashMode: boolean;
+} & GridHandlers) {
   const pinned = notes.filter((n) => n.pinned);
   const others = notes.filter((n) => !n.pinned);
   const cards = (list: Note[]) => (
     <div className={COLUMNS}>
       {list.map((note) => (
-        <GridCard key={note.id} note={note} onOpen={() => onOpen(note)} />
+        <GridCard
+          key={note.id}
+          note={note}
+          trashMode={trashMode}
+          {...handlers}
+        />
       ))}
     </div>
   );

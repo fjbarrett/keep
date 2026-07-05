@@ -522,7 +522,17 @@ export function NotesView({
         ) : restoringFromUrl ? (
           <div className="flex-1" aria-hidden />
         ) : hydrated && visibleNotes.length > 0 ? (
-          <NotesGrid notes={visibleNotes} onOpen={(note) => openNote(note)} />
+          <NotesGrid
+            notes={visibleNotes}
+            trashMode={viewMode === "trash"}
+            onOpen={(note) => openNote(note)}
+            onTogglePin={togglePin}
+            onToggleArchive={toggleArchive}
+            onTrash={trash}
+            onRestore={restore}
+            onRemove={remove}
+            onColor={(id, color) => update(id, { color })}
+          />
         ) : (
           <MainPlaceholder
             hasNotes={!hydrated || notes.length > 0}
