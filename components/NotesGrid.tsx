@@ -89,7 +89,7 @@ function GridCard({
           onOpen(note);
         }
       }}
-      className="group relative mb-3 block w-full cursor-pointer break-inside-avoid rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-left"
+      className="group relative mb-3 block w-full cursor-pointer break-inside-avoid rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-4 text-left"
     >
       <span className="flex items-center gap-2">
         {color && (
