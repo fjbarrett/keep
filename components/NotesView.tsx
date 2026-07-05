@@ -8,6 +8,7 @@ import { useEncryption } from "@/lib/useEncryption";
 import { isEncrypted } from "@/lib/crypto";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
+import { NotesGrid } from "@/components/NotesGrid";
 import { Sidebar, NoteInfoModal } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
@@ -520,6 +521,8 @@ export function NotesView({
           />
         ) : restoringFromUrl ? (
           <div className="flex-1" aria-hidden />
+        ) : hydrated && visibleNotes.length > 0 ? (
+          <NotesGrid notes={visibleNotes} onOpen={(note) => openNote(note)} />
         ) : (
           <MainPlaceholder
             hasNotes={!hydrated || notes.length > 0}
