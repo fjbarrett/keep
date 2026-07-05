@@ -64,6 +64,14 @@ function GridCard({
   const title = previewText(note);
   const snippet = snippetFor(note, title);
 
+  // Whether the clamp actually cut the snippet off — drives the "more" hint.
+  const snippetRef = useRef<HTMLSpanElement>(null);
+  const [clipped, setClipped] = useState(false);
+  useLayoutEffect(() => {
+    const el = snippetRef.current;
+    if (el) setClipped(el.scrollHeight > el.clientHeight + 1);
+  }, [snippet]);
+
   const act = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
@@ -95,8 +103,19 @@ function GridCard({
         </span>
       </span>
       {snippet && (
-        <span className="mt-2 line-clamp-[10] whitespace-pre-wrap break-words text-sm leading-6 text-[var(--color-muted)]">
+        <span
+          ref={snippetRef}
+          className="mt-2 line-clamp-[10] whitespace-pre-wrap break-words text-sm leading-6 text-[var(--color-muted)]"
+        >
           {snippet}
+        </span>
+      )}
+      {clipped && (
+        <span
+          aria-hidden
+          className="mt-1 block text-center text-xs leading-4 tracking-widest text-[var(--color-subtle)]"
+        >
+          •&thinsp;•&thinsp;•
         </span>
       )}
       <span className="invisible mt-2 flex h-7 items-center gap-0.5 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
