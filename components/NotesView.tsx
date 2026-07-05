@@ -8,6 +8,7 @@ import { useEncryption } from "@/lib/useEncryption";
 import { isEncrypted } from "@/lib/crypto";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
+import { NotesGrid } from "@/components/NotesGrid";
 import { Sidebar, NoteInfoModal } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
@@ -76,6 +77,12 @@ export function NotesView({
   );
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Where the notes grid was scrolled to before a note was opened over it.
+  // A different view (archive, trash) is a different list, so start it at top.
+  const gridScrollRef = useRef(0);
+  useEffect(() => {
+    gridScrollRef.current = 0;
+  }, [viewMode]);
   const [infoNote, setInfoNote] = useState<Note | null>(null);
   // True while a /note/<id> deep link is still resolving — keeps the main pane
   // blank instead of flashing the grid/placeholder before the note opens.
@@ -520,6 +527,19 @@ export function NotesView({
           />
         ) : restoringFromUrl ? (
           <div className="flex-1" aria-hidden />
+        ) : hydrated && visibleNotes.length > 0 ? (
+          <NotesGrid
+            notes={visibleNotes}
+            trashMode={viewMode === "trash"}
+            scrollMemory={gridScrollRef}
+            onOpen={(note) => openNote(note)}
+            onTogglePin={togglePin}
+            onToggleArchive={toggleArchive}
+            onTrash={trash}
+            onRestore={restore}
+            onRemove={remove}
+            onColor={(id, color) => update(id, { color })}
+          />
         ) : (
           <MainPlaceholder
             hasNotes={!hydrated || notes.length > 0}
