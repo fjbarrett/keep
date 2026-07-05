@@ -55,17 +55,6 @@ function iconToggle(active: boolean) {
     : ICON_BUTTON;
 }
 
-// A segment inside the macOS-style view-mode control: no individual rounding
-// (the bordered container clips it), filled when active.
-function segmentButton(active: boolean) {
-  return `grid h-8 w-9 place-items-center transition-colors ${
-    active
-      ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]"
-      : "text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-  }`;
-}
-
-
 export function NoteEditor({
   target,
   onClose,
@@ -168,8 +157,8 @@ export function NoteEditor({
       // caret/scroll. Three open behaviours:
       //  - from search: focus and select the match so it's highlighted in view;
       //  - a new note: focus so the user can type immediately;
-      //  - opening an existing note: don't grab focus — no blinking cursor or
-      //    stray selection. The user clicks into the body to place the caret.
+      //  - opening an existing note: focus with the caret at the very start,
+      //    ready to type without clicking in.
       const ta = scrollRef.current?.querySelector("textarea");
       if (ta && query && matchAt >= 0) {
         // Focus with the caret at the match (no native selection — the yellow
@@ -182,8 +171,8 @@ export function NoteEditor({
         plainRef.current?.focus();
         if (ta) ta.selectionStart = ta.selectionEnd = 0;
       } else if (ta) {
-        ta.selectionStart = ta.selectionEnd = 0;
-        ta.blur();
+        ta.focus({ preventScroll: true });
+        ta.setSelectionRange(0, 0);
         if (scrollRef.current) scrollRef.current.scrollTop = 0;
       }
     }, 30);
@@ -441,37 +430,7 @@ export function NoteEditor({
           <div className="mr-1 h-4 w-px bg-[var(--color-border)] md:hidden" />
         </>
       )}
-      {!isTrashed ? (
-        <>
-          <div className="flex items-center overflow-hidden rounded-md border border-[var(--color-border)]">
-            <button
-              type="button"
-              onClick={() => { setHighlight((v) => !v); setPreviewOpen(false); setDirty(true); }}
-              className={segmentButton(highlight)}
-              title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
-              aria-label="Syntax highlighting"
-              aria-pressed={highlight}
-            >
-              <span className="font-mono text-[11px] tracking-tight">
-                {"</>"}
-              </span>
-            </button>
-            <div className="h-5 w-px bg-[var(--color-border)]" />
-            <button
-              type="button"
-              onClick={() => { setPreviewOpen((v) => !v); setHighlight(false); setDirty(true); }}
-              className={segmentButton(previewOpen)}
-              title={previewOpen ? "Edit" : "Preview markdown"}
-              aria-label={previewOpen ? "Edit" : "Preview markdown"}
-              aria-pressed={previewOpen}
-            >
-              <span className="font-mono text-[11px] font-semibold tracking-tight">
-                md
-              </span>
-            </button>
-          </div>
-        </>
-      ) : (
+      {isTrashed && (
         <span className="px-1 text-xs font-medium text-[var(--color-muted)]">
           In Trash
         </span>
@@ -483,6 +442,31 @@ export function NoteEditor({
         <>
           {actionsOpen && (
           <>
+          <button
+            type="button"
+            onClick={() => { setHighlight((v) => !v); setPreviewOpen(false); setDirty(true); }}
+            className={iconToggle(highlight)}
+            title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
+            aria-label="Syntax highlighting"
+            aria-pressed={highlight}
+          >
+            <span className="font-mono text-[11px] tracking-tight">
+              {"</>"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setPreviewOpen((v) => !v); setHighlight(false); setDirty(true); }}
+            className={iconToggle(previewOpen)}
+            title={previewOpen ? "Edit" : "Preview markdown"}
+            aria-label={previewOpen ? "Edit" : "Preview markdown"}
+            aria-pressed={previewOpen}
+          >
+            <span className="font-mono text-[11px] font-semibold tracking-tight">
+              md
+            </span>
+          </button>
+          <div className="mx-1 h-4 w-px bg-[var(--color-border)]" />
           <button
             type="button"
             onClick={togglePinned}
@@ -745,7 +729,7 @@ export function NoteEditor({
                 />
               </div>
             ) : (
-              <div className="relative mx-auto min-h-[32rem] w-full max-w-2xl">
+              <div className="relative mx-auto w-full max-w-2xl">
                 {findQuery && matches.length > 0 && (
                   <div
                     aria-hidden
@@ -769,7 +753,7 @@ export function NoteEditor({
                   data-lpignore="true"
                   data-bwignore
                   data-form-type="other"
-                  className={`relative block min-h-[32rem] w-full resize-none overflow-hidden border-0 bg-transparent caret-[var(--color-accent)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none ${PLAIN_METRICS}`}
+                  className={`relative block min-h-40 w-full resize-none overflow-hidden border-0 bg-transparent caret-[var(--color-accent)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none ${PLAIN_METRICS}`}
                 />
               </div>
             )}
@@ -785,10 +769,14 @@ export function NoteEditor({
 
   if (presentation === "panel") {
     return (
-      // The note surface tracks the body/controls column width (same
-      // max-w-3xl→xl:max-w-4xl), so the background shrinks to hug the note and
-      // centers on the canvas instead of spanning the whole pane.
-      <div className="mx-auto flex max-h-full min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+      // The card hugs the note: width matches the text column and height is
+      // content-driven, so the card border itself marks the margins and the
+      // bottom edge is where the note ends. Highlight mode widens for code.
+      <div
+        className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] ${
+          highlight && !previewOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-2xl"
+        }`}
+      >
         {editor}
       </div>
     );
