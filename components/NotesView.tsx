@@ -77,6 +77,12 @@ export function NotesView({
   );
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Where the notes grid was scrolled to before a note was opened over it.
+  // A different view (archive, trash) is a different list, so start it at top.
+  const gridScrollRef = useRef(0);
+  useEffect(() => {
+    gridScrollRef.current = 0;
+  }, [viewMode]);
   const [infoNote, setInfoNote] = useState<Note | null>(null);
   // True while a /note/<id> deep link is still resolving — keeps the main pane
   // blank instead of flashing the grid/placeholder before the note opens.
@@ -525,6 +531,7 @@ export function NotesView({
           <NotesGrid
             notes={visibleNotes}
             trashMode={viewMode === "trash"}
+            scrollMemory={gridScrollRef}
             onOpen={(note) => openNote(note)}
             onTogglePin={togglePin}
             onToggleArchive={toggleArchive}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Note } from "@/lib/types";
 import { needsInferredTitle, previewText } from "@/lib/inferTitle";
 import { noteColorVar } from "@/lib/noteColors";
@@ -209,11 +209,20 @@ const COLUMNS = "columns-1 gap-3 sm:columns-2 xl:columns-3";
 export function NotesGrid({
   notes,
   trashMode,
+  scrollMemory,
   ...handlers
 }: {
   notes: Note[];
   trashMode: boolean;
+  scrollMemory: React.MutableRefObject<number>;
 } & GridHandlers) {
+  // The grid unmounts while a note is open; restore where the user left off
+  // when they come back.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollMemory.current;
+  }, [scrollMemory]);
+
   const pinned = notes.filter((n) => n.pinned);
   const others = notes.filter((n) => !n.pinned);
   const cards = (list: Note[]) => (
@@ -230,7 +239,13 @@ export function NotesGrid({
   );
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-2">
+    <div
+      ref={scrollRef}
+      onScroll={(e) => {
+        scrollMemory.current = e.currentTarget.scrollTop;
+      }}
+      className="min-h-0 flex-1 overflow-y-auto p-2"
+    >
       <div className="mx-auto max-w-6xl">
         {pinned.length > 0 && others.length > 0 ? (
           <>
