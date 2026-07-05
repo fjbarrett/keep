@@ -23,13 +23,16 @@ function snippetFor(note: Note, title: string) {
     .replace(/^#{1,6}\s+/, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (!needsInferredTitle(note.title, note.body) && firstLine !== title) {
-    return note.body.trim();
-  }
-  return lines
-    .slice(first + 1)
-    .join("\n")
-    .trim();
+  const text =
+    !needsInferredTitle(note.title, note.body) && firstLine !== title
+      ? note.body.trim()
+      : lines
+          .slice(first + 1)
+          .join("\n")
+          .trim();
+  // line-clamp handles the visible cutoff; slicing keeps a book-length note
+  // from being poured into the DOM just to be hidden.
+  return text.slice(0, 1200);
 }
 
 const CARD_ICON =
@@ -92,7 +95,7 @@ function GridCard({
         </span>
       </span>
       {snippet && (
-        <span className="mt-2 line-clamp-[12] block whitespace-pre-wrap break-words text-sm leading-6 text-[var(--color-muted)]">
+        <span className="mt-2 line-clamp-[10] whitespace-pre-wrap break-words text-sm leading-6 text-[var(--color-muted)]">
           {snippet}
         </span>
       )}
