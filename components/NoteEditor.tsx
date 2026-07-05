@@ -729,7 +729,7 @@ export function NoteEditor({
                 />
               </div>
             ) : (
-              <div className="relative mx-auto min-h-[32rem] w-full max-w-2xl">
+              <div className="relative mx-auto w-full max-w-2xl">
                 {findQuery && matches.length > 0 && (
                   <div
                     aria-hidden
@@ -753,7 +753,7 @@ export function NoteEditor({
                   data-lpignore="true"
                   data-bwignore
                   data-form-type="other"
-                  className={`relative block min-h-[32rem] w-full resize-none overflow-hidden border-0 bg-transparent caret-[var(--color-accent)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none ${PLAIN_METRICS}`}
+                  className={`relative block min-h-40 w-full resize-none overflow-hidden border-0 bg-transparent caret-[var(--color-accent)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none ${PLAIN_METRICS}`}
                 />
               </div>
             )}
@@ -769,10 +769,14 @@ export function NoteEditor({
 
   if (presentation === "panel") {
     return (
-      // The note surface tracks the body/controls column width (same
-      // max-w-3xl→xl:max-w-4xl), so the background shrinks to hug the note and
-      // centers on the canvas instead of spanning the whole pane.
-      <div className="mx-auto flex max-h-full min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+      // The card hugs the note: width matches the text column and height is
+      // content-driven, so the card border itself marks the margins and the
+      // bottom edge is where the note ends. Highlight mode widens for code.
+      <div
+        className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] ${
+          highlight && !previewOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-2xl"
+        }`}
+      >
         {editor}
       </div>
     );
