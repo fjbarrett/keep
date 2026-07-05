@@ -35,13 +35,6 @@ const ICON_BUTTON =
 // pixel-for-pixel, so both must share these classes or match boxes drift.
 const PLAIN_METRICS = "px-6 sm:px-10 text-base leading-7";
 
-// The note body renders as a bordered "page" in --color-background — the
-// reading layer in both themes (paper-white in light, recessed ink in dark).
-// Its edges make the text margins visible, and because the plain textarea
-// grows with its content, the sheet's bottom edge marks where the note ends.
-const PAGE_SHEET =
-  "mx-auto w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)]";
-
 function formatEdited(ts: number) {
   const d = new Date(ts);
   const date = d.toLocaleDateString(undefined, {
@@ -709,7 +702,7 @@ export function NoteEditor({
         <div
           ref={scrollRef}
           onClick={focusBodyEnd}
-          className={`relative min-h-0 overflow-y-auto px-4 pt-5 pb-10 sm:px-6 ${previewOpen ? "" : "cursor-text"}`}
+          className={`relative min-h-0 overflow-y-auto pt-5 pb-8 ${previewOpen ? "" : "cursor-text"}`}
         >
             {target.mode === "edit" && (
               <p className="mb-4 select-none text-center text-xs text-[var(--color-subtle)]">
@@ -717,34 +710,26 @@ export function NoteEditor({
               </p>
             )}
             {previewOpen ? (
-              <div className={`${PAGE_SHEET} max-w-2xl py-4`}>
-                <MarkdownPreview
-                  body={body}
-                  query={findQuery}
+              <MarkdownPreview
+                body={body}
+                query={findQuery}
+                activeMatch={findActive}
+              />
+            ) : highlight ? (
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl xl:max-w-4xl flex-col pl-3 pr-6">
+                <HighlightedEditor
+                  ref={bodyRef}
+                  value={body}
+                  onChange={markBody}
+                  onPaste={handlePlainPaste}
+                  onDrop={handlePlainDrop}
+                  placeholderText="Start writing..."
+                  searchMatches={findQuery ? matches : null}
                   activeMatch={findActive}
                 />
               </div>
-            ) : highlight ? (
-              <div className={`${PAGE_SHEET} max-w-3xl xl:max-w-4xl py-4`}>
-                <div className="flex min-h-0 w-full flex-col pl-3 pr-6">
-                  <HighlightedEditor
-                    ref={bodyRef}
-                    value={body}
-                    onChange={markBody}
-                    onPaste={handlePlainPaste}
-                    onDrop={handlePlainDrop}
-                    placeholderText="Start writing..."
-                    searchMatches={findQuery ? matches : null}
-                    activeMatch={findActive}
-                  />
-                </div>
-              </div>
             ) : (
-              <div
-                onClick={focusBodyEnd}
-                className={`${PAGE_SHEET} max-w-2xl cursor-text py-6`}
-              >
-                <div className="relative">
+              <div className="relative mx-auto min-h-[32rem] w-full max-w-2xl">
                 {findQuery && matches.length > 0 && (
                   <div
                     aria-hidden
@@ -768,9 +753,8 @@ export function NoteEditor({
                   data-lpignore="true"
                   data-bwignore
                   data-form-type="other"
-                  className={`relative block min-h-[20rem] w-full resize-none overflow-hidden border-0 bg-transparent caret-[var(--color-accent)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none ${PLAIN_METRICS}`}
+                  className={`relative block min-h-[32rem] w-full resize-none overflow-hidden border-0 bg-transparent caret-[var(--color-accent)] text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none ${PLAIN_METRICS}`}
                 />
-                </div>
               </div>
             )}
             {uploading && (
