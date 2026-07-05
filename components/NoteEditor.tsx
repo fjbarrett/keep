@@ -157,8 +157,8 @@ export function NoteEditor({
       // caret/scroll. Three open behaviours:
       //  - from search: focus and select the match so it's highlighted in view;
       //  - a new note: focus so the user can type immediately;
-      //  - opening an existing note: don't grab focus — no blinking cursor or
-      //    stray selection. The user clicks into the body to place the caret.
+      //  - opening an existing note: focus with the caret at the very start,
+      //    ready to type without clicking in.
       const ta = scrollRef.current?.querySelector("textarea");
       if (ta && query && matchAt >= 0) {
         // Focus with the caret at the match (no native selection — the yellow
@@ -171,8 +171,8 @@ export function NoteEditor({
         plainRef.current?.focus();
         if (ta) ta.selectionStart = ta.selectionEnd = 0;
       } else if (ta) {
-        ta.selectionStart = ta.selectionEnd = 0;
-        ta.blur();
+        ta.focus({ preventScroll: true });
+        ta.setSelectionRange(0, 0);
         if (scrollRef.current) scrollRef.current.scrollTop = 0;
       }
     }, 30);
