@@ -1,6 +1,10 @@
 import AuthenticationServices
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 /// Native Google sign-in. Google forbids OAuth inside an embedded web view, so
 /// this uses `ASWebAuthenticationSession` (the system browser). Its cookie jar
@@ -86,11 +90,19 @@ final class GoogleSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
         for session: ASWebAuthenticationSession
     ) -> ASPresentationAnchor {
         MainActor.assumeIsolated {
+            #if canImport(UIKit)
             let window = UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .flatMap(\.windows)
                 .first { $0.isKeyWindow }
             return window ?? ASPresentationAnchor()
+            #elseif canImport(AppKit)
+            return NSApplication.shared.keyWindow
+                ?? NSApplication.shared.windows.first
+                ?? ASPresentationAnchor()
+            #else
+            return ASPresentationAnchor()
+            #endif
         }
     }
 }

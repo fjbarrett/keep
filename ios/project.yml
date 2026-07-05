@@ -5,6 +5,7 @@ options:
   bundleIdPrefix: com.keeptxt
   deploymentTarget:
     iOS: "17.0"
+    macOS: "14.0"
   createIntermediateGroups: true
 
 settings:
@@ -38,3 +39,38 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+
+  KeepMac:
+    type: application
+    platform: macOS
+    # Reuse the iOS target's model, services (API/auth/Spotlight), and title
+    # logic plus the shared SignInView; only the Mac views + app entry are new.
+    sources:
+      - path: Keep/Models
+      - path: Keep/Services
+      - path: Keep/Support
+      - path: Keep/Views/SignInView.swift
+      - path: KeepMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.keeptxt.keep.mac
+        CODE_SIGN_ENTITLEMENTS: KeepMac/Keep.entitlements
+        # Automatic signing (especially a free/personal team) rewrites the
+        # sandbox entitlements to what it's allowed to grant; permit that so
+        # local builds sign instead of failing "entitlements modified".
+        CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: YES
+        # Hardened runtime is a distribution/notarization concern and only
+        # complicates local signing — leave it off for now.
+        COMBINE_HIDPI_IMAGES: YES
+    info:
+      path: KeepMac/Info.plist
+      properties:
+        KEEP_BASE_URL: "https://keeptxt.com"
+        LSMinimumSystemVersion: "14.0"
+        # Register the keep:// scheme the Google sign-in bridge redirects to.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.keeptxt.keep
+            CFBundleURLSchemes:
+              - keep
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
