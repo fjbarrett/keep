@@ -113,7 +113,7 @@ function GridCard({
       {clipped && (
         <span
           aria-hidden
-          className="mt-1 block text-center text-xs leading-4 tracking-widest text-[var(--color-subtle)]"
+          className="mt-1 block text-left text-xs leading-4 tracking-widest text-[var(--color-subtle)]"
         >
           •&thinsp;•&thinsp;•
         </span>
