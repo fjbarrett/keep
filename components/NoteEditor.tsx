@@ -8,7 +8,7 @@ import { MarkdownPreview } from "./MarkdownPreview";
 import { renderSearchHits } from "./renderSearchHits";
 import { ColorSwatchRow } from "./ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
-import { previewText } from "@/lib/inferTitle";
+import { previewText, TITLE_CHAR_LIMIT } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
 import {
   ArchiveIcon,
@@ -34,7 +34,7 @@ const ICON_BUTTON =
 
 // Text metrics for the plain editor. The search backdrop mirrors the textarea
 // pixel-for-pixel, so both must share these classes or match boxes drift.
-const PLAIN_METRICS = "px-6 sm:px-10 text-base leading-7";
+const PLAIN_METRICS = "px-6 sm:px-10 text-[15px] leading-[26px]";
 
 function formatEdited(ts: number) {
   const d = new Date(ts);
@@ -471,6 +471,7 @@ export function NoteEditor({
               }
             }}
             aria-label="Note title"
+            maxLength={TITLE_CHAR_LIMIT}
             className="absolute left-1/2 w-[50%] -translate-x-1/2 truncate border-0 bg-transparent text-center text-sm font-medium text-[var(--color-text)] focus:outline-none"
           />
         ) : (
@@ -824,6 +825,11 @@ export function NoteEditor({
         className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-canvas)] ${
           highlight && !previewOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-2xl"
         }`}
+        style={
+          target.mode === "edit"
+            ? { borderColor: noteColorVar(target.note.color) ?? undefined }
+            : undefined
+        }
       >
         {editor}
       </div>

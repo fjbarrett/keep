@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { previewText } from "@/lib/inferTitle";
+import { previewText, TITLE_CHAR_LIMIT } from "@/lib/inferTitle";
 import { detectCodeLanguage, languageLabel, noteFileExtension } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
@@ -295,6 +295,9 @@ export function Sidebar({
             aria-hidden
             className="pointer-events-none absolute left-2 right-2 top-0 rounded-md bg-[var(--color-accent)]"
             style={{
+              background:
+                noteColorVar(filtered.find((n) => n.id === pillId)?.color) ??
+                undefined,
               height: indicator.height,
               transform: `translateY(${indicator.top}px)`,
               transition: indicator.animate
@@ -508,6 +511,7 @@ function SidebarNoteRow({
           }}
           onBlur={commitRename}
           onFocus={(e) => e.target.select()}
+          maxLength={TITLE_CHAR_LIMIT}
           className="min-w-0 flex-1 rounded bg-[var(--color-background)] px-2.5 py-1 text-sm text-[var(--color-text)] outline-none ring-1 ring-[var(--color-accent)] mx-1"
         />
       ) : (
@@ -534,10 +538,11 @@ function SidebarNoteRow({
           >
             {noteColorVar(note.color) && (
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${
-                  active && !slidingIn ? "ring-1 ring-white/40" : ""
-                }`}
-                style={{ background: noteColorVar(note.color)! }}
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{
+                  background:
+                    active && !slidingIn ? "#fff" : noteColorVar(note.color)!,
+                }}
                 aria-hidden
               />
             )}
