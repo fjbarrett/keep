@@ -23,6 +23,12 @@ ssh "$HOST" 'set -e
   sleep 5
   echo "   service: $(systemctl is-active keep) @ $(git rev-parse --short HEAD)"'
 
+echo "-> Waiting for ${URL} to come back up"
+for _ in $(seq 1 24); do
+  curl -sf -o /dev/null "$URL" && break
+  sleep 5
+done
+
 echo "-> Capturing screenshot of ${URL}"
 node "$HERE/screenshot.mjs" "$URL"
 
