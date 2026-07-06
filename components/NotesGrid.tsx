@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { useAutohideScrollbar } from "@/lib/useAutohideScrollbar";
 import { Note } from "@/lib/types";
 import { needsInferredTitle, previewText } from "@/lib/inferTitle";
 import { noteColorVar } from "@/lib/noteColors";
@@ -238,6 +239,7 @@ export function NotesGrid({
   // The grid unmounts while a note is open; restore where the user left off
   // when they come back.
   const scrollRef = useRef<HTMLDivElement>(null);
+  useAutohideScrollbar(scrollRef);
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollMemory.current;
   }, [scrollMemory]);
@@ -263,7 +265,7 @@ export function NotesGrid({
       onScroll={(e) => {
         scrollMemory.current = e.currentTarget.scrollTop;
       }}
-      className="min-h-0 flex-1 overflow-y-auto p-2"
+      className="autohide-scrollbar min-h-0 flex-1 overflow-y-auto p-2"
     >
       <div className="mx-auto max-w-6xl">
         {pinned.length > 0 && others.length > 0 ? (
