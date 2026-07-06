@@ -66,6 +66,7 @@ export function NoteEditor({
   onRestore,
   onRemove,
   onColor,
+  onRename,
   presentation = "modal",
 }: {
   target: EditorTarget;
@@ -77,6 +78,7 @@ export function NoteEditor({
   onRestore: (id: string) => void;
   onRemove: (id: string) => void;
   onColor?: (color: string | null) => void;
+  onRename?: (title: string) => void;
   presentation?: "modal" | "panel";
 }) {
   const [body, setBody] = useState("");
@@ -89,6 +91,8 @@ export function NoteEditor({
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [titleEditing, setTitleEditing] = useState(false);
   const bodyRef = useRef<HighlightedEditorHandle>(null);
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
@@ -139,6 +143,7 @@ export function NoteEditor({
     setCopied(false);
     setCopyMenuOpen(false);
     setColorMenuOpen(false);
+    setTitleEditing(false);
     createdIdRef.current = null;
     creatingRef.current = false;
     const query =
@@ -420,6 +425,14 @@ export function NoteEditor({
     title: target.mode === "edit" ? target.note.title : "",
     body,
   });
+  const shownTitle = body.trim() ? displayTitle : "";
+
+  function commitTitle() {
+    if (target?.mode !== "edit" || !onRename) return;
+    const next = titleDraft.trim();
+    if (next === shownTitle) return;
+    onRename(next);
+  }
 
   const header = (
     <div className="relative mx-auto flex w-full max-w-3xl xl:max-w-4xl shrink-0 flex-wrap items-center gap-1 border-b border-[var(--color-border-muted)] px-4 py-2">
@@ -436,11 +449,35 @@ export function NoteEditor({
           <div className="mr-1 h-4 w-px bg-[var(--color-border)] md:hidden" />
         </>
       )}
-      {!actionsOpen && (
-        <p className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-sm font-medium text-[var(--color-text)]">
-          {body.trim() ? displayTitle : ""}
-        </p>
-      )}
+      {!actionsOpen &&
+        (target.mode === "edit" && onRename && !isTrashed ? (
+          <input
+            value={titleEditing ? titleDraft : shownTitle}
+            onFocus={() => {
+              setTitleEditing(true);
+              setTitleDraft(shownTitle);
+            }}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={() => {
+              setTitleEditing(false);
+              commitTitle();
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") {
+                setTitleDraft(shownTitle);
+                e.currentTarget.blur();
+              }
+            }}
+            aria-label="Note title"
+            className="absolute left-1/2 w-[50%] -translate-x-1/2 truncate border-0 bg-transparent text-center text-sm font-medium text-[var(--color-text)] focus:outline-none"
+          />
+        ) : (
+          <p className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-sm font-medium text-[var(--color-text)]">
+            {shownTitle}
+          </p>
+        ))}
       <div className="flex-1" />
       {isTrashed && (
         <span className="shrink-0 px-1 text-xs font-medium text-[var(--color-muted)]">
