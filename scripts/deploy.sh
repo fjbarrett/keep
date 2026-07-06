@@ -14,11 +14,12 @@ ssh "$HOST" 'set -e
   cd /opt/keep
   git fetch origin main -q && git reset --hard origin/main -q
   if [ ! -d node_modules ] || ! git diff --quiet ORIG_HEAD HEAD -- package-lock.json; then
-    npm ci --no-audit --no-fund >/dev/null 2>&1
+    echo "   npm ci"
+    npm ci --no-audit --no-fund 2>&1 | tail -2
   fi
   # Wipe stale build output but keep .next/cache so next build is incremental.
   find .next -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} + 2>/dev/null || true
-  npm run build >/dev/null 2>&1
+  npm run build 2>&1 | tail -3
   systemctl restart keep
   sleep 5
   echo "   service: $(systemctl is-active keep) @ $(git rev-parse --short HEAD)"'
