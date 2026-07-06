@@ -9,6 +9,7 @@ import { renderSearchHits } from "./renderSearchHits";
 import { ColorSwatchRow } from "./ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
 import { previewText, TITLE_CHAR_LIMIT } from "@/lib/inferTitle";
+import { useAutohideScrollbar } from "@/lib/useAutohideScrollbar";
 import { noteFileExtension } from "@/lib/detectLanguage";
 import {
   ArchiveIcon,
@@ -99,6 +100,7 @@ export function NoteEditor({
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const prevPanelHeightRef = useRef(0);
+  useAutohideScrollbar(scrollRef);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
   // Search highlighting: when a note is opened from search, paint a yellow box
@@ -774,7 +776,7 @@ export function NoteEditor({
         <div
           ref={scrollRef}
           onClick={focusBodyEnd}
-          className={`relative min-h-0 overflow-y-auto pt-5 pb-8 ${previewOpen ? "" : "cursor-text"}`}
+          className={`autohide-scrollbar relative min-h-0 overflow-y-auto pt-5 pb-8 ${previewOpen ? "" : "cursor-text"}`}
         >
             {target.mode === "edit" && (
               <p className="mb-4 select-none text-center text-xs text-[var(--color-subtle)]">

@@ -111,6 +111,17 @@ html {
   display: none;
 }
 
+/* Scrollbar stays invisible until the user actually scrolls; a hook stamps
+   data-scrolling during activity (see lib/useAutohideScrollbar). */
+.autohide-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 200ms ease;
+}
+.autohide-scrollbar[data-scrolling="true"] {
+  scrollbar-color: var(--color-border) transparent;
+}
+
 ::selection {
   background: rgba(37, 99, 235, 0.35);
   color: var(--color-text);
