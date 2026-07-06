@@ -7,6 +7,9 @@ const IMAGE_ONLY = /^!\[.*?\]\(.*?\)$/;
 const WORD_LIMIT = 4;
 const CHAR_LIMIT = 36;
 
+/** Hard cap for explicit titles — matches the inferred-title trim. */
+export const TITLE_CHAR_LIMIT = CHAR_LIMIT;
+
 function stripMarkdown(text: string): string {
   return text
     .replace(/\*\*(.*?)\*\*/g, "$1")

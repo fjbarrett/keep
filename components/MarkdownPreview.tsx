@@ -115,7 +115,7 @@ export function MarkdownPreview({
     : [];
 
   return (
-    <div className="prose-invert-auto mx-auto min-h-[320px] w-full max-w-2xl flex-1 overflow-y-auto px-6 text-base leading-7 sm:px-10">
+    <div className="prose-invert-auto mx-auto min-h-[320px] w-full max-w-2xl flex-1 overflow-y-auto px-6 text-[15px] leading-[26px] sm:px-10">
       <Markdown
         remarkPlugins={[gfm]}
         rehypePlugins={rehypePlugins}
