@@ -8,6 +8,7 @@ import { MarkdownPreview } from "./MarkdownPreview";
 import { renderSearchHits } from "./renderSearchHits";
 import { ColorSwatchRow } from "./ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
+import { previewText } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
 import {
   ArchiveIcon,
@@ -415,6 +416,11 @@ export function NoteEditor({
     ta.setSelectionRange(ta.value.length, ta.value.length);
   }
 
+  const displayTitle = previewText({
+    title: target.mode === "edit" ? target.note.title : "",
+    body,
+  });
+
   const header = (
     <div className="mx-auto flex w-full max-w-3xl xl:max-w-4xl shrink-0 flex-wrap items-center gap-1 border-b border-[var(--color-border-muted)] px-4 py-2">
       {onBack && (
@@ -430,13 +436,14 @@ export function NoteEditor({
           <div className="mr-1 h-4 w-px bg-[var(--color-border)] md:hidden" />
         </>
       )}
+      <p className="min-w-0 flex-1 truncate px-1 text-sm font-medium text-[var(--color-text)]">
+        {body.trim() ? displayTitle : ""}
+      </p>
       {isTrashed && (
-        <span className="px-1 text-xs font-medium text-[var(--color-muted)]">
+        <span className="shrink-0 px-1 text-xs font-medium text-[var(--color-muted)]">
           In Trash
         </span>
       )}
-
-      <div className="flex-1" />
 
       {!isTrashed ? (
         <>
