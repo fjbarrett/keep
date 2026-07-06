@@ -817,11 +817,11 @@ export function NoteEditor({
   if (presentation === "panel") {
     return (
       // The card hugs the note: width matches the text column and height is
-      // content-driven, so the 1px outline alone marks the margins and the
+      // content-driven, so the 2px outline alone marks the margins and the
       // bottom edge — the fill matches the canvas so the page doesn't read
       // as a lighter sheet. Highlight mode widens for code.
       <div
-        className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-canvas)] ${
+        className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-canvas)] ${
           highlight && !previewOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-2xl"
         }`}
       >
