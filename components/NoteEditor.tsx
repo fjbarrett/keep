@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { marked } from "marked";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
@@ -97,6 +97,8 @@ export function NoteEditor({
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const prevPanelHeightRef = useRef(0);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
   // Search highlighting: when a note is opened from search, paint a yellow box
@@ -186,12 +188,34 @@ export function NoteEditor({
 
   // Grow the plain editor to fit its content so short notes hug the text and
   // the box expands as lines are added (the highlight editor self-sizes).
-  useEffect(() => {
+  // Layout effect so the card's height is final before the FLIP below reads it.
+  useLayoutEffect(() => {
     const ta = plainRef.current;
     if (!ta || highlight || previewOpen) return;
     ta.style.height = "auto";
     ta.style.height = `${ta.scrollHeight}px`;
   }, [body, highlight, previewOpen, targetKey]);
+
+  // Switching notes snaps the content-hugging card to the new note's size;
+  // FLIP the height between the two so the border glides instead of jumping.
+  useLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const prev = prevPanelHeightRef.current;
+    const next = el.offsetHeight;
+    if (prev > 0 && Math.abs(prev - next) > 2) {
+      el.animate(
+        [{ height: `${prev}px` }, { height: `${next}px` }],
+        { duration: 260, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
+      );
+    }
+  }, [targetKey]);
+
+  useLayoutEffect(() => {
+    if (panelRef.current) {
+      prevPanelHeightRef.current = panelRef.current.offsetHeight;
+    }
+  });
 
   // Bring the active match into view whenever it changes (open, or Tab cycle).
   useEffect(() => {
@@ -822,7 +846,8 @@ export function NoteEditor({
       // bottom edge — the fill matches the canvas so the page doesn't read
       // as a lighter sheet. Highlight mode widens for code.
       <div
-        className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-canvas)] ${
+        ref={panelRef}
+        className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-canvas)] transition-[max-width,border-color] duration-300 ${
           highlight && !previewOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-2xl"
         }`}
         style={
