@@ -200,23 +200,47 @@ export function NoteEditor({
 
   // Switching notes snaps the content-hugging card to the new note's size;
   // FLIP the height between the two so the border glides instead of jumping.
+  // The switch lands across two commits — targetKey changes first, the new
+  // body/highlight state a commit later — so mark the switch here and animate
+  // below on the commit where the content (and thus the height) actually moves.
+  const switchFlipRef = useRef(false);
   useLayoutEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    const prev = prevPanelHeightRef.current;
-    const next = el.offsetHeight;
-    if (prev > 0 && Math.abs(prev - next) > 2) {
-      el.animate(
-        [{ height: `${prev}px` }, { height: `${next}px` }],
-        { duration: 260, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
-      );
-    }
+    switchFlipRef.current = true;
+    const t = window.setTimeout(() => {
+      switchFlipRef.current = false;
+    }, 400);
+    return () => window.clearTimeout(t);
   }, [targetKey]);
 
   useLayoutEffect(() => {
-    if (panelRef.current) {
-      prevPanelHeightRef.current = panelRef.current.offsetHeight;
+    if (!switchFlipRef.current) return;
+    const el = panelRef.current;
+    if (!el) return;
+    el.getAnimations().forEach((a) => {
+      if (a.id === "panel-flip") a.cancel();
+    });
+    const prev = prevPanelHeightRef.current;
+    const next = el.offsetHeight;
+    if (prev > 0 && Math.abs(prev - next) > 2) {
+      switchFlipRef.current = false;
+      const anim = el.animate(
+        [{ height: `${prev}px` }, { height: `${next}px` }],
+        { duration: 260, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
+      );
+      anim.id = "panel-flip";
+      anim.onfinish = () => {
+        prevPanelHeightRef.current = el.offsetHeight;
+      };
     }
+  }, [body, highlight, previewOpen, targetKey]);
+
+  // Track the card's resting height for the next FLIP — but not while one is
+  // mid-flight, when offsetHeight reports the animation's keyframe value.
+  useLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    if (el.getAnimations().some((a) => a.id === "panel-flip")) return;
+    prevPanelHeightRef.current = el.offsetHeight;
   });
 
   // Bring the active match into view whenever it changes (open, or Tab cycle).
