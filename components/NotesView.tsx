@@ -523,6 +523,9 @@ export function NotesView({
             onColor={(color) =>
               mainTarget.mode === "edit" && update(mainTarget.note.id, { color })
             }
+            onRename={(title) =>
+              mainTarget.mode === "edit" && update(mainTarget.note.id, { title })
+            }
             presentation="panel"
           />
         ) : restoringFromUrl ? (
