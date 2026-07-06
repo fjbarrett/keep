@@ -422,7 +422,7 @@ export function NoteEditor({
   });
 
   const header = (
-    <div className="mx-auto flex w-full max-w-3xl xl:max-w-4xl shrink-0 flex-wrap items-center gap-1 border-b border-[var(--color-border-muted)] px-4 py-2">
+    <div className="relative mx-auto flex w-full max-w-3xl xl:max-w-4xl shrink-0 flex-wrap items-center gap-1 border-b border-[var(--color-border-muted)] px-4 py-2">
       {onBack && (
         <>
           <button
@@ -436,9 +436,12 @@ export function NoteEditor({
           <div className="mr-1 h-4 w-px bg-[var(--color-border)] md:hidden" />
         </>
       )}
-      <p className="min-w-0 flex-1 truncate px-1 text-sm font-medium text-[var(--color-text)]">
-        {body.trim() ? displayTitle : ""}
-      </p>
+      {!actionsOpen && (
+        <p className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-sm font-medium text-[var(--color-text)]">
+          {body.trim() ? displayTitle : ""}
+        </p>
+      )}
+      <div className="flex-1" />
       {isTrashed && (
         <span className="shrink-0 px-1 text-xs font-medium text-[var(--color-muted)]">
           In Trash
