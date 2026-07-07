@@ -204,13 +204,13 @@ export function NoteEditor({
   // body/highlight state a commit later — so mark the switch here and animate
   // below on the commit where the content (and thus the height) actually moves.
   const switchFlipRef = useRef(false);
-  const firstTargetRef = useRef(true);
-  const lastFadeBodyRef = useRef<string | null>(null);
+  // Matches the initial body state, so the mount commit doesn't count as a
+  // content change but the commit where the opened note's body lands does.
+  const lastFadeBodyRef = useRef("");
+  // False until the first content commit: opening from the grid fades the text
+  // in but keeps the card at its natural size — only later switches resize.
+  const openedRef = useRef(false);
   useLayoutEffect(() => {
-    if (firstTargetRef.current) {
-      firstTargetRef.current = false;
-      return;
-    }
     switchFlipRef.current = true;
     const t = window.setTimeout(() => {
       switchFlipRef.current = false;
@@ -233,9 +233,11 @@ export function NoteEditor({
       [{ opacity: 0 }, { opacity: 0, offset: 0.3 }, { opacity: 1 }],
       { duration: 300, easing: "ease-out" },
     );
+    const firstOpen = !openedRef.current;
+    openedRef.current = true;
     const prev = prevPanelHeightRef.current;
     const next = el.offsetHeight;
-    if (prev > 0 && Math.abs(prev - next) > 2) {
+    if (!firstOpen && prev > 0 && Math.abs(prev - next) > 2) {
       const anim = el.animate(
         [{ height: `${prev}px` }, { height: `${next}px` }],
         { duration: 260, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
