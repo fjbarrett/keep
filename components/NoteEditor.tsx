@@ -204,7 +204,13 @@ export function NoteEditor({
   // body/highlight state a commit later — so mark the switch here and animate
   // below on the commit where the content (and thus the height) actually moves.
   const switchFlipRef = useRef(false);
+  const firstTargetRef = useRef(true);
+  const lastFadeBodyRef = useRef<string | null>(null);
   useLayoutEffect(() => {
+    if (firstTargetRef.current) {
+      firstTargetRef.current = false;
+      return;
+    }
     switchFlipRef.current = true;
     const t = window.setTimeout(() => {
       switchFlipRef.current = false;
@@ -213,16 +219,23 @@ export function NoteEditor({
   }, [targetKey]);
 
   useLayoutEffect(() => {
-    if (!switchFlipRef.current) return;
+    const contentChanged = body !== lastFadeBodyRef.current;
+    lastFadeBodyRef.current = body;
+    if (!switchFlipRef.current || !contentChanged) return;
+    switchFlipRef.current = false;
     const el = panelRef.current;
     if (!el) return;
     el.getAnimations().forEach((a) => {
       if (a.id === "panel-flip") a.cancel();
     });
+    // The incoming text fades up from the background while the card resizes.
+    scrollRef.current?.animate(
+      [{ opacity: 0 }, { opacity: 0, offset: 0.3 }, { opacity: 1 }],
+      { duration: 300, easing: "ease-out" },
+    );
     const prev = prevPanelHeightRef.current;
     const next = el.offsetHeight;
     if (prev > 0 && Math.abs(prev - next) > 2) {
-      switchFlipRef.current = false;
       const anim = el.animate(
         [{ height: `${prev}px` }, { height: `${next}px` }],
         { duration: 260, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
