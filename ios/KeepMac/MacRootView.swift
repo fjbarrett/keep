@@ -177,6 +177,7 @@ struct MacRootView: View {
                 }
             }
             Divider()
+            Button("Copy Text") { MacPasteboard.copy(note.body) }
             Button("Copy Share Link") { Task { await store.copyShareLink(note) } }
             if note.shareToken != nil {
                 Button("Stop Sharing") { Task { await store.unshare(note) } }

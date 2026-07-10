@@ -68,6 +68,11 @@ struct NoteCommands: Commands {
 
             Divider()
 
+            Button("Copy Text") {
+                if let note { MacPasteboard.copy(note.body) }
+            }
+            .disabled(note == nil)
+
             Button("Copy Share Link") {
                 if let note { Task { await store.copyShareLink(note) } }
             }
