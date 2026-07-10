@@ -37,3 +37,8 @@ struct Note: Identifiable, Codable, Equatable {
 struct NotesResponse: Codable { let notes: [Note] }
 struct NoteResponse: Codable { let note: Note }
 struct OkResponse: Codable { let ok: Bool }
+/// POST /api/notes/title — model-generated (or heuristic) note metadata.
+struct NoteMeta: Codable {
+    let title: String
+    let summary: String?
+}

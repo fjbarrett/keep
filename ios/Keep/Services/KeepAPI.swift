@@ -36,12 +36,23 @@ actor KeepAPI {
         try await request("/api/notes", method: "GET", as: NotesResponse.self).notes
     }
 
-    func create(body: String) async throws -> Note {
-        try await request(
+    func create(body: String, title: String? = nil, summary: String? = nil) async throws -> Note {
+        var json: [String: Any] = ["body": body]
+        if let title { json["title"] = title }
+        if let summary, !summary.isEmpty { json["summary"] = summary }
+        return try await request(
             "/api/notes", method: "POST",
-            json: ["body": body],
+            json: json,
             as: NoteResponse.self
         ).note
+    }
+
+    func generateMeta(body: String) async throws -> NoteMeta {
+        try await request(
+            "/api/notes/title", method: "POST",
+            json: ["body": body],
+            as: NoteMeta.self
+        )
     }
 
     func update(id: String, patch: [String: Any]) async throws -> Note {
