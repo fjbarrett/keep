@@ -6,6 +6,7 @@ export default defineConfig({
   oxc: { jsx: { runtime: "automatic" } },
   test: {
     environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
     include: ["__tests__/**/*.test.ts", "__tests__/**/*.test.tsx"],
   },
   resolve: {
