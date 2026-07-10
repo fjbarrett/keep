@@ -66,6 +66,7 @@ targets:
         # Hardened runtime is a distribution/notarization concern and only
         # complicates local signing — leave it off for now.
         COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: KeepMac/Info.plist
       properties:
