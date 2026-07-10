@@ -41,7 +41,8 @@ final class NotesStore {
     @discardableResult
     func create(body: String) async -> Note? {
         do {
-            let note = try await api.create(body: body)
+            let meta = try? await api.generateMeta(body: body)
+            let note = try await api.create(body: body, title: meta?.title, summary: meta?.summary)
             notes.insert(note, at: 0)
             return note
         } catch {
@@ -50,11 +51,29 @@ final class NotesStore {
         }
     }
 
+    /// Body saves regenerate the title/summary when the lead line changes (or
+    /// the note has no title yet), folded into the same PATCH — mirroring the
+    /// web's autosave. Meta failures degrade to a plain body save.
     func update(_ id: String, patch: [String: Any]) async {
+        var patch = patch
+        if let body = patch["body"] as? String,
+           patch["title"] == nil,
+           let current = notes.first(where: { $0.id == id }),
+           Self.firstLine(body) != Self.firstLine(current.body)
+               || current.title.trimmingCharacters(in: .whitespaces).isEmpty,
+           let meta = try? await api.generateMeta(body: body) {
+            patch["title"] = meta.title
+            if let summary = meta.summary, !summary.isEmpty { patch["summary"] = summary }
+        }
         do {
             let updated = try await api.update(id: id, patch: patch)
             if let i = notes.firstIndex(where: { $0.id == id }) { notes[i] = updated }
         } catch { handle(error) }
+    }
+
+    private static func firstLine(_ body: String) -> String {
+        (body.components(separatedBy: "\n").first ?? "")
+            .trimmingCharacters(in: .whitespaces)
     }
 
     func togglePin(_ note: Note) async {
