@@ -32,10 +32,14 @@ struct MacNoteDetail: View {
             if let n = current {
                 titleField(for: n)
             }
-            TextEditor(text: $text)
-                .font(.body)
-                .textEditorStyle(.plain)
-                .scrollContentBackground(.hidden)
+            if current?.markdown == true {
+                MacMarkdownView(source: text)
+            } else {
+                TextEditor(text: $text)
+                    .font(.body)
+                    .textEditorStyle(.plain)
+                    .scrollContentBackground(.hidden)
+            }
         }
         .padding(12)
         .navigationTitle(current?.displayTitle ?? "New Note")
@@ -50,6 +54,19 @@ struct MacNoteDetail: View {
             .toolbar {
                 if let n = current {
                     ToolbarItemGroup {
+                        Button {
+                            // Markdown and highlight are mutually exclusive,
+                            // matching the web toggles.
+                            let patch: [String: Any] = n.markdown
+                                ? ["markdown": false]
+                                : ["markdown": true, "highlight": false]
+                            Task { await store.update(n.id, patch: patch) }
+                        } label: {
+                            Label(n.markdown ? "Edit Text" : "Preview Markdown",
+                                  systemImage: n.markdown ? "square.and.pencil" : "doc.richtext")
+                        }
+                        .help(n.markdown ? "Back to editing" : "Preview as Markdown")
+
                         Button {
                             Task { await store.togglePin(n) }
                         } label: {
