@@ -7,9 +7,9 @@ describe("opaque identifiers", () => {
     expect(newId()).toMatch(/^[0-9a-f]{32}$/);
   });
 
-  it("uses 128-bit URL-safe share credentials", () => {
+  it("mints share credentials in the same 128-bit hex style as note ids", () => {
     const tokens = Array.from({ length: 100 }, () => newShareToken());
     expect(new Set(tokens)).toHaveLength(tokens.length);
-    for (const token of tokens) expect(token).toMatch(/^[A-Za-z0-9_-]{22}$/);
+    for (const token of tokens) expect(token).toMatch(/^[0-9a-f]{32}$/);
   });
 });
