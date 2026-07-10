@@ -82,6 +82,26 @@ final class NotesStore {
         await update(note.id, patch: ["color": key ?? NSNull()])
     }
 
+    /// Ensures the note has a public share link; returns the updated note.
+    @discardableResult
+    func share(_ note: Note) async -> Note? {
+        do {
+            let updated = try await api.share(id: note.id)
+            if let i = notes.firstIndex(where: { $0.id == note.id }) { notes[i] = updated }
+            return updated
+        } catch {
+            handle(error)
+            return nil
+        }
+    }
+
+    func unshare(_ note: Note) async {
+        do {
+            let updated = try await api.unshare(id: note.id)
+            if let i = notes.firstIndex(where: { $0.id == note.id }) { notes[i] = updated }
+        } catch { handle(error) }
+    }
+
     // MARK: - Auth
 
     /// Signs in, then reloads. Returns an error message to show, or nil on success.

@@ -177,6 +177,11 @@ struct MacRootView: View {
                 }
             }
             Divider()
+            Button("Copy Share Link") { Task { await store.copyShareLink(note) } }
+            if note.shareToken != nil {
+                Button("Stop Sharing") { Task { await store.unshare(note) } }
+            }
+            Divider()
             Button("Move to Trash", role: .destructive) { Task { await store.trash(note) } }
         }
     }
@@ -233,6 +238,11 @@ private struct MacNoteRow: View {
                 }
             }
             Spacer()
+            if note.shareToken != nil {
+                Image(systemName: "link")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
             if note.pinned {
                 Image(systemName: "pin.fill")
                     .font(.caption2)
