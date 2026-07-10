@@ -34,6 +34,11 @@ targets:
         # local/.local addresses so switching KEEP_BASE_URL back to localhost works.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # Without this declaration the system never hands the Spotlight-result
+        # activity (CSSearchableItemActionType) to the SwiftUI scene, so tapping
+        # a result opened the app but not the note.
+        NSUserActivityTypes:
+          - com.apple.corespotlightitem
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -54,6 +59,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keeptxt.keep.mac
+        # No App Sandbox for now: an ad-hoc/dev-signed sandboxed app doesn't
+        # surface its Core Spotlight items reliably, and the sandbox container
+        # adds nothing for a locally-run app. Unsandboxed, network + Spotlight
+        # just work. Re-add the sandbox + entitlements for App Store distribution.
         # Hardened runtime is a distribution/notarization concern and only
         # complicates local signing — leave it off for now.
         COMBINE_HIDPI_IMAGES: YES
@@ -69,3 +78,5 @@ targets:
               - keep
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSUserActivityTypes:
+          - com.apple.corespotlightitem
