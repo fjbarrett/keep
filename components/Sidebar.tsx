@@ -7,6 +7,7 @@ import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { noteColorVar } from "@/lib/noteColors";
 import { downloadNoteBody, downloadNotePdf } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
+import { useMenuPresence } from "@/lib/useMenuPresence";
 import { Note } from "@/lib/types";
 import {
   DotsIcon,
@@ -459,6 +460,7 @@ function SidebarNoteRow({
   onColor: (color: string | null) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { mounted: menuMounted, closing: menuClosing } = useMenuPresence(menuOpen);
   const [flipUp, setFlipUp] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -575,16 +577,19 @@ function SidebarNoteRow({
           </button>
         </>
       )}
-      {menuOpen && (
+      {menuMounted && (
         <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setMenuOpen(false)}
-          />
+          {menuOpen && (
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setMenuOpen(false)}
+            />
+          )}
           <div
             role="menu"
-            className={`absolute right-1 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg ${
-              flipUp ? "bottom-7" : "top-7"
+            data-closing={menuClosing || undefined}
+            className={`menu-pop absolute right-1 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg ${
+              flipUp ? "bottom-7 origin-bottom-right" : "top-7 origin-top-right"
             }`}
           >
             {trashMode ? (
