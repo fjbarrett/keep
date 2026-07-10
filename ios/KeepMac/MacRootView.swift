@@ -29,67 +29,27 @@ struct MacRootView: View {
     @State private var composing = false
     @State private var query = ""
     @State private var showSignIn = false
+    @State private var pendingDelete: Note?
 
     var body: some View {
         NavigationSplitView {
-            List(Filter.allCases, selection: $filter) { f in
-                Label(f.rawValue, systemImage: f.symbol).tag(f)
-            }
-            .navigationSplitViewColumnWidth(min: 170, ideal: 200, max: 240)
-            .navigationTitle("Keep")
+            sidebar
         } content: {
-            List(selection: $selection) {
-                ForEach(filteredNotes) { note in
-                    MacNoteRow(note: note).tag(note.id)
-                }
-            }
-            .overlay {
-                if store.isLoading && store.notes.isEmpty {
-                    ProgressView()
-                } else if filteredNotes.isEmpty {
-                    ContentUnavailableView(
-                        query.isEmpty ? "No notes" : "No matches",
-                        systemImage: "magnifyingglass"
-                    )
-                }
-            }
-            .searchable(text: $query, prompt: "Search notes")
-            .navigationTitle(filter?.rawValue ?? "Notes")
-            .navigationSplitViewColumnWidth(min: 240, ideal: 300)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: startCompose) {
-                        Label("New Note", systemImage: "square.and.pencil")
-                    }
-                    .keyboardShortcut("n", modifiers: .command)
-                    .help("New note")
-                }
-            }
+            noteList
         } detail: {
-            if composing {
-                MacNoteDetail(note: nil) { id in
-                    composing = false
-                    filter = .all
-                    selection = id
-                }
-                .id("new-note")
-            } else if let id = selection,
-                      let note = store.notes.first(where: { $0.id == id }) {
-                MacNoteDetail(note: note)
-                    .id(note.id)
-            } else {
-                ContentUnavailableView(
-                    "Select a note",
-                    systemImage: "note.text",
-                    description: Text("Choose a note, or press ⌘N to create one.")
-                )
-            }
+            detail
         }
+        .focusedSceneValue(\.selectedNote, selectedNote)
         .task {
             await store.load()
             SpotlightIndexer.sync(store.notes)
         }
         .onChange(of: store.needsAuth) { _, needs in showSignIn = needs }
+        // Deselect when an action (pin/archive/trash/restore) moves the note
+        // out of the current filter, so the detail pane follows the list.
+        .onChange(of: selectedNote) { _, note in
+            if let note, !matches(note) { selection = nil }
+        }
         .onChange(of: store.notes) { _, notes in SpotlightIndexer.sync(notes) }
         .onReceive(NotificationCenter.default.publisher(for: .keepNewNote)) { _ in
             startCompose()
@@ -114,17 +74,129 @@ struct MacRootView: View {
         } message: {
             Text(store.errorMessage ?? "")
         }
+        .alert(
+            "Delete this note permanently?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            )
+        ) {
+            Button("Delete", role: .destructive) {
+                if let note = pendingDelete {
+                    Task { await store.deleteForever(note) }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("“\(pendingDelete?.displayTitle ?? "")” will be deleted from all your devices. You can’t undo this.")
+        }
+    }
+
+    private var sidebar: some View {
+        List(Filter.allCases, selection: $filter) { f in
+            Label(f.rawValue, systemImage: f.symbol).tag(f)
+        }
+        .navigationSplitViewColumnWidth(min: 170, ideal: 200, max: 240)
+        .navigationTitle("Keep")
+    }
+
+    private var noteList: some View {
+        List(selection: $selection) {
+            ForEach(filteredNotes) { note in
+                MacNoteRow(note: note)
+                    .tag(note.id)
+                    .contextMenu { contextMenu(for: note) }
+            }
+        }
+        .onDeleteCommand {
+            guard let note = selectedNote else { return }
+            if note.trashed { pendingDelete = note }
+            else { Task { await store.trash(note) } }
+        }
+        .overlay {
+            if store.isLoading && store.notes.isEmpty {
+                ProgressView()
+            } else if filteredNotes.isEmpty {
+                ContentUnavailableView(
+                    query.isEmpty ? "No notes" : "No matches",
+                    systemImage: "magnifyingglass"
+                )
+            }
+        }
+        .searchable(text: $query, prompt: "Search notes")
+        .navigationTitle(filter?.rawValue ?? "Notes")
+        .navigationSplitViewColumnWidth(min: 240, ideal: 300)
+        .toolbar {
+            ToolbarItem {
+                Button(action: startCompose) {
+                    Label("New Note", systemImage: "square.and.pencil")
+                }
+                .keyboardShortcut("n", modifiers: .command)
+                .help("New note")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        if composing {
+            MacNoteDetail(note: nil) { id in
+                composing = false
+                filter = .all
+                selection = id
+            }
+            .id("new-note")
+        } else if let id = selection,
+                  let note = store.notes.first(where: { $0.id == id }) {
+            MacNoteDetail(note: note)
+                .id(note.id)
+        } else {
+            ContentUnavailableView(
+                "Select a note",
+                systemImage: "note.text",
+                description: Text("Choose a note, or press ⌘N to create one.")
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func contextMenu(for note: Note) -> some View {
+        if note.trashed {
+            Button("Put Back") { Task { await store.restore(note) } }
+            Button("Delete Permanently…", role: .destructive) { pendingDelete = note }
+        } else {
+            Button(note.pinned ? "Unpin" : "Pin") { Task { await store.togglePin(note) } }
+            Button(note.archived ? "Unarchive" : "Archive") {
+                Task { await store.update(note.id, patch: ["archived": !note.archived]) }
+            }
+            Menu("Color") {
+                ForEach(NotePalette.all, id: \.key) { entry in
+                    Toggle(entry.label, isOn: Binding(
+                        get: { note.color == entry.key },
+                        set: { on in Task { await store.setColor(note, to: on ? entry.key : nil) } }
+                    ))
+                }
+            }
+            Divider()
+            Button("Move to Trash", role: .destructive) { Task { await store.trash(note) } }
+        }
+    }
+
+    private var selectedNote: Note? {
+        selection.flatMap { id in store.notes.first { $0.id == id } }
+    }
+
+    private func matches(_ note: Note) -> Bool {
+        switch filter ?? .all {
+        case .all: return !note.trashed && !note.archived
+        case .pinned: return note.pinned && !note.trashed && !note.archived
+        case .archived: return note.archived && !note.trashed
+        case .trash: return note.trashed
+        }
     }
 
     private var filteredNotes: [Note] {
-        let base: [Note]
-        switch filter ?? .all {
-        case .all: base = store.notes.filter { !$0.trashed && !$0.archived }
-        case .pinned: base = store.notes.filter { $0.pinned && !$0.trashed && !$0.archived }
-        case .archived: base = store.notes.filter { $0.archived && !$0.trashed }
-        case .trash: base = store.notes.filter { $0.trashed }
-        }
-        let sorted = base.sorted { a, b in
+        let sorted = store.notes.filter(matches).sorted { a, b in
             if a.pinned != b.pinned { return a.pinned }
             return a.updatedAt > b.updatedAt
         }
@@ -149,7 +221,7 @@ private struct MacNoteRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if let color = note.color, let swatch = Self.color(color) {
+            if let swatch = NotePalette.color(for: note.color) {
                 Circle().fill(swatch).frame(width: 8, height: 8)
             }
             VStack(alignment: .leading, spacing: 2) {
@@ -170,16 +242,22 @@ private struct MacNoteRow: View {
         }
         .padding(.vertical, 2)
     }
+}
 
-    private static func color(_ key: String) -> Color? {
-        switch key {
-        case "blue": return .blue
-        case "pink": return .pink
-        case "green": return .green
-        case "orange": return .orange
-        case "purple": return .purple
-        case "red": return .red
-        default: return nil
-        }
+/// The web app's note-label palette (lib/noteColors.ts) on system colors.
+enum NotePalette {
+    static let all: [(key: String, label: String, color: Color)] = [
+        ("blue", "Blue", .blue),
+        ("purple", "Purple", .purple),
+        ("pink", "Pink", .pink),
+        ("red", "Red", .red),
+        ("orange", "Orange", .orange),
+        ("yellow", "Yellow", .yellow),
+        ("green", "Green", .green),
+        ("graphite", "Graphite", .gray),
+    ]
+
+    static func color(for key: String?) -> Color? {
+        all.first { $0.key == key }?.color
     }
 }

@@ -39,3 +39,4 @@ struct Note: Identifiable, Codable, Equatable {
 /// Server envelopes.
 struct NotesResponse: Codable { let notes: [Note] }
 struct NoteResponse: Codable { let note: Note }
+struct OkResponse: Codable { let ok: Bool }
