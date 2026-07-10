@@ -41,19 +41,28 @@ export async function POST(req: Request) {
   if (issue) return NextResponse.json({ error: issue }, { status: 400 });
 
   await ready();
-  const existing = await pool().query("SELECT id FROM users WHERE lower(email) = $1", [email]);
+  const existing = await pool().query<{ id: string }>(
+    "SELECT id FROM users WHERE lower(email) = $1",
+    [email],
+  );
   if (existing.rows[0]) {
-    // Generic message — don't reveal whether the email exists.
+    // Generic message — don't reveal whether the email exists. Crucially, never
+    // rewrite an existing (even unverified) account here: an UPDATE would let an
+    // attacker who knows a victim's email overwrite its password_hash before the
+    // victim verifies, then have the victim activate an attacker-set password.
+    // A legit unverified user re-requests their link via /api/auth/resend, which
+    // refreshes only the token and leaves the password untouched.
     return NextResponse.json({ error: "Could not create the account." }, { status: 409 });
   }
 
   const id = newId();
   const hash = await hashPassword(password);
   const token = randomBytes(32).toString("hex");
+  const now = Date.now();
   await pool().query(
     `INSERT INTO users (id, email, name, password_hash, verify_token, verify_token_expires, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [id, email, null, hash, token, Date.now() + VERIFY_TOKEN_TTL_MS, Date.now()],
+    [id, email, null, hash, token, now + VERIFY_TOKEN_TTL_MS, now],
   );
 
   void recordSecurityEvent("register", {
@@ -67,8 +76,11 @@ export async function POST(req: Request) {
   try {
     await sendVerificationEmail(email, verifyUrl);
   } catch (err) {
-    // Don't fail sign-up if the email send fails — the user can re-request.
     logger.error("verification email failed", { route: "auth:register", err, to: maskEmail(email) });
+    return NextResponse.json(
+      { error: "Your account was saved, but the verification email could not be sent. Try again." },
+      { status: 503 },
+    );
   }
 
   return NextResponse.json({ ok: true });
