@@ -166,6 +166,18 @@ export function NoteEditor({
       ? `${target.note.id}${target.highlightQuery ? `:q:${target.highlightQuery}` : ""}`
       : target?.mode ?? "closed";
   const isPanel = presentation === "panel";
+  const editNote = target?.mode === "edit" ? target.note : null;
+
+  // Pin/archive can change outside the editor (sidebar menu, keyboard
+  // shortcuts) while an edit is pending. The draft snapshots both flags, so
+  // resync them or the next autosave flush writes the stale values back.
+  // Separate effects so an external archive can't revert an unflushed pin.
+  useEffect(() => {
+    if (editNote) setPinned(editNote.pinned);
+  }, [editNote?.pinned]);
+  useEffect(() => {
+    if (editNote) setArchived(editNote.archived);
+  }, [editNote?.archived]);
 
   useEffect(() => {
     if (!target) return;
