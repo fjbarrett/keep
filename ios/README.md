@@ -67,6 +67,23 @@ redirects to `keep://auth-callback?code=…`, which `GoogleSignIn` trades at
 `URLSession` jar so `/api/notes` is authenticated. (The `keep://` scheme needs no
 Info.plist registration; the auth session claims it for the flow's duration.)
 
+## macOS app
+
+`KeepMac` is a separate, fully native macOS target (SwiftUI on AppKit, not
+Catalyst) that reuses the iOS model/services layer — same API client, native
+NextAuth sign-in, and Core Spotlight indexing. On top of that it does the
+Mac things: a three-column split view, right-click context menus (pin,
+archive, color label, trash / put back / delete permanently), and a menu-bar
+Note menu (⇧⌘P pin, ⌃⌘A archive, ⌘⌫ move to trash).
+
+![Keep on macOS](docs/screenshot-mac.png)
+
+```bash
+cd ios
+xcodegen generate
+xcodebuild -scheme KeepMac build   # or pick the KeepMac scheme in Xcode
+```
+
 ## Screenshots
 
 `scripts/ios-screenshot.sh` builds the app, boots a simulator, launches it, and

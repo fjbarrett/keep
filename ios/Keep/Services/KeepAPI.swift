@@ -52,8 +52,8 @@ actor KeepAPI {
         ).note
     }
 
-    func trash(id: String) async throws {
-        _ = try await update(id: id, patch: ["trashed": true])
+    func delete(id: String) async throws {
+        _ = try await request("/api/notes/\(id)", method: "DELETE", as: OkResponse.self)
     }
 
     // MARK: - Plumbing

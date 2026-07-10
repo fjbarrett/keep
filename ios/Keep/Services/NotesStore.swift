@@ -56,11 +56,25 @@ final class NotesStore {
         await update(note.id, patch: ["pinned": !note.pinned])
     }
 
+    /// Trashing updates in place (rather than dropping the note) so a Trash
+    /// view sees it immediately; `sorted` keeps it out of the main list.
     func trash(_ note: Note) async {
+        await update(note.id, patch: ["trashed": true])
+    }
+
+    func restore(_ note: Note) async {
+        await update(note.id, patch: ["trashed": false])
+    }
+
+    func deleteForever(_ note: Note) async {
         do {
-            try await api.trash(id: note.id)
+            try await api.delete(id: note.id)
             notes.removeAll { $0.id == note.id }
         } catch { handle(error) }
+    }
+
+    func setColor(_ note: Note, to key: String?) async {
+        await update(note.id, patch: ["color": key ?? NSNull()])
     }
 
     // MARK: - Auth
