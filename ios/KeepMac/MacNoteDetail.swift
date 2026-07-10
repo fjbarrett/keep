@@ -74,9 +74,7 @@ struct MacNoteDetail: View {
         if let id = note?.id ?? createdId {
             await store.update(id, patch: ["body": value])
         } else if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let before = Set(store.notes.map(\.id))
-            await store.create(body: value)
-            if let created = store.notes.first(where: { !before.contains($0.id) }) {
+            if let created = await store.create(body: value) {
                 createdId = created.id
                 onCreated(created.id)
             }

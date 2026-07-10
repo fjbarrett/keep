@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { Logo } from "@/components/Logo";
 import { EmailPasswordSignIn } from "@/components/EmailPasswordSignIn";
+import { ResendVerificationForm } from "@/components/ResendVerificationForm";
 
 export default async function SignInPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { from?: string; verified?: string; error?: string };
+  searchParams: Promise<{ from?: string; verified?: string; error?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   // Only honor same-origin relative paths in ?from= so the post-login redirect
   // can't be hijacked to an external site.
   const safeFrom = safeRedirect(searchParams.from);
@@ -32,9 +34,12 @@ export default async function SignInPage({
           </p>
         )}
         {searchParams.error === "verify" && (
-          <p className="mb-4 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-xs text-[var(--color-danger)]">
-            That verification link is invalid or expired.
-          </p>
+          <>
+            <p className="mb-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-xs text-[var(--color-danger)]">
+              That verification link is invalid or expired.
+            </p>
+            <ResendVerificationForm />
+          </>
         )}
 
         <EmailPasswordSignIn redirectTo={redirectTo} />

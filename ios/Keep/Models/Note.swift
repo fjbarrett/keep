@@ -21,17 +21,14 @@ struct Note: Identifiable, Codable, Equatable {
     var updatedDate: Date { Date(timeIntervalSince1970: updatedAt / 1000) }
 
     /// Display title, matching the web: infers from the body when the stored
-    /// title is missing, too long/wordy, or just equals the body (e.g. legacy
-    /// notes whose title is `enc:` ciphertext over a plaintext body).
+    /// title is missing, too long/wordy, or just equals the body.
     var displayTitle: String {
         NoteTitle.preview(title: title, body: body)
     }
 
-    /// Card caption, or nil when there's nothing readable to show — including a
-    /// legacy `enc:` summary we can't decrypt natively (showing the ciphertext
-    /// would read as garbage, so hide it like the web does when locked).
+    /// Card caption, or nil when there's nothing readable to show.
     var displaySummary: String? {
-        guard let summary, !summary.isEmpty, !summary.hasPrefix("enc:") else { return nil }
+        guard let summary, !summary.isEmpty else { return nil }
         return summary
     }
 }

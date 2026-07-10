@@ -1,23 +1,18 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { internalError, isUniqueViolation } from "@/lib/apiError";
 import { recordSecurityEvent } from "@/lib/audit";
+import { newShareToken } from "@/lib/shareToken";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function newShareToken() {
-  // 4 random bytes → 8-char uppercase hex (~4.3B keyspace). Short and pretty
-  // in URLs; existing longer tokens still work because they're opaque strings.
-  return crypto.randomBytes(4).toString("hex").toUpperCase();
-}
-
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,7 +25,7 @@ export async function POST(
          SET share_token = COALESCE(share_token, $1), updated_at = $2
          WHERE id = $3 AND user_id = $4
          RETURNING *`,
-      [token, Date.now(), params.id, session.user.id],
+      [token, Date.now(), id, session.user.id],
     );
     if (!rows[0]) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -38,7 +33,7 @@ export async function POST(
     void recordSecurityEvent("share.create", {
       userId: session.user.id,
       headers: req.headers,
-      meta: { noteId: params.id },
+      meta: { noteId: id },
     });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
@@ -48,8 +43,9 @@ export async function POST(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -61,7 +57,7 @@ export async function DELETE(
          SET share_token = NULL, updated_at = $1
          WHERE id = $2 AND user_id = $3
          RETURNING *`,
-      [Date.now(), params.id, session.user.id],
+      [Date.now(), id, session.user.id],
     );
     if (!rows[0]) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -69,7 +65,7 @@ export async function DELETE(
     void recordSecurityEvent("share.revoke", {
       userId: session.user.id,
       headers: req.headers,
-      meta: { noteId: params.id },
+      meta: { noteId: id },
     });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
@@ -80,8 +76,9 @@ export async function DELETE(
 // Set a custom (vanity) share token on a note.
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -98,7 +95,7 @@ export async function PUT(
     await ready();
     const taken = await pool().query(
       `SELECT id FROM notes WHERE share_token = $1 AND id <> $2`,
-      [token, params.id],
+      [token, id],
     );
     if (taken.rows[0]) {
       return NextResponse.json({ error: "That link is already taken." }, { status: 409 });
@@ -106,7 +103,7 @@ export async function PUT(
     const { rows } = await pool().query<NoteRow>(
       `UPDATE notes SET share_token = $1, updated_at = $2
          WHERE id = $3 AND user_id = $4 RETURNING *`,
-      [token, Date.now(), params.id, session.user.id],
+      [token, Date.now(), id, session.user.id],
     );
     if (!rows[0]) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -114,7 +111,7 @@ export async function PUT(
     void recordSecurityEvent("share.create", {
       userId: session.user.id,
       headers: req.headers,
-      meta: { noteId: params.id, custom: true },
+      meta: { noteId: id, custom: true },
     });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {

@@ -22,6 +22,7 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
       log.error("RESEND_API_KEY unset — cannot send verification email", {
         to: maskEmail(to),
       });
+      throw new Error("Email delivery is not configured");
     }
     return;
   }

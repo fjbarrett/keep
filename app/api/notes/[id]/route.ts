@@ -3,7 +3,12 @@ import { auth } from "@/auth";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { internalError } from "@/lib/apiError";
 import { isNoteColor } from "@/lib/noteColors";
-import { MAX_NOTE_BODY, tagsInvalid } from "@/lib/noteLimits";
+import {
+  MAX_NOTE_BODY,
+  MAX_NOTE_SUMMARY,
+  MAX_NOTE_TITLE,
+  tagsInvalid,
+} from "@/lib/noteLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,8 +28,9 @@ const ALLOWED = new Set([
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,8 +43,26 @@ export async function PATCH(
     if ("color" in patch && patch.color !== null && !isNoteColor(patch.color)) {
       return NextResponse.json({ error: "Unknown color." }, { status: 400 });
     }
+    if ("body" in patch && typeof patch.body !== "string") {
+      return NextResponse.json({ error: "Invalid note body." }, { status: 400 });
+    }
     if (typeof patch.body === "string" && patch.body.length > MAX_NOTE_BODY) {
       return NextResponse.json({ error: "Note is too large." }, { status: 413 });
+    }
+    if ("title" in patch && (typeof patch.title !== "string" || patch.title.length > MAX_NOTE_TITLE)) {
+      return NextResponse.json({ error: "Invalid title." }, { status: 400 });
+    }
+    if (
+      "summary" in patch &&
+      patch.summary !== null &&
+      (typeof patch.summary !== "string" || patch.summary.length > MAX_NOTE_SUMMARY)
+    ) {
+      return NextResponse.json({ error: "Invalid summary." }, { status: 400 });
+    }
+    for (const key of ["pinned", "archived", "trashed", "markdown", "highlight"]) {
+      if (key in patch && typeof patch[key] !== "boolean") {
+        return NextResponse.json({ error: `Invalid ${key} value.` }, { status: 400 });
+      }
     }
     if ("tags" in patch && tagsInvalid(patch.tags)) {
       return NextResponse.json({ error: "Invalid tags." }, { status: 400 });
@@ -58,14 +82,14 @@ export async function PATCH(
     values.push(Date.now());
     const idPlaceholder = `$${i++}`;
     const userPlaceholder = `$${i++}`;
-    values.push(params.id);
+    values.push(id);
     values.push(session.user.id);
 
     if (sets.length === 1) {
       // only updated_at — nothing meaningful changed
       const { rows } = await pool().query<NoteRow>(
         `SELECT * FROM notes WHERE id = $1 AND user_id = $2`,
-        [params.id, session.user.id],
+        [id, session.user.id],
       );
       if (!rows[0])
         return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -89,8 +113,9 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,7 +124,7 @@ export async function DELETE(
     await ready();
     await pool().query(
       `DELETE FROM notes WHERE id = $1 AND user_id = $2`,
-      [params.id, session.user.id],
+      [id, session.user.id],
     );
     return NextResponse.json({ ok: true });
   } catch (err) {

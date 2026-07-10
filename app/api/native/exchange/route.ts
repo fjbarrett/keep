@@ -12,7 +12,7 @@ const SESSION_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;
 
 // Trades the one-time code minted by /native/bridge for the session cookie, so
 // the native app's URLSession becomes authenticated. Public (it runs before a
-// session exists — see the allowlist in middleware.ts); the high-entropy,
+  // session exists — see the allowlist in proxy.ts); the high-entropy,
 // single-use code is the credential, so there is nothing to leak without it.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
