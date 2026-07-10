@@ -27,7 +27,7 @@ import {
 
 export type EditorTarget =
   | { mode: "new" }
-  | { mode: "edit"; note: Note; highlightQuery?: string }
+  | { mode: "edit"; note: Note; highlightQuery?: string; autoFocus?: boolean }
   | null;
 
 const ICON_BUTTON =
@@ -215,7 +215,9 @@ export function NoteEditor({
       //  - from search: focus and select the match so it's highlighted in view;
       //  - a new note: focus so the user can type immediately;
       //  - opening an existing note: focus with the caret at the very start,
-      //    ready to type without clicking in.
+      //    ready to type without clicking in — unless the open came from a
+      //    session restore or keyboard navigation (autoFocus: false), where
+      //    grabbing focus would swallow the shortcut keys.
       const ta = scrollRef.current?.querySelector("textarea");
       if (ta && query && matchAt >= 0) {
         // Focus with the caret at the match (no native selection — the yellow
@@ -228,8 +230,10 @@ export function NoteEditor({
         plainRef.current?.focus();
         if (ta) ta.selectionStart = ta.selectionEnd = 0;
       } else if (ta) {
-        ta.focus({ preventScroll: true });
-        ta.setSelectionRange(0, 0);
+        if (target.autoFocus !== false) {
+          ta.focus({ preventScroll: true });
+          ta.setSelectionRange(0, 0);
+        }
         if (scrollRef.current) scrollRef.current.scrollTop = 0;
       }
     }, 30);
