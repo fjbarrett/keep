@@ -56,6 +56,16 @@ actor KeepAPI {
         _ = try await request("/api/notes/\(id)", method: "DELETE", as: OkResponse.self)
     }
 
+    /// Mints a public share token (or returns the existing one — the server
+    /// COALESCEs) for the note.
+    func share(id: String) async throws -> Note {
+        try await request("/api/notes/\(id)/share", method: "POST", as: NoteResponse.self).note
+    }
+
+    func unshare(id: String) async throws -> Note {
+        try await request("/api/notes/\(id)/share", method: "DELETE", as: NoteResponse.self).note
+    }
+
     // MARK: - Plumbing
 
     private func request<T: Decodable>(

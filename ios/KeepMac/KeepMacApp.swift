@@ -68,6 +68,18 @@ struct NoteCommands: Commands {
 
             Divider()
 
+            Button("Copy Share Link") {
+                if let note { Task { await store.copyShareLink(note) } }
+            }
+            .disabled(note == nil || note?.trashed == true)
+
+            Button("Stop Sharing") {
+                if let note { Task { await store.unshare(note) } }
+            }
+            .disabled(note?.shareToken == nil)
+
+            Divider()
+
             Button("Move to Trash") {
                 if let note { Task { await store.trash(note) } }
             }
