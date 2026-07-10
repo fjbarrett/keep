@@ -1,4 +1,3 @@
-import CoreSpotlight
 import SwiftUI
 
 /// Three-column Mac layout: sidebar of filters, the note list, and the editor.
@@ -54,10 +53,10 @@ struct MacRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .keepNewNote)) { _ in
             startCompose()
         }
-        // Spotlight result tapped → open that note in the app.
-        .onContinueUserActivity(CSSearchableItemActionType) { activity in
-            guard let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String
-            else { return }
+        // Spotlight result tapped → open that note. Forwarded by the app
+        // delegate (see KeepMacApp); onContinueUserActivity never fires on macOS.
+        .onReceive(NotificationCenter.default.publisher(for: .keepOpenNote)) { note in
+            guard let id = note.object as? String else { return }
             composing = false
             filter = .all
             selection = id
