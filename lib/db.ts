@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 // CA certificate for verifying the Postgres server's TLS cert. DATABASE_CA_CERT
 // may be the PEM contents inline or a path to a .pem/.crt file. When set, the
 // connection verifies the server identity (rejectUnauthorized: true); when
-// unset we fall back to encrypt-but-don't-verify for self-signed localhost.
+// unset we fall back to TLS without certificate verification for self-signed localhost.
 export function caCert(): string | undefined {
   const raw = process.env.DATABASE_CA_CERT;
   if (!raw || !raw.trim()) return undefined;
@@ -43,8 +43,8 @@ function makePool(): Pool {
   const connectionString = url.toString();
 
   // With a CA cert configured, verify the server's identity (defends against a
-  // MITM on the DB connection). Without one, fall back to encrypt-but-don't-
-  // verify — the norm for a self-signed Postgres on the same host.
+  // MITM on the DB connection). Without one, use TLS without certificate
+  // verification — the norm for a self-signed Postgres on the same host.
   const ca = caCert();
   const ssl = ca
     ? { ca, rejectUnauthorized: true }
@@ -119,10 +119,6 @@ async function bootstrap(): Promise<void> {
       name       TEXT,
       updated_at BIGINT NOT NULL
     );
-    -- enc_salt stores a random 32-byte hex salt used by the client to derive
-    -- the AES-GCM encryption key via PBKDF2. NULL means encryption is disabled.
-    -- The salt is public; only the passphrase (never sent to the server) is secret.
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS enc_salt TEXT;
     -- Email + password auth (additive; Google users have a null password_hash).
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BIGINT;
@@ -171,13 +167,12 @@ async function bootstrap(): Promise<void> {
   `);
 }
 
-// Re-IDs any note that predates the 8-hex-char convention (old 12-char ids,
-// GK-import ids, …) to a fresh 8-char id.
-// Idempotent: once every id matches ^[0-9a-f]{8}$ this is a no-op. Each note is
-// migrated in its own transaction so a failure mid-run is safe and resumable.
+// Preserve existing 8-hex IDs, but migrate any other legacy shape to the current
+// 128-bit form. Each note is migrated in its own transaction so a failure
+// mid-run is safe and resumable.
 async function migrateNoteIds(): Promise<void> {
   const legacy = await pool().query<{ id: string }>(
-    `SELECT id FROM notes WHERE id !~ '^[0-9a-f]{8}$'`,
+    `SELECT id FROM notes WHERE id !~ '^([0-9a-f]{8}|[0-9a-f]{32})$'`,
   );
   if (legacy.rows.length === 0) return;
   const used = new Set(
@@ -204,7 +199,12 @@ async function migrateNoteIds(): Promise<void> {
 
 export function ready(): Promise<void> {
   if (!global.__keepReady) {
-    global.__keepReady = bootstrap().then(() => migrateNoteIds());
+    const attempt = bootstrap().then(() => migrateNoteIds());
+    const guarded = attempt.catch((error) => {
+      if (global.__keepReady === guarded) global.__keepReady = undefined;
+      throw error;
+    });
+    global.__keepReady = guarded;
   }
   return global.__keepReady;
 }
@@ -245,8 +245,7 @@ export function rowToNote(r: NoteRow) {
   };
 }
 
-// 8 lowercase hex chars from a UUID v4 — 32 bits, and parseInt(id, 16) maps it
-// to a single integer (MAC-address style, no separators).
+// UUID v4 without separators: 128 bits of URL-safe lowercase hex.
 export function newId(): string {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  return crypto.randomUUID().replace(/-/g, "");
 }

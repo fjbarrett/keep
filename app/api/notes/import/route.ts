@@ -13,8 +13,7 @@ export const dynamic = "force-dynamic";
 // note count and decompressed size to defend against zip bombs.
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
-// Deterministic 8-hex id so re-importing the same note dedupes via ON CONFLICT,
-// while still matching the app-wide 8-char id convention.
+// Deterministic 128-bit id so re-importing the same note dedupes via ON CONFLICT.
 function googleKeepImportId(userId: string, note: KeepImportNote) {
   return crypto
     .createHash("sha1")
@@ -24,7 +23,7 @@ function googleKeepImportId(userId: string, note: KeepImportNote) {
     .update("\0")
     .update(String(note.createdAt))
     .digest("hex")
-    .slice(0, 8);
+    .slice(0, 32);
 }
 
 export async function POST(req: Request) {

@@ -16,7 +16,7 @@ export function SearchOverlay({
 }: {
   query: string;
   setQuery: (value: string) => void;
-  searchRef: React.RefObject<HTMLInputElement>;
+  searchRef: React.RefObject<HTMLInputElement | null>;
   results: Note[];
   activeId: string | null;
   setActiveId: (id: string) => void;

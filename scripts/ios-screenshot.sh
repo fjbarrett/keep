@@ -5,9 +5,8 @@
 # ios/screenshots/ and refreshes ios/docs/screenshot.png (the image shown in
 # ios/README.md), so design changes are tracked over time.
 #
-# The iOS client has no native auth yet (see ios/README.md), so against an
-# unreachable/unauthed backend it renders its empty state — that's expected for
-# now; the point is to track the UI shell as it evolves.
+# Against an unreachable or unauthenticated backend the app renders its sign-in
+# state; the screenshot still tracks the native UI shell as it evolves.
 #
 # Requirements: Xcode + xcodegen + jq (all present on GitHub macOS runners).
 # Env overrides:

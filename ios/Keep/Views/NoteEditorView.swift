@@ -42,8 +42,9 @@ struct NoteEditorView: View {
         if let id = note?.id ?? createdId {
             await store.update(id, patch: ["body": value])
         } else if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            await store.create(body: value)
-            createdId = store.notes.first?.id
+            if let created = await store.create(body: value) {
+                createdId = created.id
+            }
         }
     }
 }

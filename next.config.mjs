@@ -1,5 +1,5 @@
 // Low-risk hardening headers applied to every response. The Content-Security-
-// Policy is set per-request in middleware.ts instead (it needs a fresh nonce
+// Policy is set per-request in proxy.ts instead (it needs a fresh nonce
 // for the inline bootstrap scripts, which a static header can't carry). HSTS is
 // handled by Caddy.
 const securityHeaders = [

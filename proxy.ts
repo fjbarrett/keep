@@ -1,9 +1,10 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
+import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
+import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
 
-// Use an edge-safe slice of the config here — the full auth.ts pulls in pg,
-// which can't run in the Edge runtime.
+// Use a DB-free slice of the config here so request interception stays cheap.
 const { auth } = NextAuth(authConfig);
 
 // Per-request Content-Security-Policy. script-src is locked to a fresh nonce
@@ -19,6 +20,10 @@ const { auth } = NextAuth(authConfig);
 // nothing interactive works locally. Both are gated to development; production
 // stays strict.
 const isDev = process.env.NODE_ENV !== "production";
+const publicShareRateLimit = createTokenBucketRateLimiter({
+  limit: 120,
+  windowMs: 60_000,
+});
 
 function buildCsp(nonce: string): string {
   return [
@@ -59,6 +64,16 @@ function withCsp(requestHeaders: Headers): NextResponse {
 // live in localStorage until the user signs in and the client syncs them.
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+
+  if (pathname.startsWith("/p/")) {
+    const limited = enforceIpRateLimit(
+      publicShareRateLimit,
+      req.headers,
+      "public-share",
+      "Too many shared-note requests. Try again shortly.",
+    );
+    if (limited) return limited;
+  }
 
   // /p/<token>.<ext> → /p/<token>/raw.txt — keeps the public-facing URL short
   // and lets the browser download against the extension Keep detected (.py,

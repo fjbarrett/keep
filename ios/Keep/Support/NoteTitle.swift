@@ -3,10 +3,7 @@ import Foundation
 /// Swift port of `lib/inferTitle.ts`, so the iOS app derives a note's display
 /// title exactly like the web. When the stored title is missing, too long, too
 /// wordy, or simply equals the body, the web infers a title from the body's
-/// first meaningful line instead of showing the raw stored value. Legacy notes
-/// from the shelved encryption feature land here: their `title` is `enc:`
-/// ciphertext (well over the length limit) while the body stayed plaintext, so
-/// matching the web means those notes get a real, body-derived title too.
+/// first meaningful line instead of showing the raw stored value.
 ///
 /// Kept in lockstep with the web logic and its `__tests__/inferTitle.test.ts`.
 enum NoteTitle {

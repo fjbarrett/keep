@@ -38,11 +38,16 @@ final class NotesStore {
         catch { handle(error) }
     }
 
-    func create(body: String) async {
+    @discardableResult
+    func create(body: String) async -> Note? {
         do {
             let note = try await api.create(body: body)
             notes.insert(note, at: 0)
-        } catch { handle(error) }
+            return note
+        } catch {
+            handle(error)
+            return nil
+        }
     }
 
     func update(_ id: String, patch: [String: Any]) async {

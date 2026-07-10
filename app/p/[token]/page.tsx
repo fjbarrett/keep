@@ -77,9 +77,10 @@ function isSameDay(a: number, b: number) {
 export default async function SharedNotePage({
   params,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }) {
-  const note = await loadShared(params.token);
+  const { token } = await params;
+  const note = await loadShared(token);
   if (!note) notFound();
 
   const title = displayTitle(note.title, note.body);
@@ -115,7 +116,7 @@ export default async function SharedNotePage({
               </h1>
               <div className="flex shrink-0 items-center gap-2 pt-1">
                 <a
-                  href={`/p/${params.token}.${downloadExt}`}
+                  href={`/p/${token}.${downloadExt}`}
                   download
                   aria-label={`Download as .${downloadExt}`}
                   title={`Download as .${downloadExt}`}

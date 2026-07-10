@@ -19,14 +19,14 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // CSP nonce minted per-request in middleware; both inline bootstrap scripts
-  // carry it so they survive the script-src nonce policy (see middleware.ts).
-  const nonce = headers().get("x-nonce") ?? undefined;
+  // CSP nonce minted per-request in proxy.ts; both inline bootstrap scripts
+  // carry it so they survive the script-src nonce policy.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"

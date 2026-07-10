@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import { searchableText } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
-import { useEncryption } from "@/lib/useEncryption";
-import { isEncrypted } from "@/lib/crypto";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { NotesGrid } from "@/components/NotesGrid";
@@ -13,7 +11,6 @@ import { Sidebar, NoteInfoModal } from "@/components/Sidebar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
-import { EncryptionUnlock } from "@/components/EncryptionUnlock";
 import { KeyboardIcon, PanelLeftIcon, PlusIcon, SettingsIcon, StackIcon, XIcon } from "@/components/Icons";
 
 function isEditableElement(target: EventTarget | null) {
@@ -28,8 +25,10 @@ function isEditableElement(target: EventTarget | null) {
 
 export function NotesView({
   initialNoteId,
+  ownerId,
 }: {
   initialNoteId: string | null;
+  ownerId: string | null;
 }) {
   const {
     notes,
@@ -52,18 +51,7 @@ export function NotesView({
     unshare,
     setShareToken,
     syncStatus,
-  } = useNotes();
-
-  // Encryption setup/disable is on ice while its decrypt bugs are worked out
-  // (the Settings entry point is removed). The unlock + decrypt path stays so
-  // any notes already stored as "enc:" ciphertext remain readable.
-  const { status: encStatus, unlock, disableEncryption, encrypt, decrypt } = useEncryption();
-  const [decryptedState, setDecryptedState] = useState<Note[]>([]);
-  // When encryption is unlocked we work off the decrypted copies; otherwise the
-  // raw notes are already usable (plaintext, or ciphertext we can't read yet).
-  // Deriving rather than mirroring into state avoids a one-render lag that used
-  // to briefly deselect a freshly created note.
-  const decryptedNotes = encStatus === "unlocked" ? decryptedState : notes;
+  } = useNotes(ownerId);
 
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -115,7 +103,7 @@ export function NotesView({
 
   const filtered = useMemo(() => {
     const q = searchOpen ? query.trim() : "";
-    const viewFiltered = decryptedNotes
+    const viewFiltered = notes
       .filter((n) => {
         if (viewMode === "trash") return n.trashed;
         if (viewMode === "archive") return n.archived && !n.trashed;
@@ -147,7 +135,7 @@ export function NotesView({
     const seen = new Set(ranked.map((n) => n.id));
     // Keep any containing note Fuse didn't rank (e.g. a match only in the body).
     return [...ranked, ...contains.filter((n) => !seen.has(n.id))];
-  }, [decryptedNotes, query, searchOpen, viewMode]);
+  }, [notes, query, searchOpen, viewMode]);
 
   const visibleNotes = filtered;
   const activeNote =
@@ -231,30 +219,6 @@ export function NotesView({
     downloadBlob("keep-texts.zip", content, "application/zip");
   }
 
-  // Decrypt all note bodies once the key is unlocked. Notes without an "enc:"
-  // prefix pass through unchanged (legacy or unencrypted notes). When not
-  // unlocked, decryptedNotes derives straight from `notes` (see above).
-  useEffect(() => {
-    if (encStatus !== "unlocked") return;
-    let cancelled = false;
-    Promise.all(notes.map(async (n) => ({ ...n, body: await decrypt(n.body) }))).then(
-      (result) => { if (!cancelled) setDecryptedState(result); },
-    );
-    return () => { cancelled = true; };
-  }, [notes, decrypt, encStatus]);
-
-  // Wraps the raw update call to encrypt the body before it leaves the browser.
-  const secureUpdate = useCallback(
-    (id: string, patch: Partial<Note>) => {
-      if (patch.body === undefined || encStatus !== "unlocked" || isEncrypted(patch.body)) {
-        update(id, patch);
-        return;
-      }
-      encrypt(patch.body).then((encrypted) => update(id, { ...patch, body: encrypted }));
-    },
-    [encStatus, encrypt, update],
-  );
-
   useEffect(() => {
     setBannerDismissed(
       sessionStorage.getItem("keep.guestBannerDismissed") === "1",
@@ -286,7 +250,7 @@ export function NotesView({
     // Keep the blank restoring shell up until notes have loaded; only then
     // decide whether the deep-linked note opens or we fall back to the grid.
     if (!hydrated) return;
-    const note = decryptedNotes.find((n) => n.id === initialNoteId);
+    const note = notes.find((n) => n.id === initialNoteId);
     if (!note && notes.length === 0) return;
     didRestoreFromUrlRef.current = true;
     setRestoringFromUrl(false);
@@ -294,7 +258,7 @@ export function NotesView({
       setActiveNoteId(note.id);
       setTarget({ mode: "edit", note });
     }
-  }, [hydrated, decryptedNotes, notes.length, initialNoteId]);
+  }, [hydrated, notes, initialNoteId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -447,7 +411,7 @@ export function NotesView({
     target?.mode === "edit"
       ? {
           mode: "edit",
-          note: decryptedNotes.find((n) => n.id === target.note.id) ?? target.note,
+          note: notes.find((n) => n.id === target.note.id) ?? target.note,
           highlightQuery: target.highlightQuery,
         }
       : target;
@@ -516,7 +480,7 @@ export function NotesView({
             onClose={() => setTarget(null)}
             onBack={() => setTarget(null)}
             onCreate={handleCreate}
-            onUpdate={secureUpdate}
+            onUpdate={update}
             onTrash={trash}
             onRestore={restore}
             onRemove={remove}
@@ -623,10 +587,6 @@ export function NotesView({
           onGuestExport={handleGuestExport}
           onClose={() => setSettingsOpen(false)}
         />
-      )}
-
-      {encStatus === "locked" && (
-        <EncryptionUnlock onUnlock={unlock} onReset={disableEncryption} />
       )}
 
       {shortcutsOpen && (

@@ -28,7 +28,7 @@ export function SettingsPane({
   onClose,
 }: {
   importing: boolean;
-  importRef: React.RefObject<HTMLInputElement>;
+  importRef: React.RefObject<HTMLInputElement | null>;
   notes: Note[];
   isGuest: boolean;
   counts: { archive: number; trash: number };
@@ -36,7 +36,7 @@ export function SettingsPane({
   onOpenTrash: () => void;
   onImportClick: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  importTextsRef: React.RefObject<HTMLInputElement>;
+  importTextsRef: React.RefObject<HTMLInputElement | null>;
   onImportTextsClick: () => void;
   onImportTexts: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onGuestExport: () => void;

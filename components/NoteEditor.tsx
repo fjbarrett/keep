@@ -74,7 +74,7 @@ export function NoteEditor({
   onClose: () => void;
   onBack?: () => void;
   onCreate: (n: Partial<Note>) => Promise<Note | null>;
-  onUpdate: (id: string, patch: Partial<Note>) => void;
+  onUpdate: (id: string, patch: Partial<Note>) => Promise<void>;
   onTrash: (id: string) => void;
   onRestore: (id: string) => void;
   onRemove: (id: string) => void;
@@ -94,6 +94,7 @@ export function NoteEditor({
   const [actionsOpen, setActionsOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [titleEditing, setTitleEditing] = useState(false);
+  const cancelTitleEditRef = useRef(false);
   const bodyRef = useRef<HighlightedEditorHandle>(null);
   const [highlight, setHighlight] = useState(false);
   const plainRef = useRef<HTMLTextAreaElement>(null);
@@ -103,6 +104,49 @@ export function NoteEditor({
   useAutohideScrollbar(scrollRef);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
+  const revisionRef = useRef(0);
+  const mountedRef = useRef(true);
+  const draftRef = useRef({ body, pinned, archived, markdown: previewOpen, highlight });
+  draftRef.current = { body, pinned, archived, markdown: previewOpen, highlight };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const startCreate = useCallback(
+    async (
+      draft: {
+        body: string;
+        pinned: boolean;
+        archived: boolean;
+        markdown: boolean;
+        highlight: boolean;
+      },
+      submittedRevision: number,
+    ) => {
+      if (creatingRef.current) return;
+      creatingRef.current = true;
+      try {
+        const note = await onCreate(draft);
+        if (!note) return;
+        createdIdRef.current = note.id;
+
+        const latestRevision = revisionRef.current;
+        if (latestRevision !== submittedRevision) {
+          await onUpdate(note.id, draftRef.current);
+          if (mountedRef.current && revisionRef.current === latestRevision) {
+            setDirty(false);
+          }
+        } else if (mountedRef.current) {
+          setDirty(false);
+        }
+      } finally {
+        creatingRef.current = false;
+      }
+    },
+    [onCreate, onUpdate],
+  );
   // Search highlighting: when a note is opened from search, paint a yellow box
   // on every match and let Tab cycle through them (see the plain-editor overlay).
   const [findQuery, setFindQuery] = useState<string | null>(null);
@@ -136,11 +180,13 @@ export function NoteEditor({
       setBody(target.note.body);
       setPinned(target.note.pinned);
       setArchived(target.note.archived);
+      setPreviewOpen(Boolean(target.note.markdown));
       setHighlight(Boolean(target.note.highlight));
     } else {
       setBody("");
       setPinned(false);
       setArchived(false);
+      setPreviewOpen(false);
       setHighlight(false);
     }
     setDirty(false);
@@ -150,6 +196,7 @@ export function NoteEditor({
     setTitleEditing(false);
     createdIdRef.current = null;
     creatingRef.current = false;
+    revisionRef.current = 0;
     const query =
       target.mode === "edit" ? target.highlightQuery?.trim() : undefined;
     const matchAt =
@@ -225,11 +272,11 @@ export function NoteEditor({
     switchFlipRef.current = false;
     const el = panelRef.current;
     if (!el) return;
-    el.getAnimations().forEach((a) => {
+    el.getAnimations?.().forEach((a) => {
       if (a.id === "panel-flip") a.cancel();
     });
     // The incoming text fades up from the background while the card resizes.
-    scrollRef.current?.animate(
+    scrollRef.current?.animate?.(
       [{ opacity: 0 }, { opacity: 0, offset: 0.3 }, { opacity: 1 }],
       { duration: 300, easing: "ease-out" },
     );
@@ -238,6 +285,10 @@ export function NoteEditor({
     const prev = prevPanelHeightRef.current;
     const next = el.offsetHeight;
     if (!firstOpen && prev > 0 && Math.abs(prev - next) > 2) {
+      if (!el.animate) {
+        prevPanelHeightRef.current = next;
+        return;
+      }
       const anim = el.animate(
         [{ height: `${prev}px` }, { height: `${next}px` }],
         { duration: 260, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
@@ -254,7 +305,7 @@ export function NoteEditor({
   useLayoutEffect(() => {
     const el = panelRef.current;
     if (!el) return;
-    if (el.getAnimations().some((a) => a.id === "panel-flip")) return;
+    if (el.getAnimations?.().some((a) => a.id === "panel-flip")) return;
     prevPanelHeightRef.current = el.offsetHeight;
   });
 
@@ -308,37 +359,41 @@ export function NoteEditor({
   useEffect(() => {
     if (!target || !dirty) return;
     if (target.mode === "edit") {
+      const submittedRevision = revisionRef.current;
       const timer = window.setTimeout(() => {
-        onUpdate(target.note.id, { body, pinned, archived, highlight });
-        setDirty(false);
+        void Promise.resolve(onUpdate(target.note.id, draftRef.current)).then(() => {
+          if (mountedRef.current && revisionRef.current === submittedRevision) {
+            setDirty(false);
+          }
+        });
       }, 550);
       return () => window.clearTimeout(timer);
     }
     if (target.mode === "new") {
       if (createdIdRef.current) {
         const id = createdIdRef.current;
+        const submittedRevision = revisionRef.current;
         const timer = window.setTimeout(() => {
-          onUpdate(id, { body, pinned, archived, highlight });
-          setDirty(false);
+          void Promise.resolve(onUpdate(id, draftRef.current)).then(() => {
+            if (mountedRef.current && revisionRef.current === submittedRevision) {
+              setDirty(false);
+            }
+          });
         }, 550);
         return () => window.clearTimeout(timer);
       }
       if (!body.trim() || creatingRef.current) return;
-      const timer = window.setTimeout(async () => {
+      const submittedRevision = revisionRef.current;
+      const timer = window.setTimeout(() => {
         if (createdIdRef.current || creatingRef.current) return;
-        creatingRef.current = true;
-        const note = await onCreate({ body, pinned, archived, highlight });
-        creatingRef.current = false;
-        if (note) {
-          createdIdRef.current = note.id;
-          setDirty(false);
-        }
+        void startCreate(draftRef.current, submittedRevision);
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, highlight, onCreate, onUpdate, pinned, target]);
+  }, [archived, body, dirty, highlight, onUpdate, pinned, previewOpen, startCreate, target]);
 
   function markBody(value: string) {
+    revisionRef.current += 1;
     setBody(value);
     setDirty(true);
     // Editing ends the search session (matches would shift out from under it).
@@ -346,12 +401,28 @@ export function NoteEditor({
   }
 
   function togglePinned() {
+    revisionRef.current += 1;
     setPinned((value) => !value);
     setDirty(true);
   }
 
   function toggleArchived() {
+    revisionRef.current += 1;
     setArchived((value) => !value);
+    setDirty(true);
+  }
+
+  function toggleHighlightMode() {
+    revisionRef.current += 1;
+    setHighlight((value) => !value);
+    setPreviewOpen(false);
+    setDirty(true);
+  }
+
+  function toggleMarkdownPreview() {
+    revisionRef.current += 1;
+    setPreviewOpen((value) => !value);
+    setHighlight(false);
     setDirty(true);
   }
 
@@ -451,19 +522,17 @@ export function NoteEditor({
   }
 
   function flushEdit() {
-    if (!target || target.mode !== "edit") return;
-    onUpdate(target.note.id, { body, pinned, archived, highlight });
-    setDirty(false);
+    if (!target || target.mode !== "edit" || !dirty) return;
+    void onUpdate(target.note.id, draftRef.current);
   }
 
   function close() {
     if (!target) return;
     if (target.mode === "new") {
-      if (createdIdRef.current) {
-        onUpdate(createdIdRef.current, { body, pinned, archived, highlight });
+      if (createdIdRef.current && dirty) {
+        void onUpdate(createdIdRef.current, draftRef.current);
       } else if (body.trim() && !creatingRef.current) {
-        creatingRef.current = true;
-        onCreate({ body, pinned, archived, highlight });
+        void startCreate(draftRef.current, revisionRef.current);
       }
     } else {
       flushEdit();
@@ -519,18 +588,21 @@ export function NoteEditor({
           <input
             value={titleEditing ? titleDraft : shownTitle}
             onFocus={() => {
+              cancelTitleEditRef.current = false;
               setTitleEditing(true);
               setTitleDraft(shownTitle);
             }}
             onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={() => {
               setTitleEditing(false);
-              commitTitle();
+              if (!cancelTitleEditRef.current) commitTitle();
+              cancelTitleEditRef.current = false;
             }}
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === "Enter") e.currentTarget.blur();
               if (e.key === "Escape") {
+                cancelTitleEditRef.current = true;
                 setTitleDraft(shownTitle);
                 e.currentTarget.blur();
               }
@@ -557,7 +629,7 @@ export function NoteEditor({
           <>
           <button
             type="button"
-            onClick={() => { setHighlight((v) => !v); setPreviewOpen(false); setDirty(true); }}
+            onClick={toggleHighlightMode}
             className={iconToggle(highlight)}
             title={highlight ? "Syntax highlighting on" : "Syntax highlighting"}
             aria-label="Syntax highlighting"
@@ -569,7 +641,7 @@ export function NoteEditor({
           </button>
           <button
             type="button"
-            onClick={() => { setPreviewOpen((v) => !v); setHighlight(false); setDirty(true); }}
+            onClick={toggleMarkdownPreview}
             className={iconToggle(previewOpen)}
             title={previewOpen ? "Edit" : "Preview markdown"}
             aria-label={previewOpen ? "Edit" : "Preview markdown"}

@@ -92,8 +92,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && token.sub) session.user.id = token.sub;
       return session;
     },
-    // Mirror Google users into our `users` table so email/password sign-in and
-    // per-account settings (enc_salt) resolve back to the same account.
+    // Mirror Google users into our `users` table so email/password sign-in
+    // resolves back to the same account.
     async signIn({ user, account }) {
       if (account?.provider !== "google") return true;
       const id = account.providerAccountId ?? user.id;

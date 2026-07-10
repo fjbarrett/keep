@@ -121,6 +121,38 @@ describe("NoteEditor autosave", () => {
     );
   });
 
+  it("flushes text typed while the initial create request is in flight", async () => {
+    let finishCreate!: (note: Note) => void;
+    const onCreate = vi.fn(
+      () => new Promise<Note>((resolve) => { finishCreate = resolve; }),
+    );
+    const onUpdate = vi.fn(async () => {});
+    render(
+      createElement(NoteEditor, {
+        target: { mode: "new" },
+        onClose: vi.fn(),
+        onCreate,
+        onUpdate,
+        onTrash: vi.fn(),
+        onRestore: vi.fn(),
+        onRemove: vi.fn(),
+        presentation: "panel" as const,
+      }),
+    );
+
+    await typeBody("first snapshot");
+    await advance(600);
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ body: "first snapshot" }));
+
+    await typeBody("newer text typed during save");
+    await act(async () => finishCreate(makeNote({ id: "CREATED" })));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      "CREATED",
+      expect.objectContaining({ body: "newer text typed during save" }),
+    );
+  });
+
   it("debounces updates to an existing note", async () => {
     const note = makeNote({ id: "N42", body: "old" });
     const props = renderEditor({ mode: "edit", note });
@@ -149,5 +181,27 @@ describe("NoteEditor autosave", () => {
       expect.objectContaining({ body: "unsaved change" }),
     );
     expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("does not mark an unchanged note as edited when it closes", () => {
+    const props = renderEditor({ mode: "edit", note: makeNote({ id: "N42", body: "old" }) });
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(props.onUpdate).not.toHaveBeenCalled();
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("persists markdown preview mode per note", async () => {
+    const props = renderEditor({ mode: "edit", note: makeNote({ id: "N42", body: "# Heading" }) });
+
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview markdown" }));
+    await advance(600);
+
+    expect(props.onUpdate).toHaveBeenCalledWith(
+      "N42",
+      expect.objectContaining({ markdown: true, highlight: false }),
+    );
   });
 });

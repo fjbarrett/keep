@@ -107,8 +107,8 @@ gh variable set IOS_SCREENSHOT --body true
 
 ## Not done yet (intentionally)
 
-- Offline cache / sync, search, markdown rendering, color picker, version
-  history, E2E encryption — all present on web, not yet ported.
+- Offline cache / sync, search, markdown rendering, color picker, and version
+  history.
 - App icon / launch assets.
 
 ## Roadmap (suggested)
