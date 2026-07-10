@@ -3,7 +3,8 @@ import SwiftUI
 /// The editor pane. Autosaves the body (debounced ~0.6s, like the web), and a
 /// new note (`note == nil`) is created on first non-empty save then patched —
 /// mirroring the web/iOS create→edit bridge. Pin / archive / trash live in the
-/// toolbar.
+/// toolbar; the title is renamed inline, committing on Enter or focus loss
+/// like the web editor's header field.
 struct MacNoteDetail: View {
     @Environment(NotesStore.self) private var store
 
@@ -11,8 +12,12 @@ struct MacNoteDetail: View {
     var onCreated: (String) -> Void = { _ in }
 
     @State private var text = ""
+    @State private var title = ""
+    @FocusState private var titleFocused: Bool
     @State private var createdId: String?
     @State private var saveTask: Task<Void, Never>?
+
+    private let titleCharLimit = 36
 
     /// The live note (existing, or the one we just created), pulled fresh from
     /// the store so toolbar state (pin/archive) reflects the latest.
@@ -23,14 +28,25 @@ struct MacNoteDetail: View {
     }
 
     var body: some View {
-        TextEditor(text: $text)
-            .font(.body)
-            .textEditorStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .padding(12)
-            .navigationTitle(current?.displayTitle ?? "New Note")
-            .onAppear { text = note?.body ?? "" }
-            .onChange(of: text) { _, value in scheduleSave(value) }
+        VStack(alignment: .leading, spacing: 0) {
+            if let n = current {
+                titleField(for: n)
+            }
+            TextEditor(text: $text)
+                .font(.body)
+                .textEditorStyle(.plain)
+                .scrollContentBackground(.hidden)
+        }
+        .padding(12)
+        .navigationTitle(current?.displayTitle ?? "New Note")
+        .onAppear {
+            text = note?.body ?? ""
+            title = current?.displayTitle ?? ""
+        }
+        .onChange(of: current?.id) { _, _ in
+            if !titleFocused { title = current?.displayTitle ?? "" }
+        }
+        .onChange(of: text) { _, value in scheduleSave(value) }
             .toolbar {
                 if let n = current {
                     ToolbarItemGroup {
@@ -59,6 +75,44 @@ struct MacNoteDetail: View {
                     }
                 }
             }
+    }
+
+    @ViewBuilder
+    private func titleField(for n: Note) -> some View {
+        if n.trashed {
+            Text(n.displayTitle)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.bottom, 8)
+        } else {
+            TextField("Title", text: $title)
+                .font(.title3.weight(.semibold))
+                .textFieldStyle(.plain)
+                .focused($titleFocused)
+                .onSubmit { titleFocused = false }
+                .onExitCommand {
+                    title = n.displayTitle
+                    titleFocused = false
+                }
+                .onChange(of: title) { _, value in
+                    if value.count > titleCharLimit {
+                        title = String(value.prefix(titleCharLimit))
+                    }
+                }
+                .onChange(of: titleFocused) { _, focused in
+                    if !focused { commitTitle(for: n) }
+                }
+                .padding(.bottom, 8)
+        }
+    }
+
+    private func commitTitle(for n: Note) {
+        let trimmed = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != n.displayTitle else {
+            title = n.displayTitle
+            return
+        }
+        Task { await store.update(n.id, patch: ["title": trimmed]) }
     }
 
     private func scheduleSave(_ value: String) {
