@@ -256,7 +256,9 @@ export function NotesView({
     setRestoringFromUrl(false);
     if (note) {
       setActiveNoteId(note.id);
-      setTarget({ mode: "edit", note });
+      // Restoring a session isn't a request to type: leave focus out of the
+      // editor so the keyboard shortcuts stay live after a reload.
+      setTarget({ mode: "edit", note, autoFocus: false });
     }
   }, [hydrated, notes, initialNoteId]);
 
@@ -289,7 +291,13 @@ export function NotesView({
       );
       const nextIndex =
         (currentIndex + offset + visibleNotes.length) % visibleNotes.length;
-      setActiveNoteId(visibleNotes[nextIndex].id);
+      const next = visibleNotes[nextIndex];
+      setActiveNoteId(next.id);
+      // With the editor pane open, j/k steps through notes in place. Keep
+      // focus out of the text so the next keystroke still navigates.
+      if (target?.mode === "edit") {
+        setTarget({ mode: "edit", note: next, autoFocus: false });
+      }
     }
 
     function onKeyDown(event: KeyboardEvent) {
@@ -318,6 +326,26 @@ export function NotesView({
         return;
       }
 
+      // Note actions that stay usable while writing — the same combos as the
+      // Mac app's Note menu. They act on the open note, falling back to the
+      // list selection when nothing is open.
+      const comboNote =
+        target?.mode === "edit"
+          ? (notes.find((n) => n.id === target.note.id) ?? target.note)
+          : target
+            ? null
+            : activeNote;
+      if (event.metaKey && event.shiftKey && key === "p") {
+        event.preventDefault();
+        if (comboNote) togglePin(comboNote.id);
+        return;
+      }
+      if (event.metaKey && event.ctrlKey && key === "a") {
+        event.preventDefault();
+        if (comboNote) toggleArchive(comboNote.id);
+        return;
+      }
+
       if (event.metaKey || event.ctrlKey || event.altKey) return;
 
       // Bare "?" opens the sheet whenever the user isn't typing in a field.
@@ -327,30 +355,33 @@ export function NotesView({
         return;
       }
 
-      if (typing || target) {
-        if (searchFocused && event.key === "ArrowDown") {
+      if (searchFocused) {
+        if (event.key === "ArrowDown") {
           event.preventDefault();
           selectByOffset(1);
           return;
         }
 
-        if (searchFocused && event.key === "ArrowUp") {
+        if (event.key === "ArrowUp") {
           event.preventDefault();
           selectByOffset(-1);
           return;
         }
 
-        if (searchFocused && event.key === "Enter") {
+        if (event.key === "Enter") {
           event.preventDefault();
           openNote(activeNote ?? visibleNotes[0] ?? null, query);
           return;
         }
 
-        if (event.key === "Escape" && searchFocused) {
-          closeSearch();
-        }
+        if (event.key === "Escape") closeSearch();
         return;
       }
+
+      if (typing) return;
+
+      // Composing a new note: nothing below should fire mid-compose.
+      if (target?.mode === "new") return;
 
       if (event.key === "/" || key === "f") {
         event.preventDefault();
@@ -399,13 +430,16 @@ export function NotesView({
           if (confirm("Permanently delete this text?")) remove(activeNote.id);
         } else {
           trash(activeNote.id);
+          if (target?.mode === "edit" && target.note.id === activeNote.id) {
+            setTarget(null);
+          }
         }
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeNote, activeNoteId, query, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
+  }, [activeNote, activeNoteId, notes, query, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
 
   const mainTarget: EditorTarget =
     target?.mode === "edit"
@@ -413,6 +447,7 @@ export function NotesView({
           mode: "edit",
           note: notes.find((n) => n.id === target.note.id) ?? target.note,
           highlightQuery: target.highlightQuery,
+          autoFocus: target.autoFocus,
         }
       : target;
 
