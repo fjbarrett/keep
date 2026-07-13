@@ -13,17 +13,23 @@ function scryptAsync(
   });
 }
 
-// scrypt parameters. N is the CPU/memory cost (2^14); encode them in the stored
-// string so they can be tuned later without breaking existing hashes.
-const N = 16384;
+// OWASP-equivalent scrypt profile: 32 MiB with three parallel rounds. Parameters
+// stay encoded in the hash so older rows can be verified and upgraded on login.
+const N = 32768;
 const R = 8;
-const P = 1;
+const P = 3;
 const KEYLEN = 64;
+const MAXMEM = 128 * 1024 * 1024;
 
 /** Returns `scrypt$N$r$p$saltB64$hashB64`. */
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const derived = (await scryptAsync(password, salt, KEYLEN, { N, r: R, p: P })) as Buffer;
+  const derived = (await scryptAsync(password, salt, KEYLEN, {
+    N,
+    r: R,
+    p: P,
+    maxmem: MAXMEM,
+  })) as Buffer;
   return `scrypt$${N}$${R}$${P}$${salt.toString("base64")}$${derived.toString("base64")}`;
 }
 
@@ -33,16 +39,34 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const [, n, r, p, saltB64, hashB64] = parts;
   const salt = Buffer.from(saltB64, "base64");
   const expected = Buffer.from(hashB64, "base64");
+  const params = { N: Number(n), r: Number(r), p: Number(p) };
+  if (
+    !Number.isInteger(params.N) ||
+    params.N < 16384 ||
+    params.N > 65536 ||
+    (params.N & (params.N - 1)) !== 0 ||
+    params.r !== R ||
+    !Number.isInteger(params.p) ||
+    params.p < 1 ||
+    params.p > 8 ||
+    salt.length < 16 ||
+    expected.length !== KEYLEN
+  ) return false;
   try {
     const derived = (await scryptAsync(password, salt, expected.length, {
-      N: Number(n),
-      r: Number(r),
-      p: Number(p),
+      ...params,
+      maxmem: MAXMEM,
     })) as Buffer;
     return expected.length === derived.length && timingSafeEqual(expected, derived);
   } catch {
     return false;
   }
+}
+
+export function passwordNeedsRehash(stored: string): boolean {
+  const parts = stored.split("$");
+  if (parts.length !== 6 || parts[0] !== "scrypt") return true;
+  return Number(parts[1]) !== N || Number(parts[2]) !== R || Number(parts[3]) !== P;
 }
 
 /** Minimal strength check; keep it permissive enough for passphrases. */

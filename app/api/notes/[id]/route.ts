@@ -9,6 +9,8 @@ import {
   MAX_NOTE_TITLE,
   tagsInvalid,
 } from "@/lib/noteLimits";
+import { readJsonBody, requestBodyError } from "@/lib/requestBody";
+import { deletePrivateFile } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ const ALLOWED = new Set([
   "highlight",
   "tags",
 ]);
+const MAX_NOTE_REQUEST_BYTES = MAX_NOTE_BODY + 16 * 1024;
 
 export async function PATCH(
   req: Request,
@@ -37,7 +40,11 @@ export async function PATCH(
   }
   try {
     await ready();
-    const patch = await req.json();
+    const parsed = await readJsonBody(req, MAX_NOTE_REQUEST_BYTES);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Invalid note update." }, { status: 400 });
+    }
+    const patch = parsed as Record<string, unknown>;
 
     // Validate the few client-controlled fields before they reach SQL.
     if ("color" in patch && patch.color !== null && !isNoteColor(patch.color)) {
@@ -107,6 +114,8 @@ export async function PATCH(
     }
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
+    const tooLarge = requestBodyError(err, "Note is too large.");
+    if (tooLarge) return tooLarge;
     return internalError("notes:item", err);
   }
 }
@@ -122,10 +131,29 @@ export async function DELETE(
   }
   try {
     await ready();
-    await pool().query(
-      `DELETE FROM notes WHERE id = $1 AND user_id = $2`,
+    const { rows } = await pool().query<{ body: string }>(
+      `DELETE FROM notes WHERE id = $1 AND user_id = $2 RETURNING body`,
       [id, session.user.id],
     );
+    const uploadIds = new Set(
+      [...(rows[0]?.body ?? "").matchAll(/\/api\/uploads\/([0-9a-f]{32})/g)]
+        .map((match) => match[1]),
+    );
+    for (const uploadId of uploadIds) {
+      const reference = `/api/uploads/${uploadId}`;
+      const stillUsed = await pool().query(
+        `SELECT 1 FROM notes WHERE user_id = $1 AND position($2 in body) > 0 LIMIT 1`,
+        [session.user.id, reference],
+      );
+      if (stillUsed.rows[0]) continue;
+      const removed = await pool().query<{ storage_key: string }>(
+        `DELETE FROM uploads WHERE id = $1 AND user_id = $2 RETURNING storage_key`,
+        [uploadId, session.user.id],
+      );
+      if (removed.rows[0]) {
+        await deletePrivateFile(removed.rows[0].storage_key).catch(() => {});
+      }
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     return internalError("notes:item", err);

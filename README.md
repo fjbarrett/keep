@@ -19,7 +19,7 @@ Postgres, with a guest mode that keeps notes in the browser until sign-in.
 ## Features
 
 - Debounced autosave for new and existing notes
-- LLM-generated titles and summaries through Anthropic, with a local fallback
+- Local title/summary inference, with explicit opt-in Anthropic enhancement
 - Pin, archive, trash, restore, and delete forever
 - Tags, color labels, and full-text search across title and body
 - Keyboard navigation and a searchable command-style overlay
@@ -30,26 +30,31 @@ Postgres, with a guest mode that keeps notes in the browser until sign-in.
 - Public share links with 128-bit bearer tokens, vanity links, and revocation
 - Google Keep Takeout, plain-text, Markdown, ZIP, and PDF import
 - Plain-text or ZIP export
-- Public image uploads through S3-compatible storage or Vercel Blob
+- Private, authenticated image uploads through S3-compatible storage or Vercel Blob
 - Anonymous aggregate analytics and a private owner dashboard
 
 Offline support protects edits made while the application is already open.
 For privacy, personalized HTML and public shared notes are never stored by the
-service worker, so a full page reload still requires a network connection.
+service worker, so a full page reload still requires a network connection. An
+explicit sign-out removes that account's IndexedDB cache and queued mutations.
 
 ## Getting started
 
 ```bash
 npm install
 cp .env.example .env.local
-# Set AUTH_SECRET and DATABASE_URL.
+# Set AUTH_SECRET, AUTH_URL, and DATABASE_URL.
 # Add Google, Resend, Anthropic, and object-storage settings as needed.
 npm run dev
 ```
 
-The idempotent bootstrap in `lib/db.ts` creates the notes, users, native-auth,
-audit, and analytics tables on first use. A transient bootstrap failure is
-retryable on the next request.
+The idempotent bootstrap in `lib/db.ts` creates the notes, users, uploads,
+native-auth, audit, and analytics tables on first use. A transient bootstrap
+failure is retryable on the next request.
+
+AI metadata is disabled by default. Setting `AI_METADATA_ENABLED=true` and an
+Anthropic key sends up to the first 8 KiB of authenticated note text to
+Anthropic for a title and summary. Guest text always stays in the browser.
 
 Useful checks:
 
@@ -65,6 +70,7 @@ npm audit
 ```text
 app/
   api/notes/             Authenticated CRUD, import/export, titles, sharing
+  api/uploads/           Owner/share-authorized private image delivery
   api/auth/              Auth.js plus registration and email verification
   note/[noteId]/         Stable note deep links
   p/[token]/             Public shared-note pages
@@ -86,12 +92,27 @@ proxy.ts                 Auth gate, CSP, rewrites, and public rate limits
 ## Deployment
 
 Production is self-hosted behind Caddy. The GitHub Actions workflow runs the
-test, typecheck, and production-build gates before deploying the latest `main`
-commit. `scripts/deploy.sh` provides the equivalent manual flow and refreshes
-the project screenshot afterward.
+test, typecheck, audit, and production-build gates before deploying the latest
+`main` commit. The deploy environment requires a pinned `DEPLOY_KNOWN_HOSTS`
+entry in addition to the host and SSH key. `scripts/deploy.sh` provides the
+equivalent manual flow and refreshes the project screenshot afterward.
 
 The app can also run on other Node.js hosts when the same environment variables
 and a Postgres database are available.
+
+## Security and privacy
+
+Keep's server can read note content: notes are stored as plaintext Postgres
+columns so server search, export, and optional AI metadata work. Browser guest
+notes are plaintext localStorage; signed-in offline copies are plaintext
+IndexedDB scoped by account. The native clients put titles, summaries, and tags
+in Spotlight, while full note bodies stay out of the system index.
+
+Random public share links use 128-bit tokens. Vanity tokens must be at least 16
+characters and should still be treated as public URLs. Uploaded images remain
+private objects and are served only to their owner or through a note that
+currently has a valid share token. See [SECURITY.md](./SECURITY.md) for the
+deployment checklist and reporting process.
 
 ## License
 

@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { pool, ready } from "@/lib/db";
-import { verifyPassword } from "@/lib/password";
+import { hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
 import { recordSecurityEvent } from "@/lib/audit";
 import { maskEmail } from "@/lib/logger";
 import { clientIpFromHeaders } from "@/lib/rateLimit";
@@ -39,8 +39,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: string | null;
           password_hash: string | null;
           email_verified: string | null;
+          session_version: number;
         }>(
-          "SELECT id, email, name, password_hash, email_verified FROM users WHERE lower(email) = $1",
+          "SELECT id, email, name, password_hash, email_verified, session_version FROM users WHERE lower(email) = $1",
           [email],
         );
         const user = rows[0];
@@ -59,16 +60,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // as a bad password (null, not a distinct error) so we don't reveal
         // which addresses have registered-but-unverified accounts.
         if (!user.email_verified) return fail("unverified");
+        if (passwordNeedsRehash(user.password_hash)) {
+          const upgraded = await hashPassword(password);
+          await pool().query(
+            `UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3`,
+            [upgraded, Date.now(), user.id],
+          );
+        }
         void recordSecurityEvent("login.success", {
           userId: user.id,
           headers: request?.headers,
           meta: { method: "password" },
         });
-        return { id: user.id, email: user.email, name: user.name };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          sessionVersion: user.session_version,
+        };
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
   pages: { signIn: "/signin" },
   callbacks: {
     // Pin the JWT sub to the stable per-provider id on initial sign-in.
@@ -78,11 +91,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // this override, every Google sign-in would mint a new sub and notes
     // saved under the previous one would look like they vanished. For the
     // password Credentials path user.id is already the stable account id.
-    jwt({ token, user, account }) {
+    async jwt({ token, user, account }) {
       if (account?.provider === "google" && account.providerAccountId) {
         token.sub = account.providerAccountId;
       } else if (user?.id) {
         token.sub = user.id;
+      }
+      if (!token.sub) return null;
+      await ready();
+      const { rows } = await pool().query<{ session_version: number }>(
+        `SELECT session_version FROM users WHERE id = $1`,
+        [token.sub],
+      );
+      const currentVersion = rows[0]?.session_version;
+      if (currentVersion === undefined) return null;
+      if (user || token.sessionVersion === undefined) {
+        token.sessionVersion = currentVersion;
+      } else if (token.sessionVersion !== currentVersion) {
+        return null;
       }
       return token;
     },

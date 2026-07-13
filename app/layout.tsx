@@ -6,6 +6,7 @@ import { ServiceWorkerRegistrar } from "@/components/ServiceWorker";
 import { AccentInit } from "@/components/AccentInit";
 import { AnalyticsBeacon } from "@/components/AnalyticsBeacon";
 import { accentBootstrapScript } from "@/lib/accent";
+import { AuthSessionSync } from "@/components/AuthSessionSync";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -47,6 +48,7 @@ export default async function RootLayout({
         <AccentInit />
         <AnalyticsBeacon />
         <ServiceWorkerRegistrar />
+        <AuthSessionSync />
       </body>
     </html>
   );

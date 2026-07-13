@@ -22,28 +22,18 @@ function databaseName(ownerId: string) {
   return `${DB_PREFIX}:${encodeURIComponent(ownerId)}`;
 }
 
-// The pre-per-owner "keep-offline" DB may still hold un-replayed pending ops
-// (edits/deletes made offline that never reached the server). Move them into
-// the first per-owner DB that opens so they replay, then drop the legacy DB.
-// Cached notes are intentionally not migrated — they are just copies of server
-// rows a refresh() will repopulate, and the legacy DB wasn't owner-scoped, so
-// seeding them could surface a previous account's notes on a shared device.
-async function migrateLegacyDatabase(target: IDBPDatabase) {
+// The legacy database wasn't owner-scoped. Pending creates contain full note
+// bodies, so assigning them to whichever account opens first can disclose one
+// person's offline note to another person on a shared browser profile. There is
+// no reliable owner identity to recover; discard the database in full.
+async function discardLegacyDatabase() {
   if (legacyMigrationStarted) return;
   legacyMigrationStarted = true;
   let legacy: IDBPDatabase | null = null;
   try {
     legacy = await openDB(LEGACY_DB_NAME, DB_VERSION);
-    if (legacy.objectStoreNames.contains("pending")) {
-      const ops = await legacy.getAll("pending");
-      if (ops.length > 0) {
-        const tx = target.transaction("pending", "readwrite");
-        for (const op of ops) await tx.store.put(op);
-        await tx.done;
-      }
-    }
   } catch {
-    /* no legacy DB, or it was unreadable — nothing to migrate */
+    /* no legacy DB, or it was unreadable */
   } finally {
     legacy?.close();
     await deleteDB(LEGACY_DB_NAME).catch(() => {});
@@ -61,7 +51,7 @@ function getDb(ownerId: string) {
         pending.createIndex("createdAt", "createdAt");
       },
     }).then(async (db) => {
-      await migrateLegacyDatabase(db);
+      await discardLegacyDatabase();
       return db;
     });
     dbPromises.set(name, promise);
@@ -122,4 +112,18 @@ export async function getPendingOps(ownerId: string): Promise<PendingOp[]> {
 
 export async function removePendingOp(ownerId: string, id: string) {
   await (await getDb(ownerId)).delete("pending", id);
+}
+
+/** Remove cached notes and queued mutations when the user explicitly signs out. */
+export async function clearOwnerData(ownerId: string) {
+  const name = databaseName(ownerId);
+  const db = await getDb(ownerId);
+  const tx = db.transaction(["notes", "pending"], "readwrite");
+  await Promise.all([
+    tx.objectStore("notes").clear(),
+    tx.objectStore("pending").clear(),
+  ]);
+  await tx.done;
+  db.close();
+  dbPromises.delete(name);
 }

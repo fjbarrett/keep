@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { pool, ready } from "@/lib/db";
 import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
 import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
+import { appOrigin } from "@/lib/appUrl";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
   );
   if (limited) return limited;
 
-  const base = (process.env.AUTH_URL ?? new URL(req.url).origin).replace(/\/$/, "");
+  const base = appOrigin(req);
   const token = new URL(req.url).searchParams.get("token");
   if (!token) {
     return NextResponse.redirect(`${base}/signin?error=verify`);

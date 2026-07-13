@@ -2,20 +2,23 @@ import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { auth } from "@/auth";
 import { newId, pool, ready, rowToNote, NoteRow } from "@/lib/db";
-import { generateNoteMeta } from "@/lib/titleModel";
+import { heuristicNoteMeta } from "@/lib/titleModel";
 import { internalError } from "@/lib/apiError";
 import {
   MAX_NOTE_BODY,
   MAX_NOTE_SUMMARY,
   MAX_NOTE_TITLE,
+  MAX_NOTES_PER_USER,
   tagsInvalid,
 } from "@/lib/noteLimits";
 import { isNoteColor } from "@/lib/noteColors";
+import { readJsonBody, requestBodyError } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CLIENT_NOTE_KEY = /^[A-Za-z0-9_-]{1,64}$/;
+const MAX_NOTE_REQUEST_BYTES = MAX_NOTE_BODY + 16 * 1024;
 
 function noteIdForCreate(userId: string, requested: unknown) {
   if (typeof requested !== "string") return newId();
@@ -54,7 +57,11 @@ export async function POST(req: Request) {
   }
   try {
     await ready();
-    const body = await req.json();
+    const parsed = await readJsonBody(req, MAX_NOTE_REQUEST_BYTES);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Invalid note." }, { status: 400 });
+    }
+    const body = parsed as Record<string, unknown>;
     const noteBody = String(body.body ?? "");
     if (noteBody.length > MAX_NOTE_BODY) {
       return NextResponse.json({ error: "Note is too large." }, { status: 413 });
@@ -74,13 +81,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Note metadata is too large." }, { status: 400 });
     }
     // The client normally supplies both (one Haiku call); only fall back to
-    // generating here when it didn't.
+    // local metadata here when it didn't. Model calls stay behind the dedicated
+    // per-account quota on /api/notes/title.
     if (!title) {
-      const meta = await generateNoteMeta(noteBody);
+      const meta = heuristicNoteMeta(noteBody);
       title = meta.title;
       summary = summary ?? meta.summary;
     }
     const id = noteIdForCreate(session.user.id, body.id);
+    const usage = await pool().query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM notes WHERE user_id = $1`,
+      [session.user.id],
+    );
+    if (Number(usage.rows[0]?.count ?? 0) >= MAX_NOTES_PER_USER) {
+      const existing = await pool().query<NoteRow>(
+        `SELECT * FROM notes WHERE id = $1 AND user_id = $2`,
+        [id, session.user.id],
+      );
+      if (existing.rows[0]) {
+        return NextResponse.json({ note: rowToNote(existing.rows[0]) });
+      }
+      return NextResponse.json({ error: "Note storage quota exceeded." }, { status: 413 });
+    }
     const now = Date.now();
     const tags = Array.isArray(body.tags) ? body.tags.map(String) : [];
     const { rows } = await pool().query<NoteRow>(
@@ -116,6 +138,8 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ note: rowToNote(existing.rows[0]) });
   } catch (err) {
+    const tooLarge = requestBodyError(err, "Note is too large.");
+    if (tooLarge) return tooLarge;
     return internalError("notes:list-create", err);
   }
 }

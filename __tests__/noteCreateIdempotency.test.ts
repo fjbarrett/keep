@@ -40,6 +40,7 @@ beforeEach(() => {
 describe("POST /api/notes idempotency", () => {
   it("returns an existing owned note when an offline create is replayed", async () => {
     mocks.query
+      .mockResolvedValueOnce({ rows: [{ count: "0" }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [row] });
 
@@ -53,6 +54,6 @@ describe("POST /api/notes idempotency", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ note: row });
-    expect(mocks.query).toHaveBeenCalledTimes(2);
+    expect(mocks.query).toHaveBeenCalledTimes(3);
   });
 });
