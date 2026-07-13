@@ -9,8 +9,12 @@ export function appOrigin(req: Request): string {
 }
 
 export function isSameOriginMutation(req: Request): boolean {
+  // Sec-Fetch-Site is browser-asserted and authoritative when present. Behind
+  // the reverse proxy the request URL is the internal listen origin, so the
+  // Origin header is only compared (against the configured public origin) for
+  // older browsers that don't send Sec-Fetch-Site.
   const fetchSite = req.headers.get("sec-fetch-site");
-  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false;
+  if (fetchSite) return fetchSite === "same-origin" || fetchSite === "none";
   const origin = req.headers.get("origin");
   return !origin || origin === appOrigin(req);
 }

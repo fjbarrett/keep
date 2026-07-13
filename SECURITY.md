@@ -9,16 +9,19 @@ not put credentials, private notes, or an unpatched exploit in a public issue.
 ## Deployment checklist
 
 - Set a strong `AUTH_SECRET` and the exact HTTPS `AUTH_URL`.
-- Keep Postgres on a private network. TLS verifies system CAs by default; use
-  `DATABASE_CA_CERT` for a private CA. `DATABASE_TLS_INSECURE=true` is only for
+- Keep Postgres on a private network. `sslmode=require` encrypts but does not
+  authenticate the server — acceptable for a same-host database; use
+  `sslmode=verify-full` (with `DATABASE_CA_CERT` for a private CA) whenever the
+  database is on another host. `DATABASE_TLS_INSECURE=true` is only for
   loopback development with `sslmode=no-verify`.
 - Keep attachment storage private. S3 deployments should enable Block Public
   Access and grant the application only object read/write/delete permissions
   under the `keep/` prefix.
 - Set `DEPLOY_KNOWN_HOSTS` to a separately verified SSH host-key line. Deployment
   fails closed when the host key changes.
-- Leave `AI_METADATA_ENABLED=false` unless sending authenticated note text to
-  Anthropic is acceptable and disclosed to users. Provider and account budgets
+- A configured `ANTHROPIC_KEY` sends authenticated note text to Anthropic for
+  titles/summaries; set `AI_METADATA_ENABLED=false` to keep note text local, and
+  disclose the model use to users when it stays on. Provider and account budgets
   should also be configured outside the application.
 - Back up Postgres and object storage with encryption at rest and tested restore
   procedures. Restrict production logs and database access to operators who need

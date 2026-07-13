@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { isNoteColor } from "@/lib/noteColors";
-import { tagsInvalid, MAX_TAGS, MAX_TAG_LEN } from "@/lib/noteLimits";
+import {
+  tagsInvalid,
+  MAX_NOTE_BODY,
+  MAX_NOTE_REQUEST_BYTES,
+  MAX_TAGS,
+  MAX_TAG_LEN,
+} from "@/lib/noteLimits";
 
 describe("isNoteColor", () => {
   it("accepts palette keys and rejects anything else", () => {
@@ -9,6 +15,17 @@ describe("isNoteColor", () => {
     expect(isNoteColor("chartreuse")).toBe(false);
     expect(isNoteColor(null)).toBe(false);
     expect(isNoteColor(42)).toBe(false);
+  });
+});
+
+describe("MAX_NOTE_REQUEST_BYTES", () => {
+  it("admits a maximum-length note in its worst-case JSON encoding", () => {
+    // Control characters JSON-escape to \uXXXX — 6 bytes per UTF-16 char, the
+    // densest encoding a valid MAX_NOTE_BODY-char body can reach.
+    const body = String.fromCharCode(1).repeat(MAX_NOTE_BODY);
+    expect(Buffer.byteLength(JSON.stringify({ body }))).toBeLessThanOrEqual(
+      MAX_NOTE_REQUEST_BYTES,
+    );
   });
 });
 

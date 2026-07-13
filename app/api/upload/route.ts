@@ -45,28 +45,61 @@ export async function POST(req: Request) {
     const id = newId();
     const path = `keep/${session.user.id}/${id}.${imageExtension(file.type)}`;
     const client = await pool().connect();
+    // Storage keys freed by the orphan sweep; their objects are deleted only
+    // after the row deletions have committed.
+    let reclaimed: string[] = [];
+    let overQuota = false;
     try {
       await client.query("BEGIN");
       await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [session.user.id]);
-      const usage = await client.query<{ bytes: string }>(
-        `SELECT coalesce(sum(size), 0)::text AS bytes FROM uploads WHERE user_id = $1`,
-        [session.user.id],
-      );
-      if (Number(usage.rows[0]?.bytes ?? 0) + file.size > MAX_USER_UPLOAD_BYTES) {
-        await client.query("ROLLBACK");
-        return NextResponse.json({ error: "Upload storage quota exceeded" }, { status: 413 });
+      const usedBytes = async () => {
+        const usage = await client.query<{ bytes: string }>(
+          `SELECT coalesce(sum(size), 0)::text AS bytes FROM uploads WHERE user_id = $1`,
+          [session.user.id],
+        );
+        return Number(usage.rows[0]?.bytes ?? 0);
+      };
+      if ((await usedBytes()) + file.size > MAX_USER_UPLOAD_BYTES) {
+        // Images edited out of every note body would otherwise hold quota
+        // forever; reclaim them before failing the upload. Uploads from the
+        // last minute are spared — their reference may still be sitting in an
+        // editor waiting on autosave.
+        const orphaned = await client.query<{ storage_key: string }>(
+          `DELETE FROM uploads u
+            WHERE u.user_id = $1
+              AND u.created_at < $2
+              AND NOT EXISTS (
+                SELECT 1 FROM notes n
+                 WHERE n.user_id = $1
+                   AND position('/api/uploads/' || u.id in n.body) > 0
+              )
+            RETURNING storage_key`,
+          [session.user.id, Date.now() - 60_000],
+        );
+        reclaimed = orphaned.rows.map((row) => row.storage_key);
+        overQuota = (await usedBytes()) + file.size > MAX_USER_UPLOAD_BYTES;
       }
-      await client.query(
-        `INSERT INTO uploads (id, user_id, storage_key, content_type, size, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [id, session.user.id, path, file.type, file.size, Date.now()],
-      );
+      if (!overQuota) {
+        await client.query(
+          `INSERT INTO uploads (id, user_id, storage_key, content_type, size, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [id, session.user.id, path, file.type, file.size, Date.now()],
+        );
+      }
+      // Commit either way so a sweep that freed rows sticks even when the
+      // upload itself is still rejected.
       await client.query("COMMIT");
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
       throw err;
     } finally {
       client.release();
+    }
+    for (const key of reclaimed) {
+      await deletePrivateFile(key).catch(() => {});
+    }
+    if (overQuota) {
+      return NextResponse.json({ error: "Upload storage quota exceeded" }, { status: 413 });
     }
     try {
       await putPrivateFile(path, bytes, file.type);

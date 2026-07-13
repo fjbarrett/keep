@@ -105,9 +105,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       );
       const currentVersion = rows[0]?.session_version;
       if (currentVersion === undefined) return null;
-      if (user || token.sessionVersion === undefined) {
+      if (user) {
         token.sessionVersion = currentVersion;
       } else if (token.sessionVersion !== currentVersion) {
+        // Tokens minted before session versioning carry no claim and fail this
+        // comparison too — grandfathering them would exempt every pre-deploy
+        // session from revocation forever (auth() in route handlers can't
+        // persist an adopted claim back into the cookie). Those users simply
+        // re-authenticate once.
         return null;
       }
       return token;
