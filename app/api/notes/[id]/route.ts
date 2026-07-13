@@ -5,6 +5,7 @@ import { internalError } from "@/lib/apiError";
 import { isNoteColor } from "@/lib/noteColors";
 import {
   MAX_NOTE_BODY,
+  MAX_NOTE_REQUEST_BYTES,
   MAX_NOTE_SUMMARY,
   MAX_NOTE_TITLE,
   tagsInvalid,
@@ -27,7 +28,6 @@ const ALLOWED = new Set([
   "highlight",
   "tags",
 ]);
-const MAX_NOTE_REQUEST_BYTES = MAX_NOTE_BODY + 16 * 1024;
 
 export async function PATCH(
   req: Request,

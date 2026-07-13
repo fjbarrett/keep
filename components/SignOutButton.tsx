@@ -1,18 +1,31 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { clearOwnerData } from "@/lib/offlineDb";
+import { clearOwnerData, getPendingOps } from "@/lib/offlineDb";
 
 export function SignOutButton({ ownerId }: { ownerId: string }) {
   async function handleSignOut() {
+    // Queued offline edits die with clearOwnerData; make that an informed
+    // choice instead of silent loss.
+    const pending = await getPendingOps(ownerId).catch(() => []);
+    if (
+      pending.length > 0 &&
+      !window.confirm(
+        "Some note changes haven't synced yet and will be lost if you sign out now. Sign out anyway?",
+      )
+    ) {
+      return;
+    }
     await clearOwnerData(ownerId).catch(() => {});
     try {
       localStorage.setItem("keep.signout", JSON.stringify({ ownerId, at: Date.now() }));
       localStorage.removeItem("keep.signout");
     } catch {
-      // Storage may be disabled; server-side session revocation still proceeds.
+      // Storage may be disabled; this browser's session still ends below.
     }
-    await fetch("/api/auth/revoke", { method: "POST" }).catch(() => null);
+    // Ends only this browser's session. Revoking every device (POST
+    // /api/auth/revoke) is a distinct, explicit action — a plain "Sign out"
+    // must not silently log out the user's phone and other browsers.
     await signOut({ callbackUrl: "/signin" });
   }
 

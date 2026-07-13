@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 // CA certificate for verifying the Postgres server's TLS cert. DATABASE_CA_CERT
 // may be the PEM contents inline or a path to a .pem/.crt file. When set, the
 // connection verifies the server identity (rejectUnauthorized: true); when
-// unset we fall back to TLS without certificate verification for self-signed localhost.
+// unset, verification follows the URL's sslmode (see databaseSslOptions).
 export function caCert(): string | undefined {
   const raw = process.env.DATABASE_CA_CERT;
   if (!raw || !raw.trim()) return undefined;
@@ -71,9 +71,11 @@ export function databaseSslOptions(
       "sslmode=no-verify requires DATABASE_TLS_INSECURE=true; never use it across a network",
     );
   }
-  return ca
-    ? { ca, rejectUnauthorized: true }
-    : { rejectUnauthorized: !allowInsecure };
+  if (ca) return { ca, rejectUnauthorized: true };
+  // libpq semantics: require/prefer encrypt without authenticating the server
+  // (a self-signed same-host Postgres keeps working); verify-ca/verify-full —
+  // or a configured DATABASE_CA_CERT above — turn certificate verification on.
+  return { rejectUnauthorized: sslmode === "verify-ca" || sslmode === "verify-full" };
 }
 
 export function pool(): Pool {

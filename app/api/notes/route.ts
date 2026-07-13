@@ -6,6 +6,7 @@ import { heuristicNoteMeta } from "@/lib/titleModel";
 import { internalError } from "@/lib/apiError";
 import {
   MAX_NOTE_BODY,
+  MAX_NOTE_REQUEST_BYTES,
   MAX_NOTE_SUMMARY,
   MAX_NOTE_TITLE,
   MAX_NOTES_PER_USER,
@@ -18,7 +19,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CLIENT_NOTE_KEY = /^[A-Za-z0-9_-]{1,64}$/;
-const MAX_NOTE_REQUEST_BYTES = MAX_NOTE_BODY + 16 * 1024;
 
 function noteIdForCreate(userId: string, requested: unknown) {
   if (typeof requested !== "string") return newId();

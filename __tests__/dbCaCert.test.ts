@@ -11,8 +11,10 @@ afterEach(() => {
 });
 
 describe("databaseSslOptions", () => {
-  it("verifies certificates by default for TLS connections", () => {
-    expect(databaseSslOptions("require")).toEqual({ rejectUnauthorized: true });
+  it("follows libpq verification semantics per sslmode", () => {
+    expect(databaseSslOptions("require")).toEqual({ rejectUnauthorized: false });
+    expect(databaseSslOptions("prefer")).toEqual({ rejectUnauthorized: false });
+    expect(databaseSslOptions("verify-ca")).toEqual({ rejectUnauthorized: true });
     expect(databaseSslOptions("verify-full")).toEqual({ rejectUnauthorized: true });
   });
 

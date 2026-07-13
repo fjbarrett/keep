@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { authConfig } from "@/auth.config";
 import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
 import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
@@ -25,6 +25,55 @@ const publicShareRateLimit = createTokenBucketRateLimiter({
   windowMs: 60_000,
 });
 
+// Cross-origin mutation gate. Sec-Fetch-Site is browser-asserted and
+// authoritative when present; the Origin comparison is only a fallback for
+// older browsers. req.nextUrl.origin alone is the wrong reference — under
+// self-hosted `next start` behind Caddy it is the *listen* origin
+// (https://localhost:3000), so comparing the public Origin header against it
+// would 403 every same-origin mutation in production.
+function allowedOrigins(req: NextRequest): Set<string> {
+  const origins = new Set([req.nextUrl.origin]);
+  if (process.env.AUTH_URL) {
+    try {
+      origins.add(new URL(process.env.AUTH_URL).origin);
+    } catch {
+      // Malformed AUTH_URL — the forwarded-host fallback below still applies.
+    }
+  }
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (host) {
+    const proto =
+      req.headers.get("x-forwarded-proto")?.split(",")[0].trim() ||
+      req.nextUrl.protocol.replace(":", "");
+    origins.add(`${proto}://${host}`);
+  }
+  return origins;
+}
+
+function isCrossOriginMutation(req: NextRequest): boolean {
+  const fetchSite = req.headers.get("sec-fetch-site");
+  if (fetchSite) return fetchSite !== "same-origin" && fetchSite !== "none";
+  const origin = req.headers.get("origin");
+  return origin !== null && !allowedOrigins(req).has(origin);
+}
+
+// Note bodies saved before uploads went private embed absolute URLs on the old
+// public bucket/CDN origin; keep exactly that origin renderable so those notes
+// don't break. New uploads stream same-origin via /api/uploads/<id>.
+const legacyImageOrigins = [
+  ...new Set(
+    [process.env.S3_PUBLIC_BASE_URL, process.env.S3_ENDPOINT]
+      .filter((value): value is string => Boolean(value))
+      .flatMap((value) => {
+        try {
+          return [new URL(value).origin];
+        } catch {
+          return [];
+        }
+      }),
+  ),
+].join(" ");
+
 function buildCsp(nonce: string): string {
   return [
     `default-src 'self'`,
@@ -36,7 +85,7 @@ function buildCsp(nonce: string): string {
     `worker-src 'self' blob:`,
     // Uploaded images now stream through the authenticated same-origin route.
     // Blocking arbitrary remote images also blocks markdown tracking pixels.
-    `img-src 'self' data: blob:`,
+    `img-src 'self' data: blob:${legacyImageOrigins ? ` ${legacyImageOrigins}` : ""}`,
     `font-src 'self'`,
     `connect-src 'self'${isDev ? " ws:" : ""}`,
     `base-uri 'self'`,
@@ -65,15 +114,8 @@ function withCsp(requestHeaders: Headers): NextResponse {
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
-    const fetchSite = req.headers.get("sec-fetch-site");
-    const origin = req.headers.get("origin");
-    if (
-      (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") ||
-      (origin && origin !== req.nextUrl.origin)
-    ) {
-      return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 });
-    }
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method) && isCrossOriginMutation(req)) {
+    return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 });
   }
 
   if (pathname.startsWith("/p/")) {

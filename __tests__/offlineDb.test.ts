@@ -31,23 +31,24 @@ function note(id: string, body: string): Note {
 }
 
 describe("account-scoped offline storage", () => {
-  it("discards ownerless legacy pending creates instead of assigning them to an account", async () => {
+  it("migrates un-replayed legacy pending ops into the first per-owner DB", async () => {
     const legacy = await openDB("keep-offline", 1, {
       upgrade(db) {
         db.createObjectStore("notes", { keyPath: "id" });
         db.createObjectStore("pending", { keyPath: "id" });
       },
     });
-    await legacy.put("pending", {
+    const op = {
       id: "legacy-create",
       type: "create",
       noteId: "legacy-note",
-      payload: note("legacy-note", "another account's private draft"),
+      payload: note("legacy-note", "offline draft made before the per-owner split"),
       createdAt: 1,
-    });
+    };
+    await legacy.put("pending", op);
     legacy.close();
 
-    await expect(getPendingOps(`new-owner-${crypto.randomUUID()}`)).resolves.toEqual([]);
+    await expect(getPendingOps(`new-owner-${crypto.randomUUID()}`)).resolves.toEqual([op]);
   });
 
   it("never returns one account's cached notes to another account", async () => {

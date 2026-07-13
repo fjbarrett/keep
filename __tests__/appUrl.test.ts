@@ -23,4 +23,18 @@ describe("canonical application origin", () => {
     });
     expect(isSameOriginMutation(request)).toBe(false);
   });
+
+  it("trusts the browser's same-origin assertion behind a reverse proxy", () => {
+    // Public Origin header, internal listen URL — the shape every production
+    // request has behind Caddy. Sec-Fetch-Site must decide, not a comparison
+    // against the internal origin.
+    const request = new Request("http://localhost:3000/api/auth/revoke", {
+      method: "POST",
+      headers: {
+        origin: "https://keeptxt.com",
+        "sec-fetch-site": "same-origin",
+      },
+    });
+    expect(isSameOriginMutation(request)).toBe(true);
+  });
 });

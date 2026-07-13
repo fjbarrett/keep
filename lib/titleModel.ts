@@ -58,7 +58,9 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
     title: inferNoteTitle(body),
     summary: heuristicSummary(body),
   };
-  if (process.env.AI_METADATA_ENABLED !== "true") return fallback;
+  // A configured key enables AI metadata; AI_METADATA_ENABLED=false is the
+  // explicit off-switch for operators who keep a key but want note text local.
+  if (process.env.AI_METADATA_ENABLED === "false") return fallback;
   const apiKey = process.env.ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey || !body.trim()) return fallback;
 
