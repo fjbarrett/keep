@@ -52,6 +52,9 @@ actor AuthClient {
 
     /// Clears the session both server-side (best effort) and locally.
     func signOut() async {
+        var revoke = URLRequest(url: url("api/auth/revoke"))
+        revoke.httpMethod = "POST"
+        _ = try? await session.data(for: revoke)
         if let csrf = try? await csrfToken() {
             var req = URLRequest(url: url("api/auth/signout"))
             req.httpMethod = "POST"
