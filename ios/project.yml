@@ -59,12 +59,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keeptxt.keep.mac
-        # No App Sandbox for now: an ad-hoc/dev-signed sandboxed app doesn't
-        # surface its Core Spotlight items reliably, and the sandbox container
-        # adds nothing for a locally-run app. Unsandboxed, network + Spotlight
-        # just work. Re-add the sandbox + entitlements for App Store distribution.
-        # Hardened runtime is a distribution/notarization concern and only
-        # complicates local signing — leave it off for now.
+        CODE_SIGN_ENTITLEMENTS: KeepMac/KeepMac.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
         COMBINE_HIDPI_IMAGES: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:

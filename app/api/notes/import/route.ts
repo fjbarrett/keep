@@ -5,6 +5,8 @@ import { KeepImportNote, parseGoogleKeepImport } from "@/lib/googleKeepImport";
 import { pool, ready } from "@/lib/db";
 import { heuristicNoteMeta } from "@/lib/titleModel";
 import { internalError } from "@/lib/apiError";
+import { readFormDataBody, requestBodyError } from "@/lib/requestBody";
+import { MAX_NOTES_PER_USER } from "@/lib/noteLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +14,7 @@ export const dynamic = "force-dynamic";
 // Bound the raw upload before we even read it into memory; the parser then caps
 // note count and decompressed size to defend against zip bombs.
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+const MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + 256 * 1024;
 
 // Deterministic 128-bit id so re-importing the same note dedupes via ON CONFLICT.
 function googleKeepImportId(userId: string, note: KeepImportNote) {
@@ -33,7 +36,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const form = await req.formData();
+    const form = await readFormDataBody(req, MAX_MULTIPART_BYTES);
     const file = form.get("file");
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Upload a Takeout ZIP or Keep JSON file" }, { status: 400 });
@@ -52,8 +55,14 @@ export async function POST(req: Request) {
     const importable = notes.filter((note) => !note.trashed);
 
     await ready();
+    const usage = await pool().query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM notes WHERE user_id = $1`,
+      [session.user.id],
+    );
+    const available = Math.max(0, MAX_NOTES_PER_USER - Number(usage.rows[0]?.count ?? 0));
+    const withinQuota = importable.slice(0, available);
     let imported = 0;
-    for (const note of importable) {
+    for (const note of withinQuota) {
       // Heuristic title/summary only — a per-note model call would turn one
       // upload into N billed Anthropic requests.
       const meta = heuristicNoteMeta(note.body);
@@ -79,10 +88,12 @@ export async function POST(req: Request) {
     return NextResponse.json({
       imported,
       skipped: skipped + notes.length - importable.length,
-      duplicates: importable.length - imported,
-      truncated,
+      duplicates: withinQuota.length - imported,
+      truncated: truncated || withinQuota.length < importable.length,
     });
   } catch (err) {
+    const tooLarge = requestBodyError(err, "That file is too large to import (max 20 MB).");
+    if (tooLarge) return tooLarge;
     return internalError("notes:import", err);
   }
 }

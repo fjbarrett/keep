@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { passwordIssue, hashPassword, verifyPassword } from "@/lib/password";
+import {
+  passwordIssue,
+  passwordNeedsRehash,
+  hashPassword,
+  verifyPassword,
+} from "@/lib/password";
 
 describe("passwordIssue", () => {
   it("rejects short passwords", () => {
@@ -23,7 +28,13 @@ describe("hashPassword / verifyPassword", () => {
   it("round-trips a password and rejects a wrong one", async () => {
     const stored = await hashPassword("correct horse battery staple");
     expect(stored.startsWith("scrypt$")).toBe(true);
+    expect(passwordNeedsRehash(stored)).toBe(false);
     expect(await verifyPassword("correct horse battery staple", stored)).toBe(true);
     expect(await verifyPassword("wrong password entirely", stored)).toBe(false);
+  });
+
+  it("marks the previous work factor for upgrade", () => {
+    expect(passwordNeedsRehash("scrypt$16384$8$1$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaA=="))
+      .toBe(true);
   });
 });

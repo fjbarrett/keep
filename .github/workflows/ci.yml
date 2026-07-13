@@ -5,19 +5,22 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       # Reuse Next's incremental build cache across runs so the gate build is warm.
       - name: Cache Next.js build
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
@@ -25,6 +28,7 @@ jobs:
             nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
       - run: npx tsc --noEmit
       - run: npm test
+      - run: npm audit --audit-level=high
       - run: npm run build
 
   # Auto-deploy to the production droplet on every merge to main, only after
@@ -46,19 +50,22 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/keep' }}
           DEPLOY_SERVICE: ${{ vars.DEPLOY_SERVICE || 'keep' }}
         run: |
-          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
-            echo "::notice::DEPLOY_HOST/DEPLOY_SSH_KEY not configured — skipping deploy."
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::notice::DEPLOY_HOST/DEPLOY_SSH_KEY/DEPLOY_KNOWN_HOSTS not configured — skipping deploy."
             exit 0
           fi
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
           ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=no \
-            -o UserKnownHostsFile=/dev/null \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
             "$DEPLOY_HOST" \
             "set -e
              cd '$DEPLOY_PATH'
@@ -78,7 +85,7 @@ jobs:
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$DEPLOY_URL" || echo 000)
           echo "GET $DEPLOY_URL -> $code"
-          [ "$code" = "200" ] || echo "::warning::smoke check returned $code"
+          [ "$code" = "200" ]
 
   # Refresh the desktop screenshot (docs/screenshot.png, shown in the README) on
   # every merge to main, after the deploy lands — the CI analog of the manual
@@ -98,8 +105,8 @@ jobs:
       group: desktop-screenshot
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm

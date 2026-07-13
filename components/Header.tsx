@@ -1,7 +1,8 @@
 import Image from "next/image";
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
 import { isAnalyticsOwner } from "@/lib/analyticsSummary";
 import { Logo } from "./Logo";
+import { SignOutButton } from "./SignOutButton";
 
 export async function Header() {
   const session = await auth();
@@ -27,32 +28,21 @@ export async function Header() {
                 Analytics
               </a>
             )}
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/signin" });
-            }}
-            className="flex items-center gap-3"
-          >
-            {user.image && (
-              <Image
-                src={user.image}
-                alt={user.name ?? "You"}
-                width={28}
-                height={28}
-                className="rounded-full border border-[var(--color-border)]"
-              />
-            )}
-            <span className="hidden text-sm text-[var(--color-muted)] sm:block">
-              {user.name ?? user.email}
-            </span>
-            <button
-              type="submit"
-              className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-            >
-              Sign out
-            </button>
-          </form>
+            <div className="flex items-center gap-3">
+              {user.image && (
+                <Image
+                  src={user.image}
+                  alt={user.name ?? "You"}
+                  width={28}
+                  height={28}
+                  className="rounded-full border border-[var(--color-border)]"
+                />
+              )}
+              <span className="hidden text-sm text-[var(--color-muted)] sm:block">
+                {user.name ?? user.email}
+              </span>
+              <SignOutButton ownerId={user.id} />
+            </div>
           </>
         ) : (
           <a

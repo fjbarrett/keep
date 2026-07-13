@@ -42,15 +42,14 @@ function makePool(): Pool {
   url.searchParams.delete("sslmode");
   const connectionString = url.toString();
 
-  // With a CA cert configured, verify the server's identity (defends against a
-  // MITM on the DB connection). Without one, use TLS without certificate
-  // verification — the norm for a self-signed Postgres on the same host.
-  const ca = caCert();
-  const ssl = ca
-    ? { ca, rejectUnauthorized: true }
-    : wantSSL || sslmode !== null
-      ? { rejectUnauthorized: false }
-      : undefined;
+  if (sslmode !== null && sslmode !== "disable" && !wantSSL) {
+    throw new Error(`Unsupported DATABASE_URL sslmode: ${sslmode}`);
+  }
+  const ssl = databaseSslOptions(
+    sslmode,
+    caCert(),
+    process.env.DATABASE_TLS_INSECURE === "true",
+  );
 
   return new Pool({
     connectionString,
@@ -59,6 +58,22 @@ function makePool(): Pool {
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 8_000,
   });
+}
+
+export function databaseSslOptions(
+  sslmode: string | null,
+  ca?: string,
+  allowInsecure = false,
+): { ca?: string; rejectUnauthorized: boolean } | undefined {
+  if (sslmode === null || sslmode === "disable") return undefined;
+  if (sslmode === "no-verify" && !allowInsecure) {
+    throw new Error(
+      "sslmode=no-verify requires DATABASE_TLS_INSECURE=true; never use it across a network",
+    );
+  }
+  return ca
+    ? { ca, rejectUnauthorized: true }
+    : { rejectUnauthorized: !allowInsecure };
 }
 
 export function pool(): Pool {
@@ -100,6 +115,18 @@ async function bootstrap(): Promise<void> {
     CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS notes_share_token_idx ON notes (share_token) WHERE share_token IS NOT NULL;
 
+    -- Private note attachments. The object itself is private; this ownership
+    -- row is the authorization boundary for /api/uploads/<id>.
+    CREATE TABLE IF NOT EXISTS uploads (
+      id           TEXT PRIMARY KEY,
+      user_id      TEXT NOT NULL,
+      storage_key  TEXT NOT NULL UNIQUE,
+      content_type TEXT NOT NULL,
+      size         BIGINT NOT NULL,
+      created_at   BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS uploads_user_idx ON uploads (user_id, created_at DESC);
+
     -- Short-lived handoff codes for native (iOS) Google sign-in. The native app
     -- can't read the session cookie out of ASWebAuthenticationSession's browser
     -- jar, so the /native/bridge route mints a single-use code bound to the
@@ -125,6 +152,7 @@ async function bootstrap(): Promise<void> {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token TEXT;
     -- Expiry for verify_token so a leaked link can't be redeemed indefinitely.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_token_expires BIGINT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (lower(email)) WHERE email IS NOT NULL;
 
     -- Passkeys were removed; drop their tables idempotently so existing installs

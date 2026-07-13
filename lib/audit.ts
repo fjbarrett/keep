@@ -15,6 +15,7 @@ export type SecurityEvent =
   | "login.success"
   | "login.failure"
   | "register"
+  | "session.revoke"
   | "share.create"
   | "share.revoke";
 

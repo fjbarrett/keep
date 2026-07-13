@@ -4,9 +4,11 @@ import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { internalError, isUniqueViolation } from "@/lib/apiError";
 import { recordSecurityEvent } from "@/lib/audit";
 import { newShareToken } from "@/lib/shareToken";
+import { readJsonBody, requestBodyError } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const MAX_SHARE_BODY = 2 * 1024;
 
 export async function POST(
   req: Request,
@@ -83,11 +85,19 @@ export async function PUT(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const body = await req.json().catch(() => null);
-  const token = typeof body?.token === "string" ? body.token.trim() : "";
-  if (!/^[A-Za-z0-9_-]{3,40}$/.test(token)) {
+  let body: unknown;
+  try {
+    body = await readJsonBody(req, MAX_SHARE_BODY);
+  } catch (err) {
+    const tooLarge = requestBodyError(err);
+    if (tooLarge) return tooLarge;
+    body = null;
+  }
+  const input = body && typeof body === "object" ? body as Record<string, unknown> : null;
+  const token = typeof input?.token === "string" ? input.token.trim() : "";
+  if (!/^[A-Za-z0-9_-]{16,40}$/.test(token)) {
     return NextResponse.json(
-      { error: "Use 3–40 letters, numbers, dashes or underscores." },
+      { error: "Use 16–40 letters, numbers, dashes or underscores." },
       { status: 400 },
     );
   }

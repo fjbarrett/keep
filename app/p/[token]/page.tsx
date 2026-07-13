@@ -7,6 +7,7 @@ import { noteFileExtension } from "@/lib/detectLanguage";
 import { CopyNoteButton } from "@/components/CopyNoteButton";
 import { MarkdownCodeBlock } from "@/components/MarkdownCodeBlock";
 import { Logo } from "@/components/Logo";
+import type { ComponentProps } from "react";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,14 @@ function DownloadMark() {
       <path d="M3 13.5h10" />
     </svg>
   );
+}
+
+function SharedImage({ token, src, ...props }: ComponentProps<"img"> & { token: string }) {
+  const authorizedSrc =
+    typeof src === "string" && src.startsWith("/api/uploads/")
+      ? `${src}?share=${encodeURIComponent(token)}`
+      : src;
+  return <img {...props} src={authorizedSrc} />;
 }
 
 function formatDate(t: number) {
@@ -165,7 +174,10 @@ export default async function SharedNotePage({
             >
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                components={{ pre: MarkdownCodeBlock }}
+                components={{
+                  pre: MarkdownCodeBlock,
+                  img: (props) => <SharedImage {...props} token={token} />,
+                }}
               >
                 {note.body}
               </ReactMarkdown>

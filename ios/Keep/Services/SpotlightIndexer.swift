@@ -23,8 +23,10 @@ enum SpotlightIndexer {
             let attrs = CSSearchableItemAttributeSet(contentType: .text)
             attrs.title = note.displayTitle
             attrs.displayName = note.displayTitle
-            attrs.contentDescription = note.displaySummary ?? snippet(note.body)
-            attrs.textContent = note.body
+            // Keep full note bodies out of the system-wide Spotlight database.
+            // Titles, optional summaries, and tags are enough to find a note.
+            attrs.contentDescription = note.displaySummary
+            attrs.textContent = note.displayTitle
             attrs.keywords = note.tags
             let item = CSSearchableItem(
                 uniqueIdentifier: note.id,
@@ -62,8 +64,4 @@ enum SpotlightIndexer {
             }
     }
 
-    private static func snippet(_ body: String, limit: Int = 180) -> String {
-        let oneLine = body.split(whereSeparator: \.isNewline).joined(separator: " ")
-        return oneLine.count > limit ? String(oneLine.prefix(limit)) + "…" : oneLine
-    }
 }

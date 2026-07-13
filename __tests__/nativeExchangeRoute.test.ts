@@ -29,4 +29,9 @@ describe("/api/native/exchange", () => {
     const res = await exchange("not json");
     expect(res.status).toBe(400);
   });
+
+  it("rejects oversized bodies before database work", async () => {
+    const res = await exchange(JSON.stringify({ code: "x".repeat(3000) }));
+    expect(res.status).toBe(413);
+  });
 });

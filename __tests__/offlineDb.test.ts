@@ -1,8 +1,10 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
+import { openDB } from "idb";
 import {
   addPendingOp,
   cacheNotes,
+  clearOwnerData,
   getCachedNotes,
   getPendingOps,
   removePendingOp,
@@ -29,6 +31,25 @@ function note(id: string, body: string): Note {
 }
 
 describe("account-scoped offline storage", () => {
+  it("discards ownerless legacy pending creates instead of assigning them to an account", async () => {
+    const legacy = await openDB("keep-offline", 1, {
+      upgrade(db) {
+        db.createObjectStore("notes", { keyPath: "id" });
+        db.createObjectStore("pending", { keyPath: "id" });
+      },
+    });
+    await legacy.put("pending", {
+      id: "legacy-create",
+      type: "create",
+      noteId: "legacy-note",
+      payload: note("legacy-note", "another account's private draft"),
+      createdAt: 1,
+    });
+    legacy.close();
+
+    await expect(getPendingOps(`new-owner-${crypto.randomUUID()}`)).resolves.toEqual([]);
+  });
+
   it("never returns one account's cached notes to another account", async () => {
     const firstOwner = `first-${crypto.randomUUID()}`;
     const secondOwner = `second-${crypto.randomUUID()}`;
@@ -54,5 +75,19 @@ describe("account-scoped offline storage", () => {
 
     await removePendingOp(owner, first.id);
     await expect(getPendingOps(owner)).resolves.toEqual([second]);
+  });
+
+  it("removes cached notes and pending edits on explicit sign-out", async () => {
+    const owner = `signout-${crypto.randomUUID()}`;
+    await cacheNotes(owner, [note("private", "local copy")]);
+    await addPendingOp(owner, {
+      type: "update",
+      noteId: "private",
+      payload: { body: "queued private edit" },
+    });
+
+    await clearOwnerData(owner);
+    await expect(getCachedNotes(owner)).resolves.toEqual([]);
+    await expect(getPendingOps(owner)).resolves.toEqual([]);
   });
 });

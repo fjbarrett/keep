@@ -7,6 +7,8 @@ import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
 import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
 import { logger, maskEmail } from "@/lib/logger";
 import { recordSecurityEvent } from "@/lib/audit";
+import { readJsonBody, requestBodyError } from "@/lib/requestBody";
+import { appOrigin, isSameOriginMutation } from "@/lib/appUrl";
 
 export const runtime = "nodejs";
 
@@ -20,8 +22,12 @@ const registerRateLimit = createTokenBucketRateLimiter({
   limit: 6,
   windowMs: 60_000,
 });
+const MAX_REGISTER_BODY = 4 * 1024;
 
 export async function POST(req: Request) {
+  if (!isSameOriginMutation(req)) {
+    return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 });
+  }
   const limited = enforceIpRateLimit(
     registerRateLimit,
     req.headers,
@@ -29,10 +35,19 @@ export async function POST(req: Request) {
     "Too many attempts. Try again shortly.",
   );
   if (limited) return limited;
+  const origin = appOrigin(req);
 
-  const body = await req.json().catch(() => null);
-  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-  const password = typeof body?.password === "string" ? body.password : "";
+  let body: unknown;
+  try {
+    body = await readJsonBody(req, MAX_REGISTER_BODY);
+  } catch (err) {
+    const tooLarge = requestBodyError(err);
+    if (tooLarge) return tooLarge;
+    body = null;
+  }
+  const input = body && typeof body === "object" ? body as Record<string, unknown> : null;
+  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
+  const password = typeof input?.password === "string" ? input.password : "";
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json({ error: "Enter a valid email." }, { status: 400 });
@@ -71,7 +86,6 @@ export async function POST(req: Request) {
     meta: { email: maskEmail(email) },
   });
 
-  const origin = process.env.AUTH_URL ?? new URL(req.url).origin;
   const verifyUrl = `${origin.replace(/\/$/, "")}/api/auth/verify?token=${token}`;
   try {
     await sendVerificationEmail(email, verifyUrl);

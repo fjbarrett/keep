@@ -1,7 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const authMock = vi.hoisted(() => vi.fn());
+vi.mock("@/auth", () => ({ auth: authMock }));
+
 import { POST } from "@/app/api/notes/title/route";
 
+beforeEach(() => {
+  authMock.mockResolvedValue({ user: { id: `owner-${crypto.randomUUID()}` } });
+});
+
 describe("/api/notes/title", () => {
+  it("requires authentication before accepting note text", async () => {
+    authMock.mockResolvedValueOnce(null);
+    const res = await POST(new Request("https://keeptxt.com/api/notes/title", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ body: "private text" }),
+    }));
+    expect(res.status).toBe(401);
+  });
+
   it("rejects oversized note bodies before title generation", async () => {
     const res = await POST(
       new Request("https://keeptxt.com/api/notes/title", {
@@ -39,5 +57,18 @@ describe("/api/notes/title", () => {
 
     expect(res.status).toBe(429);
     expect(res.headers.get("Retry-After")).toBeTruthy();
+  });
+
+  it("rejects a chunked oversized body without relying on Content-Length", async () => {
+    const body = JSON.stringify({ body: "a".repeat(20 * 1024) });
+    const res = await POST(new Request("https://keeptxt.com/api/notes/title", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": `203.0.113.${Math.floor(Math.random() * 100) + 100}`,
+      },
+      body,
+    }));
+    expect(res.status).toBe(413);
   });
 });

@@ -5,7 +5,7 @@ import type { NextAuthConfig } from "next-auth";
 // re-exports providers and callbacks that need Node.
 export const authConfig: NextAuthConfig = {
   providers: [],
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
   pages: { signIn: "/signin" },
   callbacks: {
     session({ session, token }) {

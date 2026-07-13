@@ -1,10 +1,10 @@
 import { inferNoteTitle, stripEmDashes } from "./inferTitle";
 
-// Anthropic Haiku is the primary provider for note metadata. One call returns
-// both the short title and the one-line card description, so the card grid
-// never has to make a request per note.
+// Anthropic Haiku is an operator-enabled enhancement for note metadata. One
+// call returns both the short title and one-line card description; local
+// heuristics remain the privacy-preserving default.
 const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
-const MAX_INPUT_CHARS = 50_000;
+const MAX_INPUT_CHARS = 8 * 1024;
 
 export type NoteMeta = { title: string; summary: string };
 
@@ -58,6 +58,7 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
     title: inferNoteTitle(body),
     summary: heuristicSummary(body),
   };
+  if (process.env.AI_METADATA_ENABLED !== "true") return fallback;
   const apiKey = process.env.ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey || !body.trim()) return fallback;
 

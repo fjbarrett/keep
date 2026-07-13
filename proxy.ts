@@ -34,9 +34,9 @@ function buildCsp(nonce: string): string {
     // worker-src is needed because script-src's 'strict-dynamic' otherwise
     // ignores 'self' for the worker script.
     `worker-src 'self' blob:`,
-    // data: favicon + pasted images, blob: object URLs, https: uploaded and
-    // markdown-referenced images (served from the storage origin / anywhere).
-    `img-src 'self' data: blob: https:`,
+    // Uploaded images now stream through the authenticated same-origin route.
+    // Blocking arbitrary remote images also blocks markdown tracking pixels.
+    `img-src 'self' data: blob:`,
     `font-src 'self'`,
     `connect-src 'self'${isDev ? " ws:" : ""}`,
     `base-uri 'self'`,
@@ -65,6 +65,17 @@ function withCsp(requestHeaders: Headers): NextResponse {
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    const fetchSite = req.headers.get("sec-fetch-site");
+    const origin = req.headers.get("origin");
+    if (
+      (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") ||
+      (origin && origin !== req.nextUrl.origin)
+    ) {
+      return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 });
+    }
+  }
+
   if (pathname.startsWith("/p/")) {
     const limited = enforceIpRateLimit(
       publicShareRateLimit,
@@ -87,13 +98,13 @@ export default auth((req) => {
   }
 
   if (pathname.startsWith("/api/")) {
-    // Anonymous endpoints: page-view beacons, title inference, and the native
-    // sign-in code exchange (all run before a session exists). Everything else
-    // is private.
+    // Anonymous endpoints: page-view beacons and the one-time native sign-in
+    // exchange. Title inference is authenticated so public traffic cannot spend
+    // the model budget or send arbitrary text to the provider.
     const publicApi =
-      pathname === "/api/notes/title" ||
       pathname === "/api/analytics" ||
-      pathname === "/api/native/exchange";
+      pathname === "/api/native/exchange" ||
+      (req.method === "GET" && pathname.startsWith("/api/uploads/"));
     if (!req.auth && !publicApi) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
