@@ -13,6 +13,9 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.10"
+    # Keep.xcodeproj is generated and gitignored, so a team picked in Xcode's
+    # signing UI is lost on the next `xcodegen generate`. Set it here instead.
+    DEVELOPMENT_TEAM: "636U736G9T"
 
 targets:
   Keep:
