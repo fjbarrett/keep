@@ -14,6 +14,9 @@ export async function GET(
 ) {
   const { token } = await params;
   await ready();
+  // Trashed notes drop off the share link; archived ones stay readable. Whether
+  // archiving should also revoke the link is an open question, not a settled
+  // one — see the note in ../page.tsx, which filters identically.
   const { rows } = await pool().query<NoteRow>(
     `SELECT * FROM notes WHERE share_token = $1 AND trashed = false LIMIT 1`,
     [token],

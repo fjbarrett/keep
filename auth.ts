@@ -125,20 +125,77 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     // Mirror Google users into our `users` table so email/password sign-in
     // resolves back to the same account.
+    //
+    // The unique constraint on that table is users_email_idx — UNIQUE on
+    // lower(email) (lib/db.ts) — not the primary key. So an `ON CONFLICT (id)`
+    // arbiter alone never matches a row that already holds this address, and
+    // the insert raises 23505 instead. Anyone can create such a row for an
+    // address they don't own: /api/auth/register writes the user before the
+    // verification email is answered. Left unhandled that throw is permanent,
+    // and the victim can never sign in with Google at all.
+    //
+    // So when another row holds the address, hand that row to the Google
+    // account id rather than inserting a second one, and carry its notes and
+    // uploads across — jwt() keys the session on the Google sub, so a row that
+    // kept its old id would leave its content stranded. Password material on an
+    // unverified row is discarded with it: nobody proved they own the mailbox,
+    // and keeping it would let the squatter's password open the linked account
+    // the moment the real owner clicked the verification mail. A verified row is
+    // the same person arriving by a second door, so its password still works.
     async signIn({ user, account }) {
       if (account?.provider !== "google") return true;
       const id = account.providerAccountId ?? user.id;
       if (!id) return true;
+      const email = user.email ?? null;
+      const name = user.name ?? null;
+      const now = Date.now();
       await ready();
-      await pool().query(
-        `INSERT INTO users (id, email, name, updated_at)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (id) DO UPDATE
-           SET email = EXCLUDED.email,
-               name = EXCLUDED.name,
-               updated_at = EXCLUDED.updated_at`,
-        [id, user.email ?? null, user.name ?? null, Date.now()],
-      );
+
+      const client = await pool().connect();
+      try {
+        await client.query("BEGIN");
+        const { rows } = await client.query<{ id: string }>(
+          `SELECT id FROM users
+            WHERE id = $1 OR ($2::text IS NOT NULL AND lower(email) = lower($2))
+            FOR UPDATE`,
+          [id, email],
+        );
+        const squatterId = rows.find((row) => row.id !== id)?.id;
+        const hasOwnRow = rows.some((row) => row.id === id);
+
+        if (squatterId && !hasOwnRow) {
+          await client.query(
+            `UPDATE users
+                SET id = $1,
+                    name = $2,
+                    updated_at = $3,
+                    password_hash = CASE WHEN email_verified IS NULL THEN NULL ELSE password_hash END,
+                    verify_token = CASE WHEN email_verified IS NULL THEN NULL ELSE verify_token END,
+                    verify_token_expires =
+                      CASE WHEN email_verified IS NULL THEN NULL ELSE verify_token_expires END
+              WHERE id = $4`,
+            [id, name, now, squatterId],
+          );
+          await client.query(`UPDATE notes SET user_id = $1 WHERE user_id = $2`, [id, squatterId]);
+          await client.query(`UPDATE uploads SET user_id = $1 WHERE user_id = $2`, [id, squatterId]);
+        } else {
+          await client.query(
+            `INSERT INTO users (id, email, name, updated_at)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (id) DO UPDATE
+               SET email = EXCLUDED.email,
+                   name = EXCLUDED.name,
+                   updated_at = EXCLUDED.updated_at`,
+            [id, email, name, now],
+          );
+        }
+        await client.query("COMMIT");
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
       return true;
     },
   },
