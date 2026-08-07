@@ -15,6 +15,10 @@ export type SecurityEvent =
   | "login.success"
   | "login.failure"
   | "register"
+  // A Google sign-in took over a pre-existing row that held the same address,
+  // moving its notes and dropping its password. Rare, and the one event here
+  // that changes who can reach an account, so it is worth a durable row.
+  | "account.link"
   | "session.revoke"
   | "share.create"
   | "share.revoke";
