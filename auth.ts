@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { pool, ready } from "@/lib/db";
 import { hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
 import { recordSecurityEvent } from "@/lib/audit";
+import { linkGoogleAccount } from "@/lib/googleAccountLink";
 import { maskEmail } from "@/lib/logger";
 import { clientIpFromHeaders } from "@/lib/rateLimit";
 import { checkLoginThrottle } from "@/lib/loginThrottle";
@@ -124,21 +125,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
     // Mirror Google users into our `users` table so email/password sign-in
-    // resolves back to the same account.
-    async signIn({ user, account }) {
+    // resolves back to the same account. Adopting a row that already holds the
+    // address is a transfer of that row's notes, so the rules governing it live
+    // in lib/googleAccountLink.ts with the reasoning behind them.
+    async signIn({ user, account, profile }) {
       if (account?.provider !== "google") return true;
       const id = account.providerAccountId ?? user.id;
       if (!id) return true;
-      await ready();
-      await pool().query(
-        `INSERT INTO users (id, email, name, updated_at)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (id) DO UPDATE
-           SET email = EXCLUDED.email,
-               name = EXCLUDED.name,
-               updated_at = EXCLUDED.updated_at`,
-        [id, user.email ?? null, user.name ?? null, Date.now()],
-      );
+      const outcome = await linkGoogleAccount({
+        id,
+        email: user.email ?? null,
+        emailVerified: profile?.email_verified === true,
+        name: user.name ?? null,
+        now: Date.now(),
+      });
+      if (outcome.linked) {
+        void recordSecurityEvent("account.link", {
+          userId: id,
+          meta: {
+            provider: "google",
+            adoptedFrom: outcome.adoptedFrom,
+            wasVerified: outcome.wasVerified,
+          },
+        });
+      }
       return true;
     },
   },

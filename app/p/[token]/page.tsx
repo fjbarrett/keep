@@ -12,6 +12,11 @@ import type { ComponentProps } from "react";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Trashing a note revokes its share link; archiving does not. An archived note
+// is still readable at /p/<token> by anyone holding it. That may well be the
+// intent — archive is a "get it out of my list" gesture, not "unpublish" — but
+// nothing states it, so it is recorded here rather than silently changed.
+// Same filter in ./raw.txt/route.ts; the two have to agree.
 async function loadShared(token: string) {
   await ready();
   const { rows } = await pool().query<NoteRow>(

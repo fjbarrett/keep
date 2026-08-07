@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { pool, ready } from "@/lib/db";
+import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
+import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
 import { readJsonBody, requestBodyError } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Codes are 256-bit and single-use, but this is the one endpoint the proxy lets
+// through unauthenticated with a DB write behind it, so cap per-IP the way
+// /api/auth/verify does — it can't be hammered as a redemption oracle or to
+// load the database.
+const exchangeRateLimit = createTokenBucketRateLimiter({
+  limit: 20,
+  windowMs: 60_000,
+});
 
 // Matches Keep's seven-day session lifetime so the cookie persists in the
 // app's cookie store across launches (a bare session cookie would be dropped on
@@ -17,6 +28,14 @@ const MAX_EXCHANGE_BODY = 2 * 1024;
   // session exists — see the allowlist in proxy.ts); the high-entropy,
 // single-use code is the credential, so there is nothing to leak without it.
 export async function POST(req: Request) {
+  const limited = enforceIpRateLimit(
+    exchangeRateLimit,
+    req.headers,
+    "native-exchange",
+    "Too many attempts. Try again shortly.",
+  );
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await readJsonBody(req, MAX_EXCHANGE_BODY);
