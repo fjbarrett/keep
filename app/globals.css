@@ -122,6 +122,22 @@ html {
   scrollbar-color: var(--color-border) transparent;
 }
 
+/* Note-card controls stay available on touch. Pointer devices keep them quiet
+   until the card is approached, while keyboard focus always reveals them. */
+.note-card-actions {
+  opacity: 1;
+  transition: opacity 140ms ease;
+}
+@media (hover: hover) {
+  .note-card-actions {
+    opacity: 0.38;
+  }
+  .note-card:hover .note-card-actions,
+  .note-card:focus-within .note-card-actions {
+    opacity: 1;
+  }
+}
+
 ::selection {
   background: rgba(37, 99, 235, 0.35);
   color: var(--color-text);
