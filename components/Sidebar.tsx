@@ -244,7 +244,7 @@ export function Sidebar({
       className={
         mobile
           ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
-          : "hidden h-full w-[252px] shrink-0 flex-col border-r border-[var(--color-border-muted)] bg-[var(--color-canvas)] md:flex"
+          : "hidden h-full w-[260px] shrink-0 flex-col bg-[var(--color-canvas)] md:flex"
       }
     >
       <div className="flex flex-col gap-1 p-2">
@@ -293,8 +293,11 @@ export function Sidebar({
         {indicator && (
           <div
             aria-hidden
-            className="pointer-events-none absolute left-2 right-2 top-0 rounded-md bg-[var(--color-surface-hover)] shadow-[inset_3px_0_0_var(--color-accent)]"
+            className="pointer-events-none absolute left-2 right-2 top-0 rounded-md bg-[var(--color-accent)]"
             style={{
+              background:
+                noteColorVar(filtered.find((n) => n.id === pillId)?.color) ??
+                undefined,
               height: indicator.height,
               transform: `translateY(${indicator.top}px)`,
               transition: indicator.animate
@@ -536,7 +539,7 @@ function SidebarNoteRow({
             aria-current={active ? "true" : undefined}
             className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
               active && !slidingIn
-                ? "font-medium text-[var(--color-text)]"
+                ? "text-[var(--color-accent-fg)]"
                 : "text-[var(--color-text)]"
             }`}
           >
@@ -544,7 +547,8 @@ function SidebarNoteRow({
               <span
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{
-                  background: noteColorVar(note.color)!,
+                  background:
+                    active && !slidingIn ? "#fff" : noteColorVar(note.color)!,
                 }}
                 aria-hidden
               />
@@ -570,7 +574,7 @@ function SidebarNoteRow({
                 : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
             } ${
               active && !slidingIn
-                ? "text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                ? "text-[var(--color-accent-fg)]/70 hover:text-[var(--color-accent-fg)]"
                 : "text-[var(--color-subtle)] hover:text-[var(--color-text)]"
             }`}
           >

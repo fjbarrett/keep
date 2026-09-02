@@ -525,8 +525,6 @@ export function NotesView({
         ) : hydrated && visibleNotes.length > 0 ? (
           <NotesGrid
             notes={visibleNotes}
-            activeNoteId={activeNoteId}
-            viewMode={viewMode}
             trashMode={viewMode === "trash"}
             scrollMemory={gridScrollRef}
             onOpen={(note) => openNote(note)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useAutohideScrollbar } from "@/lib/useAutohideScrollbar";
 import { Note } from "@/lib/types";
 import { needsInferredTitle, previewText } from "@/lib/inferTitle";
@@ -39,10 +39,6 @@ function snippetFor(note: Note, title: string) {
 const CARD_ICON =
   "grid h-7 w-7 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
 
-type GridDensity = "compact" | "comfortable";
-
-const GRID_DENSITY_KEY = "keep.gridDensity";
-
 type GridHandlers = {
   onOpen: (note: Note) => void;
   onTogglePin: (id: string) => void;
@@ -55,8 +51,6 @@ type GridHandlers = {
 
 function GridCard({
   note,
-  active,
-  density,
   trashMode,
   onOpen,
   onTogglePin,
@@ -65,12 +59,7 @@ function GridCard({
   onRestore,
   onRemove,
   onColor,
-}: {
-  note: Note;
-  active: boolean;
-  density: GridDensity;
-  trashMode: boolean;
-} & GridHandlers) {
+}: { note: Note; trashMode: boolean } & GridHandlers) {
   const [colorOpen, setColorOpen] = useState(false);
   const color = noteColorVar(note.color);
   const title = previewText(note);
@@ -82,7 +71,7 @@ function GridCard({
   useLayoutEffect(() => {
     const el = snippetRef.current;
     if (el) setClipped(el.scrollHeight > el.clientHeight + 1);
-  }, [density, snippet]);
+  }, [snippet]);
 
   const act = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -90,55 +79,47 @@ function GridCard({
   };
 
   return (
-    <article
-      className={`note-card group relative block w-full break-inside-avoid rounded-lg border text-left transition-[border-color,background-color,box-shadow] ${
-        density === "compact" ? "mb-2.5 p-3.5" : "mb-3 p-4"
-      } ${
-        active
-          ? "border-[var(--color-accent)] bg-[var(--color-canvas)] shadow-[inset_3px_0_0_var(--color-accent)]"
-          : "border-[var(--color-border)] bg-[var(--color-canvas)] hover:border-[var(--color-subtle)] hover:bg-[var(--color-surface)]"
-      }`}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(note)}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(note);
+        }
+      }}
+      className="group relative mb-3 block w-full cursor-pointer break-inside-avoid rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-4 text-left"
     >
-      <button
-        type="button"
-        onClick={() => onOpen(note)}
-        aria-current={active ? "true" : undefined}
-        aria-label={`Open ${title}`}
-        className="block w-full cursor-pointer text-left"
-      >
-        <span className="flex items-center gap-2">
-          {color && (
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: color }}
-            />
-          )}
-          <span className="truncate text-sm font-medium text-[var(--color-text)]">
-            {title}
-          </span>
+      <span className="flex items-center gap-2">
+        {color && (
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ background: color }}
+          />
+        )}
+        <span className="truncate text-sm font-medium text-[var(--color-text)]">
+          {title}
         </span>
-        {snippet && (
-          <span
-            ref={snippetRef}
-            className={`mt-2 whitespace-pre-wrap break-words text-sm text-[var(--color-muted)] ${
-              density === "compact"
-                ? "line-clamp-4 leading-5"
-                : "line-clamp-[7] leading-6"
-            }`}
-          >
-            {snippet}
-          </span>
-        )}
-        {clipped && (
-          <span
-            aria-hidden
-            className="mt-1 block text-left text-xs leading-4 text-[var(--color-subtle)]"
-          >
-            •&thinsp;•&thinsp;•
-          </span>
-        )}
-      </button>
-      <span className="note-card-actions mt-2 flex h-8 items-center justify-end gap-0.5 border-t border-[var(--color-border-muted)] pt-1">
+      </span>
+      {snippet && (
+        <span
+          ref={snippetRef}
+          className="mt-2 line-clamp-[10] whitespace-pre-wrap break-words text-sm leading-6 text-[var(--color-muted)]"
+        >
+          {snippet}
+        </span>
+      )}
+      {clipped && (
+        <span
+          aria-hidden
+          className="mt-1 block text-left text-xs leading-4 text-[var(--color-subtle)]"
+        >
+          •&thinsp;•&thinsp;•
+        </span>
+      )}
+      <span className="invisible mt-2 flex h-7 items-center gap-0.5 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
         {trashMode ? (
           <>
             <button
@@ -239,23 +220,19 @@ function GridCard({
           </>
         )}
       </span>
-    </article>
+    </div>
   );
 }
 
-const COLUMNS = "columns-1 sm:columns-2 xl:columns-3";
+const COLUMNS = "columns-1 gap-3 sm:columns-2 xl:columns-3";
 
 export function NotesGrid({
   notes,
-  activeNoteId,
-  viewMode,
   trashMode,
   scrollMemory,
   ...handlers
 }: {
   notes: Note[];
-  activeNoteId: string | null;
-  viewMode: "active" | "archive" | "trash";
   trashMode: boolean;
   scrollMemory: React.MutableRefObject<number>;
 } & GridHandlers) {
@@ -267,17 +244,6 @@ export function NotesGrid({
     if (scrollRef.current) scrollRef.current.scrollTop = scrollMemory.current;
   }, [scrollMemory]);
 
-  const [density, setDensity] = useState<GridDensity>("compact");
-  useEffect(() => {
-    const stored = localStorage.getItem(GRID_DENSITY_KEY);
-    if (stored === "compact" || stored === "comfortable") setDensity(stored);
-  }, []);
-
-  function chooseDensity(next: GridDensity) {
-    setDensity(next);
-    localStorage.setItem(GRID_DENSITY_KEY, next);
-  }
-
   const pinned = notes.filter((n) => n.pinned);
   const others = notes.filter((n) => !n.pinned);
   const cards = (list: Note[]) => (
@@ -286,8 +252,6 @@ export function NotesGrid({
         <GridCard
           key={note.id}
           note={note}
-          active={note.id === activeNoteId}
-          density={density}
           trashMode={trashMode}
           {...handlers}
         />
@@ -301,59 +265,18 @@ export function NotesGrid({
       onScroll={(e) => {
         scrollMemory.current = e.currentTarget.scrollTop;
       }}
-      className="autohide-scrollbar min-h-0 flex-1 overflow-y-auto bg-[var(--color-background)] px-3 pb-3"
+      className="autohide-scrollbar min-h-0 flex-1 overflow-y-auto p-2"
     >
       <div className="mx-auto max-w-6xl">
-        <header className="sticky top-0 z-20 mb-3 flex min-h-14 items-center justify-between gap-4 border-b border-[var(--color-border-muted)] bg-[var(--color-background)]/95 py-2 backdrop-blur-sm">
-          <div className="flex min-w-0 items-baseline gap-2">
-            <h2 className="truncate text-sm font-semibold text-[var(--color-text)]">
-              {viewMode === "archive"
-                ? "Archive"
-                : viewMode === "trash"
-                  ? "Trash"
-                  : "Texts"}
-            </h2>
-            <span className="shrink-0 text-xs tabular-nums text-[var(--color-subtle)]">
-              {notes.length}
-            </span>
-          </div>
-          <div
-            role="group"
-            aria-label="Card density"
-            className="flex shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-canvas)] p-0.5"
-          >
-            {(["compact", "comfortable"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => chooseDensity(option)}
-                aria-pressed={density === option}
-                className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${
-                  density === option
-                    ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]"
-                    : "text-[var(--color-muted)] hover:text-[var(--color-text)]"
-                }`}
-              >
-                {option === "compact" ? "Compact" : "Comfortable"}
-              </button>
-            ))}
-          </div>
-        </header>
         {pinned.length > 0 && others.length > 0 ? (
           <>
-            <div className="mb-2 flex items-center gap-2 px-1">
-              <p className="text-xs font-medium text-[var(--color-muted)]">
-                Pinned
-              </p>
-              <span className="h-px flex-1 bg-[var(--color-border-muted)]" />
-            </div>
+            <p className="mb-2 pl-1 text-xs font-medium text-[var(--color-muted)]">
+              Pinned
+            </p>
             {cards(pinned)}
-            <div className="mb-2 mt-4 flex items-center gap-2 px-1">
-              <p className="text-xs font-medium text-[var(--color-muted)]">
-                Others
-              </p>
-              <span className="h-px flex-1 bg-[var(--color-border-muted)]" />
-            </div>
+            <p className="mb-2 mt-4 pl-1 text-xs font-medium text-[var(--color-muted)]">
+              Others
+            </p>
             {cards(others)}
           </>
         ) : (
