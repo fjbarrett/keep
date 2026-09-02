@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { XIcon } from "@/components/Icons";
+import { useModalDialog } from "@/lib/useModalDialog";
 
 const SHORTCUT_GROUPS = [
   {
@@ -39,9 +40,11 @@ export function ShortcutsOverlay({
 }: {
   onClose: () => void;
 }) {
+  const dialogRef = useModalDialog(onClose);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" || e.key === "?") onClose();
+      if (e.key === "?") onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -55,9 +58,16 @@ export function ShortcutsOverlay({
         className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-title"
+        tabIndex={-1}
+        className="relative z-10 w-full max-w-md overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+          <h2 id="shortcuts-title" className="text-sm font-semibold text-[var(--color-text)]">
             Keyboard shortcuts
           </h2>
           <button

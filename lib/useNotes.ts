@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { inferNoteTitle, needsInferredTitle } from "./inferTitle";
 import { Note } from "./types";
 import {
   cacheNotes,
@@ -12,109 +11,18 @@ import {
   getPendingOps,
   removePendingOp,
 } from "./offlineDb";
-
-const GUEST_NOTES_KEY = "keep.guestNotes.v1";
-
-function localId() {
-  return crypto.randomUUID().replace(/-/g, "");
-}
-
-function readGuestNotes(): Note[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(GUEST_NOTES_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeStoredNote).filter((note): note is Note => Boolean(note));
-  } catch {
-    return [];
-  }
-}
-
-function normalizeStoredNote(value: unknown): Note | null {
-  if (!value || typeof value !== "object") return null;
-  const note = value as Note;
-  const body = String(note.body ?? "");
-  const title = String(note.title ?? "");
-  return {
-    ...note,
-    title: needsInferredTitle(title, body) ? inferNoteTitle(body || title) : title,
-    body,
-    trashed: Boolean(note.trashed),
-    markdown: Boolean(note.markdown),
-    highlight: Boolean(note.highlight),
-    tags: Array.isArray(note.tags) ? note.tags : [],
-    shareToken: note.shareToken ?? null,
-  };
-}
-
-function writeGuestNotes(notes: Note[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(GUEST_NOTES_KEY, JSON.stringify(notes));
-}
-
-function clearGuestNotes() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(GUEST_NOTES_KEY);
-}
-
-async function api<T>(
-  path: string,
-  init?: RequestInit & { json?: unknown },
-): Promise<T> {
-  const res = await fetch(path, {
-    method: init?.method ?? "GET",
-    headers: init?.json
-      ? { "Content-Type": "application/json", ...(init?.headers ?? {}) }
-      : init?.headers,
-    body: init?.json ? JSON.stringify(init.json) : init?.body,
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    let msg = `${res.status}`;
-    try {
-      const j = await res.json();
-      if (j?.error) msg = j.error;
-    } catch {
-      /* ignore */
-    }
-    throw new ApiRequestError(msg, res.status);
-  }
-  return res.json() as Promise<T>;
-}
-
-class ApiRequestError extends Error {
-  constructor(message: string, readonly status: number) {
-    super(message);
-  }
-}
-
-function isRetryable(error: unknown) {
-  return (
-    !(error instanceof ApiRequestError) ||
-    error.status === 408 ||
-    error.status === 425 ||
-    error.status === 429 ||
-    error.status >= 500
-  );
-}
-
-function firstLine(body: string) {
-  return body.split(/\r?\n/, 1)[0]?.trim() ?? "";
-}
-
-async function metaForBody(body: string): Promise<{ title: string; summary: string }> {
-  try {
-    const data = await api<{ title: string; summary?: string }>("/api/notes/title", {
-      method: "POST",
-      json: { body },
-    });
-    return { title: data.title || inferNoteTitle(body), summary: data.summary ?? "" };
-  } catch {
-    return { title: inferNoteTitle(body), summary: "" };
-  }
-}
+import {
+  clearGuestNotes,
+  firstNoteLine,
+  isRetryableNoteError,
+  localNoteId,
+  metadataForBody,
+  notesApi,
+  NotesApiError,
+  readGuestNotes,
+  writeGuestNotes,
+} from "./notesClient";
+import { importGuestKeepFile, readImportedTextBodies } from "./noteImportClient";
 
 export type SyncStatus = "idle" | "syncing" | "saved" | "error" | "offline";
 
@@ -227,7 +135,7 @@ export function useNotes(ownerId: string | null) {
     }
 
     try {
-      const data = await api<{ notes: Note[] }>("/api/notes");
+      const data = await notesApi<{ notes: Note[] }>("/api/notes");
       if (ownerRef.current !== ownerId) return;
       const guestNotes = readGuestNotes();
       cacheNotes(ownerId, data.notes).catch(() => {});
@@ -244,7 +152,7 @@ export function useNotes(ownerId: string | null) {
       setError(null);
     } catch (e) {
       if (ownerRef.current !== ownerId) return;
-      if (e instanceof ApiRequestError && e.status === 401) {
+      if (e instanceof NotesApiError && e.status === 401) {
         // Session expired mid-tab: keep showing the cached synced notes (and any
         // unsynced guest notes) read-only rather than blanking the list — the
         // cache holds a full copy the user can still read until they re-auth.
@@ -322,17 +230,17 @@ export function useNotes(ownerId: string | null) {
             try {
               await enqueueSave(op.noteId, async () => {
                 if (op.type === "create" && op.payload) {
-                  await api("/api/notes", { method: "POST", json: op.payload });
+                  await notesApi("/api/notes", { method: "POST", json: op.payload });
                 } else if (op.type === "update" && op.payload) {
-                  await api(`/api/notes/${op.noteId}`, { method: "PATCH", json: op.payload });
+                  await notesApi(`/api/notes/${op.noteId}`, { method: "PATCH", json: op.payload });
                 } else if (op.type === "delete") {
-                  await api(`/api/notes/${op.noteId}`, { method: "DELETE" });
+                  await notesApi(`/api/notes/${op.noteId}`, { method: "DELETE" });
                 }
               });
               await removePendingOp(ownerId, op.id);
               changed = true;
             } catch (error) {
-              const status = error instanceof ApiRequestError ? error.status : 0;
+              const status = error instanceof NotesApiError ? error.status : 0;
               if (status === 401) {
                 // Session expired: keep the op and stop; a refresh after
                 // re-auth will retry it.
@@ -341,7 +249,7 @@ export function useNotes(ownerId: string | null) {
                 drained = false;
                 break;
               }
-              if (isRetryable(error)) {
+              if (isRetryableNoteError(error)) {
                 // Transient (network/408/429/5xx): keep the op, retry shortly.
                 blocked = true;
                 drained = false;
@@ -361,7 +269,7 @@ export function useNotes(ownerId: string | null) {
         const remaining = await getPendingOps(ownerId);
         queuedNoteIdsRef.current = new Set(remaining.map((op) => op.noteId));
         if (changed && drained && remaining.length === 0) await refresh();
-        // replayPending drives ops through bare api() rather than trackSync, so
+        // replayPending drives ops through bare notesApi() rather than trackSync, so
         // a status left at "error"/"syncing"/"offline" by the queued-op paths
         // never clears on a clean drain. Settle it here once the queue is empty.
         if (drained && remaining.length === 0 && inflightRef.current === 0 && navigator.onLine) {
@@ -383,10 +291,10 @@ export function useNotes(ownerId: string | null) {
     const body = partial.body ?? "";
     const meta = partial.title
       ? { title: partial.title, summary: partial.summary ?? "" }
-      : await metaForBody(body);
+      : await metadataForBody(body);
     const now = Date.now();
     const note: Note = {
-      id: localId(),
+      id: localNoteId(),
       title: meta.title,
       summary: meta.summary || null,
       color: partial.color ?? null,
@@ -417,7 +325,7 @@ export function useNotes(ownerId: string | null) {
     cacheNote(ownerId, note).catch(() => {});
 
     try {
-      const data = await trackSync(api<{ note: Note }>("/api/notes", {
+      const data = await trackSync(notesApi<{ note: Note }>("/api/notes", {
         method: "POST",
         json: {
           id: note.id,
@@ -445,7 +353,7 @@ export function useNotes(ownerId: string | null) {
       cacheNote(ownerId, data.note).catch(() => {});
       return data.note;
     } catch (e) {
-      if (isRetryable(e)) {
+      if (isRetryableNoteError(e)) {
         await addPendingOp(ownerId, {
           type: "create",
           noteId: note.id,
@@ -482,7 +390,7 @@ export function useNotes(ownerId: string | null) {
       bodyChanged &&
       patch.body !== undefined &&
       patch.title === undefined &&
-      (firstLine(patch.body) !== firstLine(current.body) || !current.title.trim());
+      (firstNoteLine(patch.body) !== firstNoteLine(current.body) || !current.title.trim());
     const revision = (mutationRevisionRef.current.get(id) ?? 0) + 1;
     mutationRevisionRef.current.set(id, revision);
     const updatedAt = Date.now();
@@ -510,7 +418,7 @@ export function useNotes(ownerId: string | null) {
 
     if (isGuest || localNoteIds.has(id)) {
       if (!needsMeta || patch.body === undefined) return Promise.resolve();
-      return metaForBody(patch.body).then(applyGeneratedMeta);
+      return metadataForBody(patch.body).then(applyGeneratedMeta);
     }
     if (!ownerId) return Promise.resolve();
 
@@ -519,7 +427,7 @@ export function useNotes(ownerId: string | null) {
     return enqueueSave(id, async () => {
       let nextPatch = patch;
       if (needsMeta && patch.body !== undefined) {
-        const meta = await metaForBody(patch.body);
+        const meta = await metadataForBody(patch.body);
         nextPatch = {
           ...patch,
           title: meta.title,
@@ -545,7 +453,7 @@ export function useNotes(ownerId: string | null) {
       }
 
       try {
-        const data = await trackSync(api<{ note: Note }>(`/api/notes/${id}`, {
+        const data = await trackSync(notesApi<{ note: Note }>(`/api/notes/${id}`, {
           method: "PATCH",
           json: nextPatch,
         }));
@@ -559,7 +467,7 @@ export function useNotes(ownerId: string | null) {
         }
         setError(null);
       } catch (error) {
-        if (isRetryable(error)) {
+        if (isRetryableNoteError(error)) {
           await addPendingOp(ownerId, {
             type: "update",
             noteId: id,
@@ -624,10 +532,10 @@ export function useNotes(ownerId: string | null) {
         return;
       }
       try {
-        await trackSync(api(`/api/notes/${id}`, { method: "DELETE" }));
+        await trackSync(notesApi(`/api/notes/${id}`, { method: "DELETE" }));
         setError(null);
       } catch (error) {
-        if (isRetryable(error)) {
+        if (isRetryableNoteError(error)) {
           await addPendingOp(ownerId, { type: "delete", noteId: id })
             .then(() => {
               queuedNoteIdsRef.current.add(id);
@@ -650,32 +558,7 @@ export function useNotes(ownerId: string | null) {
 
   const importKeepFile = useCallback(async (file: File) => {
     if (isGuest) {
-      const { parseGoogleKeepImport } = await import("./googleKeepImport");
-      const { notes: imported, skipped } = await parseGoogleKeepImport(
-        file.name,
-        await file.arrayBuffer(),
-      );
-      const now = Date.now();
-      const importable = imported.filter((note) => !note.trashed);
-      const guestNotes: Note[] = [];
-      for (const note of importable) {
-        const meta = await metaForBody(note.body);
-        guestNotes.push({
-          id: localId(),
-          title: meta.title,
-          summary: meta.summary || null,
-          body: note.body,
-          pinned: note.pinned,
-          archived: note.archived,
-          trashed: false,
-          markdown: false,
-          highlight: false,
-          tags: [],
-          shareToken: null,
-          createdAt: note.createdAt || now,
-          updatedAt: note.updatedAt || now,
-        });
-      }
+      const { notes: guestNotes, skipped } = await importGuestKeepFile(file);
       setLocalNoteIds((prev) => {
         const next = new Set(prev);
         for (const note of guestNotes) next.add(note.id);
@@ -686,7 +569,7 @@ export function useNotes(ownerId: string | null) {
       setNotes(next);
       return {
         imported: guestNotes.length,
-        skipped: skipped + imported.length - importable.length,
+        skipped,
         duplicates: 0,
       };
     }
@@ -715,21 +598,7 @@ export function useNotes(ownerId: string | null) {
   // handled the same as any new text.
   const importTextFiles = useCallback(
     async (file: File) => {
-      const bodies: string[] = [];
-      if (/\.zip$/i.test(file.name)) {
-        const JSZip = (await import("jszip")).default;
-        const zip = await JSZip.loadAsync(await file.arrayBuffer());
-        for (const entry of Object.values(zip.files)) {
-          if (!entry.dir && /\.(txt|md|markdown)$/i.test(entry.name)) {
-            bodies.push(await entry.async("string"));
-          }
-        }
-      } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
-        const { extractPdfText } = await import("./pdfText");
-        bodies.push(await extractPdfText(file));
-      } else {
-        bodies.push(await file.text());
-      }
+      const bodies = await readImportedTextBodies(file);
       let imported = 0;
       for (const body of bodies) {
         if (body.trim()) {
@@ -751,7 +620,7 @@ export function useNotes(ownerId: string | null) {
 
     const imported = await Promise.all(
       localNotes.map((note) =>
-        api<{ note: Note }>("/api/notes", {
+        notesApi<{ note: Note }>("/api/notes", {
           method: "POST",
           json: {
             id: note.id,
@@ -808,7 +677,7 @@ export function useNotes(ownerId: string | null) {
     async (id: string) => {
       if (isGuest || localNoteIds.has(id)) return null;
       try {
-        const data = await api<{ note: Note }>(`/api/notes/${id}/share`, {
+        const data = await notesApi<{ note: Note }>(`/api/notes/${id}/share`, {
           method: "POST",
         });
         const next = notesRef.current.map((note) =>
@@ -831,7 +700,7 @@ export function useNotes(ownerId: string | null) {
     async (id: string) => {
       if (isGuest || localNoteIds.has(id)) return;
       try {
-        const data = await api<{ note: Note }>(`/api/notes/${id}/share`, {
+        const data = await notesApi<{ note: Note }>(`/api/notes/${id}/share`, {
           method: "DELETE",
         });
         const next = notesRef.current.map((note) =>
@@ -852,7 +721,7 @@ export function useNotes(ownerId: string | null) {
   // can surface it inline.
   const setShareToken = useCallback(
     async (id: string, token: string) => {
-      const data = await api<{ note: Note }>(`/api/notes/${id}/share`, {
+      const data = await notesApi<{ note: Note }>(`/api/notes/${id}/share`, {
         method: "PUT",
         json: { token },
       });

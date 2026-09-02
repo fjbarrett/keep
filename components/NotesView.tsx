@@ -7,11 +7,18 @@ import { useNotes } from "@/lib/useNotes";
 import { Note } from "@/lib/types";
 import { NoteEditor, EditorTarget } from "@/components/NoteEditor";
 import { NotesGrid } from "@/components/NotesGrid";
-import { Sidebar, NoteInfoModal } from "@/components/Sidebar";
+import { Sidebar } from "@/components/Sidebar";
+import { NoteInfoModal } from "@/components/NoteInfoModal";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { SettingsPane } from "@/components/SettingsPane";
 import { ShortcutsOverlay } from "@/components/ShortcutsOverlay";
-import { KeyboardIcon, PanelLeftIcon, PlusIcon, SettingsIcon, StackIcon, XIcon } from "@/components/Icons";
+import {
+  DatabaseError,
+  GuestSaveBanner,
+  MainPlaceholder,
+  MiniRail,
+} from "@/components/NotesViewChrome";
+import { exportGuestNotes } from "@/lib/guestNoteExport";
 
 function isEditableElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -203,20 +210,7 @@ export function NotesView({
   }
 
   async function handleGuestExport() {
-    const exportable = notes.filter((note) => !note.trashed);
-    if (exportable.length === 0) return;
-    if (exportable.length === 1) {
-      downloadBlob(noteFileName(exportable[0]), noteFileContent(exportable[0]), "text/plain");
-      return;
-    }
-
-    const JSZip = (await import("jszip")).default;
-    const zip = new JSZip();
-    for (const note of exportable) {
-      zip.file(noteFileName(note), noteFileContent(note));
-    }
-    const content = await zip.generateAsync({ type: "blob" });
-    downloadBlob("keep-texts.zip", content, "application/zip");
+    await exportGuestNotes(notes);
   }
 
   useEffect(() => {
@@ -251,7 +245,6 @@ export function NotesView({
     // decide whether the deep-linked note opens or we fall back to the grid.
     if (!hydrated) return;
     const note = notes.find((n) => n.id === initialNoteId);
-    if (!note && notes.length === 0) return;
     didRestoreFromUrlRef.current = true;
     setRestoringFromUrl(false);
     if (note) {
@@ -491,7 +484,7 @@ export function NotesView({
     <>
       {error && (
         <div className="px-6 pt-4">
-          <DbError error={error} onRetry={refresh} />
+          <DatabaseError error={error} onRetry={refresh} />
         </div>
       )}
       {(isGuest || hasLocalNotes) && notes.length > 0 && !bannerDismissed && (
@@ -639,203 +632,5 @@ export function NotesView({
         />
       )}
     </>
-  );
-}
-
-function downloadBlob(fileName: string, content: BlobPart, type: string) {
-  const blob = content instanceof Blob ? content : new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function noteText(note: Note) {
-  return note.body.trim() || note.title.trim();
-}
-
-function noteFileName(note: Note) {
-  const base =
-    noteText(note)
-      .split("\n")[0]
-      ?.replace(/\s+/g, " ")
-      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "")
-      .trim()
-      .slice(0, 60) || "note";
-  return `${base}-${note.id.slice(-6)}.txt`;
-}
-
-function noteFileContent(note: Note) {
-  return `${noteText(note)}\n`;
-}
-
-function GuestSaveBanner({
-  isGuest,
-  hasLocalNotes,
-  onSave,
-  onDismiss,
-}: {
-  isGuest: boolean;
-  hasLocalNotes: boolean;
-  onSave: () => Promise<{ saved: number }>;
-  onDismiss: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
-      <p className="text-sm text-[var(--color-muted)]">
-        {hasLocalNotes
-          ? "Some of your text is saved only in this browser."
-          : "Your text is saved only in this browser."}
-      </p>
-      <div className="flex items-center gap-1.5">
-        {isGuest ? (
-          <a
-            href="/signin?from=/"
-            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-          >
-            Sign in to save
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              onSave().catch((error) => {
-                alert(error instanceof Error ? error.message : "Failed to save");
-              });
-            }}
-            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-          >
-            Save to account
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label="Dismiss"
-          title="Dismiss"
-          className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-        >
-          <XIcon className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DbError({
-  error,
-  onRetry,
-}: {
-  error: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[var(--color-text)]">
-          Couldn't reach Postgres
-        </p>
-        <p className="mt-0.5 truncate font-mono text-xs text-[var(--color-muted)]">
-          {error}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-      >
-        Retry
-      </button>
-    </div>
-  );
-}
-
-function MiniRail({
-  onNewNote,
-  onOpenSettings,
-  onOpenShortcuts,
-  onExpand,
-}: {
-  onNewNote: () => void;
-  onOpenSettings: () => void;
-  onOpenShortcuts: () => void;
-  onExpand: () => void;
-}) {
-  const iconBtn =
-    "grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
-  return (
-    <aside
-      aria-label="Collapsed sidebar"
-      className="flex w-12 shrink-0 flex-col items-center justify-between bg-[var(--color-canvas)] py-2"
-    >
-      <button
-        type="button"
-        onClick={onNewNote}
-        title="New"
-        aria-label="New"
-        className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-      >
-        <PlusIcon className="h-4 w-4" />
-      </button>
-      <div className="flex flex-col items-center gap-0.5">
-        <button type="button" onClick={onOpenSettings} title="Settings" aria-label="Settings" className={iconBtn}>
-          <SettingsIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onOpenShortcuts}
-          title="Keyboard shortcuts"
-          aria-label="Keyboard shortcuts"
-          className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
-        >
-          <KeyboardIcon className="h-4 w-4" />
-        </button>
-        <button type="button" onClick={onExpand} title="Show sidebar" aria-label="Show sidebar" className={iconBtn}>
-          <PanelLeftIcon className="h-4 w-4" />
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-function MainPlaceholder({
-  hasNotes,
-  onNewNote,
-}: {
-  hasNotes: boolean;
-  onNewNote: () => void;
-}) {
-  return (
-    <div className="grid flex-1 place-items-center">
-      <div className="px-8 text-center">
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <StackIcon className="h-5 w-5 text-[var(--color-muted)]" />
-        </div>
-        <p className="text-base font-medium text-[var(--color-text)]">
-          {hasNotes ? "Select a text" : "No texts yet"}
-        </p>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          {hasNotes
-            ? "Open a text from the sidebar, or create a new one."
-            : "Start by creating your first text."}
-        </p>
-        <button
-          type="button"
-          onClick={onNewNote}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-accent-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
-        >
-          <PlusIcon className="h-3.5 w-3.5" />
-          New
-        </button>
-        <p className="mt-3 text-xs text-[var(--color-muted)]">
-          or press{" "}
-          <kbd className="inline-block min-w-[20px] rounded border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 text-center font-mono text-[11px]">
-            n
-          </kbd>
-        </p>
-      </div>
-    </div>
   );
 }

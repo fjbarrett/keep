@@ -3,6 +3,7 @@
 import { previewText } from "@/lib/inferTitle";
 import { Note } from "@/lib/types";
 import { SearchIcon } from "@/components/Icons";
+import { useModalDialog } from "@/lib/useModalDialog";
 
 export function SearchOverlay({
   query,
@@ -24,16 +25,24 @@ export function SearchOverlay({
   onClose: () => void;
 }) {
   const hasQuery = query.trim().length > 0;
+  const dialogRef = useModalDialog(onClose);
 
   return (
-    <div data-search-overlay role="dialog" aria-label="Search texts" className="fixed inset-0 z-40 px-4 pt-[14vh]">
+    <div data-search-overlay className="fixed inset-0 z-40 px-4 pt-[14vh]">
       <button
         type="button"
         aria-label="Close search"
         className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search texts"
+        tabIndex={-1}
+        className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
+      >
         <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-4 py-3">
           <SearchIcon className="h-5 w-5 shrink-0 text-[var(--color-muted)]" />
           <input

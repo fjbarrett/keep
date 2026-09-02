@@ -10,6 +10,7 @@ import {
 } from "@/components/Icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccentPicker } from "@/components/AccentPicker";
+import { useModalDialog } from "@/lib/useModalDialog";
 
 export function SettingsPane({
   importing,
@@ -43,18 +44,26 @@ export function SettingsPane({
   onClose: () => void;
 }) {
   const exportableCount = notes.filter((note) => !note.trashed).length;
+  const dialogRef = useModalDialog<HTMLElement>(onClose);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-label="Settings">
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <button
         type="button"
         aria-label="Close settings"
         className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-sm"
         onClick={onClose}
       />
-      <section className="relative z-10 flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        tabIndex={-1}
+        className="relative z-10 flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+          <h2 id="settings-title" className="text-sm font-semibold text-[var(--color-text)]">
             Settings
           </h2>
           <div className="flex items-center gap-1">

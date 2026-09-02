@@ -15,6 +15,11 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Pin workspace discovery to this app. A package-lock higher in a developer's
+  // home directory should not make Turbopack infer a different repository root.
+  turbopack: {
+    root: process.cwd(),
+  },
   images: {
     // Google user-content (avatar) host. Without this, next/image throws
     // "hostname not configured" when rendering session.user.image.
