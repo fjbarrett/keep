@@ -42,6 +42,7 @@ Keep/
   Services/AuthClient.swift Native NextAuth sign-in (csrf + credentials)
   Services/GoogleSignIn.swift Google via ASWebAuthenticationSession + bridge
   Services/NotesStore.swift @Observable view-model (sorted pinned-first)
+  Assets.xcassets          App icon (the web's blue note mark, full-bleed)
   Views/RootView.swift     NavigationStack + initial load
   Views/SignInView.swift   Native email/password sign-in sheet
   Views/NotesListView.swift List, swipe pin/trash, compose
@@ -109,7 +110,7 @@ gh variable set IOS_SCREENSHOT --body true
 
 - Offline cache / sync, search, markdown rendering, color picker, and version
   history.
-- App icon / launch assets.
+- Launch assets.
 
 ## Roadmap (suggested)
 

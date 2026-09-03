@@ -50,11 +50,10 @@ actor AuthClient {
         return obj["user"] != nil
     }
 
-    /// Clears the session both server-side (best effort) and locally.
+    /// Ends only this device's session — server-side (best effort) and locally.
+    /// Revoking every device (POST /api/auth/revoke) is a separate, explicit
+    /// action; a plain "Sign out" must not log the user out of their laptop.
     func signOut() async {
-        var revoke = URLRequest(url: url("api/auth/revoke"))
-        revoke.httpMethod = "POST"
-        _ = try? await session.data(for: revoke)
         if let csrf = try? await csrfToken() {
             var req = URLRequest(url: url("api/auth/signout"))
             req.httpMethod = "POST"
