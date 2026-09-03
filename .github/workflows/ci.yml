@@ -17,6 +17,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # npm 10's legacy audit request is retired by the registry. Keep the
+      # package-manager version explicit so the security gate stays reliable.
+      - run: npm install --global npm@11.6.0 --no-audit --no-fund
       - run: npm ci
       # Reuse Next's incremental build cache across runs so the gate build is warm.
       - name: Cache Next.js build
@@ -31,14 +34,13 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run build
 
-  # Auto-deploy to the production droplet on every merge to main, only after
-  # checks pass. Mirrors scripts/deploy.sh. Host + key come from secrets so no
-  # infra detail lives in this public repo; absent secrets => the job no-ops,
-  # so the workflow is safe to merge before deploy is wired up.
+  # Auto-deploy from inside the private Proxmox network on every merge to main,
+  # only after the hosted checks pass. The runner has one sudo capability: the
+  # root-owned deployment script on the Keep container.
   deploy:
     needs: checks
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, keep-prod]
     environment:
       name: production
       url: https://keeptxt.com
@@ -46,38 +48,8 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
-      - name: Deploy over SSH
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/keep' }}
-          DEPLOY_SERVICE: ${{ vars.DEPLOY_SERVICE || 'keep' }}
-        run: |
-          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
-            echo "::notice::DEPLOY_HOST/DEPLOY_SSH_KEY/DEPLOY_KNOWN_HOSTS not configured — skipping deploy."
-            exit 0
-          fi
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile=~/.ssh/known_hosts \
-            "$DEPLOY_HOST" \
-            "set -e
-             cd '$DEPLOY_PATH'
-             git fetch origin main -q && git reset --hard origin/main -q
-             if [ ! -d node_modules ] || ! git diff --quiet ORIG_HEAD HEAD -- package-lock.json; then
-               npm ci --no-audit --no-fund
-             fi
-             find .next -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} + 2>/dev/null || true
-             npm run build
-             systemctl restart '$DEPLOY_SERVICE'
-             sleep 5
-             echo \"service: \$(systemctl is-active '$DEPLOY_SERVICE') @ \$(git rev-parse --short HEAD)\""
+      - name: Deploy on Proxmox
+        run: sudo -n /usr/local/sbin/deploy-keep
 
       - name: Smoke check
         env:

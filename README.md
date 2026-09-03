@@ -91,11 +91,13 @@ proxy.ts                 Auth gate, CSP, rewrites, and public rate limits
 
 ## Deployment
 
-Production is self-hosted behind Caddy. The GitHub Actions workflow runs the
-test, typecheck, audit, and production-build gates before deploying the latest
-`main` commit. The deploy environment requires a pinned `DEPLOY_KNOWN_HOSTS`
-entry in addition to the host and SSH key. `scripts/deploy.sh` provides the
-equivalent manual flow and refreshes the project screenshot afterward.
+Production runs in a dedicated Proxmox LXC behind Cloudflare Tunnel. GitHub
+Actions runs the test, typecheck, audit, and production-build gates on a hosted
+runner, then a repository-scoped self-hosted runner deploys the latest `main`
+commit from inside the private network. The runner can sudo only the root-owned
+deployment script; the origin has no public inbound port or deployment key.
+
+`scripts/deploy.sh` remains the manual SSH flow for recovery and maintenance.
 
 The app can also run on other Node.js hosts when the same environment variables
 and a Postgres database are available.
