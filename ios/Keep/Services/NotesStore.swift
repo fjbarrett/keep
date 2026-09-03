@@ -29,6 +29,18 @@ final class NotesStore {
         }
     }
 
+    /// Case-insensitive AND-match over title and body: every whitespace-separated
+    /// token must appear somewhere in the note. Mirrors the Mac client; the web
+    /// uses Fuse for fuzzy matching, which isn't worth a dependency here.
+    static func matching(_ query: String, in notes: [Note]) -> [Note] {
+        let tokens = query.lowercased().split(separator: " ").map(String.init)
+        guard !tokens.isEmpty else { return notes }
+        return notes.filter { note in
+            let hay = (note.title + "\n" + note.body).lowercased()
+            return tokens.allSatisfy { hay.contains($0) }
+        }
+    }
+
     func load() async {
         isLoading = true
         defer { isLoading = false }
