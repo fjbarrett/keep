@@ -11,21 +11,56 @@ struct NoteEditorView: View {
     @State private var createdId: String?
     @State private var saveTask: Task<Void, Never>?
 
+    /// The live note (the one passed in, or the one just created), read back
+    /// from the store so the toolbar reflects the latest flags.
+    private var current: Note? {
+        if let note { return store.notes.first { $0.id == note.id } ?? note }
+        if let createdId { return store.notes.first { $0.id == createdId } }
+        return nil
+    }
+
     var body: some View {
-        TextEditor(text: $body_)
-            .font(.body)
-            .padding(.horizontal)
-            .navigationTitle(note?.displayTitle ?? "New note")
-            .navigationBarTitleDisplayMode(.inline)
-            .onAppear { body_ = note?.body ?? "" }
-            .onChange(of: body_) { _, newValue in scheduleSave(newValue) }
-            .toolbar {
-                if note == nil {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
+        Group {
+            if current?.markdown == true {
+                MarkdownView(source: body_)
+            } else {
+                TextEditor(text: $body_)
+                    .font(.body)
+            }
+        }
+        .padding(.horizontal)
+        .navigationTitle(current?.displayTitle ?? "New note")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { body_ = note?.body ?? "" }
+        .onChange(of: body_) { _, newValue in scheduleSave(newValue) }
+        .toolbar {
+            if let note = current {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        // The note's own markdown flag is the toggle, same as
+                        // the web and Mac — the two render modes are exclusive.
+                        Task {
+                            await store.update(
+                                note.id,
+                                patch: note.markdown
+                                    ? ["markdown": false]
+                                    : ["markdown": true, "highlight": false]
+                            )
+                        }
+                    } label: {
+                        Label(
+                            note.markdown ? "Edit Text" : "Preview Markdown",
+                            systemImage: note.markdown ? "square.and.pencil" : "doc.richtext"
+                        )
                     }
                 }
             }
+            if note == nil {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 
     /// Debounced autosave (~0.6s), matching the web debounce feel.

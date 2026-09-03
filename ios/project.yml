@@ -51,13 +51,15 @@ targets:
   KeepMac:
     type: application
     platform: macOS
-    # Reuse the iOS target's model, services (API/auth/Spotlight), and title
-    # logic plus the shared SignInView; only the Mac views + app entry are new.
+    # Reuse the iOS target's model, services (API/auth/Spotlight), title logic,
+    # and the shared SignInView + markdown renderer; only the Mac views + app
+    # entry are new.
     sources:
       - path: Keep/Models
       - path: Keep/Services
       - path: Keep/Support
       - path: Keep/Views/SignInView.swift
+      - path: Keep/Views/MarkdownView.swift
       - path: KeepMac
     settings:
       base:
