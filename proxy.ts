@@ -31,21 +31,24 @@ const publicShareRateLimit = createTokenBucketRateLimiter({
 // self-hosted `next start` behind Caddy it is the *listen* origin
 // (https://localhost:3000), so comparing the public Origin header against it
 // would 403 every same-origin mutation in production.
-function allowedOrigins(req: NextRequest): Set<string> {
-  const origins = new Set([req.nextUrl.origin]);
-  if (process.env.AUTH_URL) {
+//
+// The allowlist is server configuration only (AUTH_URL / APP_URL). Forwarded
+// headers must never expand it: Caddy overwrites X-Forwarded-Host/Proto with
+// the client-facing values only when it is the edge proxy (its documented
+// default is to ignore inbound values for those headers), while Host always
+// passes through — and any client reaching the origin directly can send
+// arbitrary X-Forwarded-Host/Proto/Host values. Echoing them into the
+// allowlist would let a request allowlist its own Origin and bypass this
+// gate where Sec-Fetch-Site is absent.
+function allowedOrigins(): Set<string> {
+  const origins = new Set<string>();
+  for (const value of [process.env.AUTH_URL, process.env.APP_URL]) {
+    if (!value) continue;
     try {
-      origins.add(new URL(process.env.AUTH_URL).origin);
+      origins.add(new URL(value).origin);
     } catch {
-      // Malformed AUTH_URL — the forwarded-host fallback below still applies.
+      // Malformed URL — ignore and fail closed.
     }
-  }
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  if (host) {
-    const proto =
-      req.headers.get("x-forwarded-proto")?.split(",")[0].trim() ||
-      req.nextUrl.protocol.replace(":", "");
-    origins.add(`${proto}://${host}`);
   }
   return origins;
 }
@@ -54,7 +57,7 @@ function isCrossOriginMutation(req: NextRequest): boolean {
   const fetchSite = req.headers.get("sec-fetch-site");
   if (fetchSite) return fetchSite !== "same-origin" && fetchSite !== "none";
   const origin = req.headers.get("origin");
-  return origin !== null && !allowedOrigins(req).has(origin);
+  return origin !== null && !allowedOrigins().has(origin);
 }
 
 // Note bodies saved before uploads went private embed absolute URLs on the old
