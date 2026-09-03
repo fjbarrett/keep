@@ -63,3 +63,12 @@ which captures keeptxt.com to `screenshots/keep-<timestamp>.png` (an archive kep
 in the repo so design changes can be reviewed over time) and refreshes
 `docs/screenshot.png` (the image shown in the README). Commit the refreshed
 `docs/screenshot.png` and the new `screenshots/` file with the deploy.
+
+## Shared agent rules
+
+Claude Code reads this file, not `AGENTS.md` — so the operating rules
+(git/GitHub discipline, multi-session protocol, verification gates) live
+there and are imported here. Codex and other harnesses read `AGENTS.md`
+directly. One source, no duplication.
+
+@AGENTS.md
