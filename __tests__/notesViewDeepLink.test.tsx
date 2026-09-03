@@ -1,9 +1,23 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotesView } from "@/components/NotesView";
+import type { Note } from "@/lib/types";
+
+const routerState = vi.hoisted(() => ({
+  pathname: "/",
+  replace: vi.fn((href: string) => {
+    routerState.pathname = new URL(href, window.location.href).pathname;
+    window.history.replaceState(null, "", href);
+  }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => routerState,
+  usePathname: () => routerState.pathname,
+}));
 
 const notesState = vi.hoisted(() => ({
-  notes: [],
+  notes: [] as Note[],
   hydrated: true,
   isGuest: true,
   hasLocalNotes: false,
@@ -25,16 +39,53 @@ const notesState = vi.hoisted(() => ({
   syncStatus: "idle" as const,
 }));
 
+function note(id: string, title: string, body: string): Note {
+  return {
+    id,
+    title,
+    body,
+    pinned: false,
+    archived: false,
+    trashed: false,
+    markdown: false,
+    highlight: false,
+    tags: [],
+    shareToken: null,
+    createdAt: 1,
+    updatedAt: 1,
+  };
+}
+
 vi.mock("@/lib/useNotes", () => ({
   useNotes: () => notesState,
 }));
 
 vi.mock("@/components/Sidebar", () => ({
-  Sidebar: () => <aside aria-label="Texts" />,
+  Sidebar: ({
+    filtered,
+    onOpenNote,
+  }: {
+    filtered: Note[];
+    onOpenNote: (note: Note) => void;
+  }) => (
+    <aside aria-label="Texts">
+      {filtered.map((item) => (
+        <button key={item.id} onClick={() => onOpenNote(item)}>
+          Open {item.id}
+        </button>
+      ))}
+    </aside>
+  ),
 }));
+
+afterEach(cleanup);
 
 describe("NotesView deep links", () => {
   beforeEach(() => {
+    notesState.notes = [];
+    notesState.hydrated = true;
+    routerState.replace.mockClear();
+    routerState.pathname = "/note/missing-note";
     window.history.replaceState(null, "", "/note/missing-note");
   });
 
@@ -42,8 +93,62 @@ describe("NotesView deep links", () => {
     render(<NotesView initialNoteId="missing-note" ownerId={null} />);
 
     await waitFor(() => {
-      expect(screen.getByText("No texts yet")).toBeTruthy();
+      expect(screen.getByText(/No (?:texts|notes) yet/)).toBeTruthy();
     });
     expect(window.location.pathname).toBe("/");
+    expect(routerState.replace).toHaveBeenCalledWith("/", { scroll: false });
+  });
+
+  it("restores a direct note URL without creating another history entry", async () => {
+    notesState.notes = [note("N42", "Direct note", "opened from the route")];
+    routerState.pathname = "/note/N42";
+    window.history.replaceState(null, "", "/note/N42");
+
+    render(<NotesView initialNoteId="N42" ownerId={null} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("opened from the route")).toHaveLength(2);
+    });
+    expect(routerState.replace).not.toHaveBeenCalled();
+  });
+
+  it("closes the note when browser history returns to the notes route", async () => {
+    notesState.notes = [note("N42", "History note", "history body")];
+    routerState.pathname = "/note/N42";
+    window.history.replaceState(null, "", "/note/N42");
+    const view = render(<NotesView initialNoteId="N42" ownerId={null} />);
+    await waitFor(() => expect(screen.getAllByDisplayValue("history body")).toHaveLength(2));
+
+    routerState.pathname = "/";
+    window.history.replaceState(null, "", "/");
+    view.rerender(<NotesView initialNoteId="N42" ownerId={null} />);
+
+    await waitFor(() => expect(screen.queryAllByDisplayValue("history body")).toHaveLength(0));
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("keeps routing after a note was opened from the grid", async () => {
+    notesState.notes = [
+      note("N42", "Grid note", "grid body"),
+      note("N43", "Next note", "next body"),
+    ];
+    routerState.pathname = "/";
+    window.history.replaceState(null, "", "/");
+    const view = render(<NotesView initialNoteId={null} ownerId={null} />);
+
+    const card = screen.getByText("Grid note").closest('[role="button"]');
+    expect(card).toBeTruthy();
+    fireEvent.click(card!);
+    await waitFor(() => {
+      expect(routerState.replace).toHaveBeenCalledWith("/note/N42", { scroll: false });
+    });
+
+    view.rerender(<NotesView initialNoteId={null} ownerId={null} />);
+    await waitFor(() => expect(screen.getAllByDisplayValue("grid body")).toHaveLength(2));
+    fireEvent.click(screen.getAllByRole("button", { name: "Open N43" })[0]);
+
+    await waitFor(() => {
+      expect(routerState.replace).toHaveBeenLastCalledWith("/note/N43", { scroll: false });
+    });
   });
 });

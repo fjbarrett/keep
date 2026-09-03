@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { searchableText } from "@/lib/inferTitle";
 import { useNotes } from "@/lib/useNotes";
@@ -37,6 +38,8 @@ export function NotesView({
   initialNoteId: string | null;
   ownerId: string | null;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const {
     notes,
     hydrated,
@@ -85,7 +88,9 @@ export function NotesView({
   const searchRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const importTextsRef = useRef<HTMLInputElement>(null);
-  const didRestoreFromUrlRef = useRef(false);
+  const handledPathRef = useRef<string | null>(null);
+  const pendingPathRef = useRef<string | null>(null);
+  const applyingRouteRef = useRef(false);
   // Id of the note created from the current compose session. Lets the editor's
   // remount key stay stable across the new → edit autosave bridge so the editor
   // isn't remounted (which would discard in-flight keystrokes).
@@ -234,34 +239,48 @@ export function NotesView({
   }, [searchOpen]);
 
   useEffect(() => {
-    if (didRestoreFromUrlRef.current) return;
-    if (!initialNoteId) {
-      didRestoreFromUrlRef.current = true;
+    if (!hydrated) return;
+    if (handledPathRef.current === pathname) return;
+    handledPathRef.current = pathname;
+    if (pendingPathRef.current === pathname) {
+      pendingPathRef.current = null;
       setRestoringFromUrl(false);
-      // Show the notes grid on load rather than auto-opening a new editor
       return;
     }
-    // Keep the blank restoring shell up until notes have loaded; only then
-    // decide whether the deep-linked note opens or we fall back to the grid.
-    if (!hydrated) return;
-    const note = notes.find((n) => n.id === initialNoteId);
-    didRestoreFromUrlRef.current = true;
+    pendingPathRef.current = null;
+    const routeNoteId = pathname.match(/^\/note\/([^/]+)$/)?.[1] ?? null;
+    const note = routeNoteId ? notes.find((item) => item.id === routeNoteId) : null;
     setRestoringFromUrl(false);
-    if (note) {
-      setActiveNoteId(note.id);
-      // Restoring a session isn't a request to type: leave focus out of the
-      // editor so the keyboard shortcuts stay live after a reload.
-      setTarget({ mode: "edit", note, autoFocus: false });
+    if (routeNoteId && note) {
+      if (target?.mode !== "edit" || target.note.id !== note.id) {
+        applyingRouteRef.current = true;
+        setActiveNoteId(note.id);
+        setTarget({ mode: "edit", note, autoFocus: false });
+      }
+    } else if (routeNoteId) {
+      applyingRouteRef.current = target !== null;
+      setActiveNoteId(null);
+      setTarget(null);
+      pendingPathRef.current = "/";
+      router.replace("/" + window.location.search, { scroll: false });
+    } else if (target?.mode === "edit") {
+      applyingRouteRef.current = true;
+      setTarget(null);
     }
-  }, [hydrated, notes, initialNoteId]);
+  }, [hydrated, notes, pathname, router, target]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (applyingRouteRef.current) {
+      applyingRouteRef.current = false;
+      return;
+    }
     const id = target?.mode === "edit" ? target.note.id : null;
     const desired = id ? `/note/${id}` : "/";
-    if (window.location.pathname === desired) return;
-    window.history.replaceState(null, "", desired + window.location.search);
-  }, [target]);
+    if (pathname === desired || pendingPathRef.current === desired) return;
+    pendingPathRef.current = desired;
+    router.replace(desired + window.location.search, { scroll: false });
+  }, [pathname, router, target]);
 
   useEffect(() => {
     // Don't auto-select while composing a new note — sidebar should show nothing selected
