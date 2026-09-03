@@ -29,6 +29,7 @@ struct KeepMacApp: App {
         WindowGroup {
             MacRootView()
                 .environment(store)
+                .tint(KeepTheme.accent)
                 .frame(minWidth: 760, minHeight: 480)
         }
         .commands {
@@ -52,6 +53,16 @@ struct NoteCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Note") {
+            Button("Get Info…") {
+                if let note {
+                    NotificationCenter.default.post(name: .keepShowInfo, object: note.id)
+                }
+            }
+            .keyboardShortcut("i", modifiers: .command)
+            .disabled(note == nil)
+
+            Divider()
+
             Button(note?.pinned == true ? "Unpin" : "Pin") {
                 if let note { Task { await store.togglePin(note) } }
             }
@@ -111,4 +122,7 @@ extension Notification.Name {
     /// Posted by the app delegate when a Spotlight result is selected; the
     /// notification object is the note id. MacRootView opens that note.
     static let keepOpenNote = Notification.Name("keep.openNote")
+    /// Posted by the Note menu's Get Info command; the notification object is
+    /// the focused note's id. MacRootView presents the info sheet.
+    static let keepShowInfo = Notification.Name("keep.showInfo")
 }

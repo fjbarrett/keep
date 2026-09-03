@@ -29,6 +29,7 @@ struct MacRootView: View {
     @State private var query = ""
     @State private var showSignIn = false
     @State private var pendingDelete: Note?
+    @State private var infoNote: Note?
 
     var body: some View {
         NavigationSplitView {
@@ -60,6 +61,16 @@ struct MacRootView: View {
             composing = false
             filter = .all
             selection = id
+        }
+        // ⌘I / Note menu → Get Info for the focused note.
+        .onReceive(NotificationCenter.default.publisher(for: .keepShowInfo)) { note in
+            guard let id = note.object as? String,
+                  let found = store.notes.first(where: { $0.id == id })
+            else { return }
+            infoNote = found
+        }
+        .sheet(item: $infoNote) { note in
+            MacGetInfoView(noteId: note.id)
         }
         .sheet(isPresented: $showSignIn) {
             SignInView()
@@ -101,10 +112,14 @@ struct MacRootView: View {
 
     private var noteList: some View {
         List(selection: $selection) {
-            ForEach(filteredNotes) { note in
-                MacNoteRow(note: note)
-                    .tag(note.id)
-                    .contextMenu { contextMenu(for: note) }
+            if (filter ?? .all) == .all {
+                let pinned = filteredNotes.filter(\.pinned)
+                if !pinned.isEmpty {
+                    Section("Pinned") { rows(pinned) }
+                }
+                Section("Notes") { rows(filteredNotes.filter { !$0.pinned }) }
+            } else {
+                rows(filteredNotes)
             }
         }
         .onDeleteCommand {
@@ -158,10 +173,19 @@ struct MacRootView: View {
         }
     }
 
+    private func rows(_ notes: [Note]) -> some View {
+        ForEach(notes) { note in
+            MacNoteRow(note: note)
+                .tag(note.id)
+                .contextMenu { contextMenu(for: note) }
+        }
+    }
+
     @ViewBuilder
     private func contextMenu(for note: Note) -> some View {
         if note.trashed {
             Button("Put Back") { Task { await store.restore(note) } }
+            Button("Get Info…") { infoNote = note }
             Button("Delete Permanently…", role: .destructive) { pendingDelete = note }
         } else {
             Button(note.pinned ? "Unpin" : "Pin") { Task { await store.togglePin(note) } }
@@ -177,6 +201,7 @@ struct MacRootView: View {
                 }
             }
             Divider()
+            Button("Get Info…") { infoNote = note }
             Button("Copy Text") { MacPasteboard.copy(note.body) }
             Button("Copy Share Link") { Task { await store.copyShareLink(note) } }
             if note.shareToken != nil {
