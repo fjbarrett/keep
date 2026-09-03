@@ -50,12 +50,16 @@ enum NoteFilter: String, CaseIterable, Identifiable {
 struct NotesListView: View {
     @Environment(NotesStore.self) private var store
     @State private var filter: NoteFilter = .all
+    @State private var query = ""
     @State private var composing = false
     @State private var pendingDelete: Note?
     @State private var shareTarget: ShareTarget?
 
     private var notes: [Note] {
-        NotesStore.inDisplayOrder(store.notes.filter(filter.matches))
+        NotesStore.matching(
+            query.trimmingCharacters(in: .whitespaces),
+            in: NotesStore.inDisplayOrder(store.notes.filter(filter.matches))
+        )
     }
 
     var body: some View {
@@ -72,6 +76,8 @@ struct NotesListView: View {
         .overlay {
             if store.isLoading && store.notes.isEmpty {
                 ProgressView()
+            } else if notes.isEmpty && !query.isEmpty {
+                ContentUnavailableView.search(text: query)
             } else if notes.isEmpty {
                 ContentUnavailableView(
                     filter.emptyTitle,
@@ -81,6 +87,7 @@ struct NotesListView: View {
             }
         }
         .refreshable { await store.load() }
+        .searchable(text: $query, prompt: "Search \(filter.rawValue.lowercased())")
         .navigationTitle(filter.rawValue)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { viewMenu }
