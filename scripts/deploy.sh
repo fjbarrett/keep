@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# Deploy Keep to the production droplet, then capture a screenshot of the live
-# site (archived + README image refreshed). Run after merging to main.
+# Manually deploy Keep to its Proxmox production container.
 #
 # Env overrides: KEEP_HOST (ssh target), KEEP_URL (public url).
 set -euo pipefail
 
-HOST="${KEEP_HOST:?Set KEEP_HOST, e.g. export KEEP_HOST=root@your-droplet}"
+HOST="${KEEP_HOST:-root@192.168.0.113}"
 URL="${KEEP_URL:-https://keeptxt.com}"
-HERE="$(cd "$(dirname "$0")" && pwd)"
 
 echo "-> Deploying latest main to ${HOST}"
 ssh "$HOST" 'set -e
@@ -30,7 +28,4 @@ for _ in $(seq 1 24); do
   sleep 5
 done
 
-echo "-> Capturing screenshot of ${URL}"
-node "$HERE/screenshot.mjs" "$URL"
-
-echo "Done. Commit the refreshed docs/screenshot.png and the new screenshots/ file."
+echo "Done."
