@@ -23,6 +23,7 @@ import {
   writeGuestNotes,
 } from "./notesClient";
 import { importGuestKeepFile, readImportedTextBodies } from "./noteImportClient";
+import { inferNoteTitle } from "./inferTitle";
 
 export type SyncStatus = "idle" | "syncing" | "saved" | "error" | "offline";
 
@@ -287,11 +288,16 @@ export function useNotes(ownerId: string | null) {
     return () => window.removeEventListener("online", onOnline);
   }, [enqueueSave, hydrated, ownerId, refresh, replayTick, requestReplay]);
 
-  const create = useCallback(async (partial: Partial<Note>) => {
+  const create = useCallback(async (
+    partial: Partial<Note>,
+    options: { keepalive?: boolean } = {},
+  ) => {
     const body = partial.body ?? "";
     const meta = partial.title
       ? { title: partial.title, summary: partial.summary ?? "" }
-      : await metadataForBody(body);
+      : options.keepalive
+        ? { title: inferNoteTitle(body), summary: "" }
+        : await metadataForBody(body);
     const now = Date.now();
     const note: Note = {
       id: localNoteId(),
@@ -327,6 +333,7 @@ export function useNotes(ownerId: string | null) {
     try {
       const data = await trackSync(notesApi<{ note: Note }>("/api/notes", {
         method: "POST",
+        keepalive: options.keepalive,
         json: {
           id: note.id,
           title: meta.title,
@@ -378,7 +385,11 @@ export function useNotes(ownerId: string | null) {
     }
   }, [isGuest, ownerId, requestReplay, trackSync]);
 
-  const update = useCallback((id: string, patch: Partial<Note>): Promise<void> => {
+  const update = useCallback((
+    id: string,
+    patch: Partial<Note>,
+    options: { keepalive?: boolean } = {},
+  ): Promise<void> => {
     const current = notesRef.current.find((note) => note.id === id);
     if (!current) return Promise.resolve();
 
@@ -391,10 +402,14 @@ export function useNotes(ownerId: string | null) {
       patch.body !== undefined &&
       patch.title === undefined &&
       (firstNoteLine(patch.body) !== firstNoteLine(current.body) || !current.title.trim());
+    const initialPatch =
+      needsMeta && options.keepalive && patch.body !== undefined
+        ? { ...patch, title: inferNoteTitle(patch.body) }
+        : patch;
     const revision = (mutationRevisionRef.current.get(id) ?? 0) + 1;
     mutationRevisionRef.current.set(id, revision);
     const updatedAt = Date.now();
-    const optimistic = { ...current, ...patch, updatedAt };
+    const optimistic = { ...current, ...initialPatch, updatedAt };
     const optimisticNotes = notesRef.current.map((note) =>
       note.id === id ? optimistic : note,
     );
@@ -417,16 +432,16 @@ export function useNotes(ownerId: string | null) {
     };
 
     if (isGuest || localNoteIds.has(id)) {
-      if (!needsMeta || patch.body === undefined) return Promise.resolve();
+      if (!needsMeta || patch.body === undefined || options.keepalive) return Promise.resolve();
       return metadataForBody(patch.body).then(applyGeneratedMeta);
     }
     if (!ownerId) return Promise.resolve();
 
     cacheNote(ownerId, optimistic).catch(() => {});
 
-    return enqueueSave(id, async () => {
-      let nextPatch = patch;
-      if (needsMeta && patch.body !== undefined) {
+    const save = async () => {
+      let nextPatch = initialPatch;
+      if (needsMeta && patch.body !== undefined && !options.keepalive) {
         const meta = await metadataForBody(patch.body);
         nextPatch = {
           ...patch,
@@ -437,8 +452,9 @@ export function useNotes(ownerId: string | null) {
       }
 
       const alreadyQueued =
-        queuedNoteIdsRef.current.has(id) ||
-        (await getPendingOps(ownerId).catch(() => [])).some((op) => op.noteId === id);
+        !options.keepalive &&
+        (queuedNoteIdsRef.current.has(id) ||
+          (await getPendingOps(ownerId).catch(() => [])).some((op) => op.noteId === id));
       if (alreadyQueued) {
         queuedNoteIdsRef.current.add(id);
         await addPendingOp(ownerId, {
@@ -455,6 +471,7 @@ export function useNotes(ownerId: string | null) {
       try {
         const data = await trackSync(notesApi<{ note: Note }>(`/api/notes/${id}`, {
           method: "PATCH",
+          keepalive: options.keepalive,
           json: nextPatch,
         }));
         if (mutationRevisionRef.current.get(id) === revision) {
@@ -484,7 +501,10 @@ export function useNotes(ownerId: string | null) {
           if (mutationRevisionRef.current.get(id) === revision) await refresh();
         }
       }
-    });
+    };
+    // Exit saves must start their keepalive fetch before the page is discarded;
+    // waiting behind an older promise would prevent the request from launching.
+    return options.keepalive ? save() : enqueueSave(id, save);
   }, [enqueueSave, isGuest, localNoteIds, ownerId, refresh, requestReplay, trackSync]);
 
   const trash = useCallback(async (id: string) => {

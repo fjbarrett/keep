@@ -38,8 +38,14 @@ function renderEditor(target: EditorTarget) {
     canShare: false,
     presentation: "panel" as const,
   };
-  render(createElement(NoteEditor, props));
-  return props;
+  const view = render(createElement(NoteEditor, props));
+  return {
+    ...props,
+    rerenderTarget(nextTarget: EditorTarget) {
+      view.rerender(createElement(NoteEditor, { ...props, target: nextTarget }));
+    },
+    unmount: view.unmount,
+  };
 }
 
 function body() {
@@ -62,6 +68,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -166,6 +173,72 @@ describe("NoteEditor autosave", () => {
     expect(props.onUpdate).toHaveBeenCalledWith(
       "N42",
       expect.objectContaining({ body: "new body" }),
+    );
+  });
+
+  it("flushes the previous note before switching targets", async () => {
+    const props = renderEditor({ mode: "edit", note: makeNote({ id: "N1", body: "first" }) });
+
+    await typeBody("first changed less than 550ms ago");
+    props.rerenderTarget({ mode: "edit", note: makeNote({ id: "N2", body: "second" }) });
+
+    expect(props.onUpdate).toHaveBeenCalledWith(
+      "N1",
+      expect.objectContaining({ body: "first changed less than 550ms ago" }),
+    );
+    expect(body().value).toBe("second");
+  });
+
+  it("does not mark the new note dirty when the previous note flush fails", async () => {
+    const props = renderEditor({ mode: "edit", note: makeNote({ id: "N1", body: "first" }) });
+    props.onUpdate.mockRejectedValueOnce(new Error("save failed"));
+
+    await typeBody("first changed");
+    props.rerenderTarget({ mode: "edit", note: makeNote({ id: "N2", body: "second" }) });
+    await advance(600);
+
+    expect(props.onUpdate).toHaveBeenCalledTimes(1);
+    expect(props.onUpdate).not.toHaveBeenCalledWith("N2", expect.anything());
+    expect(body().value).toBe("second");
+  });
+
+  it("flushes pending edits with keepalive on pagehide", async () => {
+    const props = renderEditor({ mode: "edit", note: makeNote({ id: "N42", body: "old" }) });
+
+    await typeBody("survives tab close");
+    fireEvent(window, new Event("pagehide"));
+
+    expect(props.onUpdate).toHaveBeenCalledWith(
+      "N42",
+      expect.objectContaining({ body: "survives tab close" }),
+      { keepalive: true },
+    );
+  });
+
+  it("flushes pending edits with keepalive when the page becomes hidden", async () => {
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    const props = renderEditor({ mode: "edit", note: makeNote({ id: "N42", body: "old" }) });
+
+    await typeBody("survives backgrounding");
+    fireEvent(document, new Event("visibilitychange"));
+
+    expect(props.onUpdate).toHaveBeenCalledWith(
+      "N42",
+      expect.objectContaining({ body: "survives backgrounding" }),
+      { keepalive: true },
+    );
+  });
+
+  it("flushes pending edits with keepalive when the editor unmounts", async () => {
+    const props = renderEditor({ mode: "edit", note: makeNote({ id: "N42", body: "old" }) });
+
+    await typeBody("survives unmount");
+    props.unmount();
+
+    expect(props.onUpdate).toHaveBeenCalledWith(
+      "N42",
+      expect.objectContaining({ body: "survives unmount" }),
+      { keepalive: true },
     );
   });
 

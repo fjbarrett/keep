@@ -17,6 +17,8 @@ export type EditorTarget =
   | { mode: "edit"; note: Note; highlightQuery?: string; autoFocus?: boolean }
   | null;
 
+type SaveOptions = { keepalive?: boolean };
+
 // Text metrics for the plain editor. The search backdrop mirrors the textarea
 // pixel-for-pixel, so both must share these classes or match boxes drift.
 const PLAIN_METRICS = "px-6 sm:px-10 text-[15px] leading-[26px]";
@@ -51,8 +53,8 @@ export function NoteEditor({
   target: EditorTarget;
   onClose: () => void;
   onBack?: () => void;
-  onCreate: (n: Partial<Note>) => Promise<Note | null>;
-  onUpdate: (id: string, patch: Partial<Note>) => Promise<void>;
+  onCreate: (n: Partial<Note>, options?: SaveOptions) => Promise<Note | null>;
+  onUpdate: (id: string, patch: Partial<Note>, options?: SaveOptions) => Promise<void>;
   onTrash: (id: string) => void;
   onRestore: (id: string) => void;
   onRemove: (id: string) => void;
@@ -78,13 +80,13 @@ export function NoteEditor({
   const creatingRef = useRef(false);
   const revisionRef = useRef(0);
   const mountedRef = useRef(true);
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  const activeTargetRef = useRef<EditorTarget>(target);
+  const activeTargetKeyRef = useRef<string | null>(null);
+  const flushedRevisionRef = useRef(-1);
   const draftRef = useRef({ body, pinned, archived, markdown: previewOpen, highlight });
   draftRef.current = { body, pinned, archived, markdown: previewOpen, highlight };
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
 
   const startCreate = useCallback(
     async (
@@ -96,11 +98,12 @@ export function NoteEditor({
         highlight: boolean;
       },
       submittedRevision: number,
+      options: SaveOptions = {},
     ) => {
       if (creatingRef.current) return;
       creatingRef.current = true;
       try {
-        const note = await onCreate(draft);
+        const note = await (options.keepalive ? onCreate(draft, options) : onCreate(draft));
         if (!note) return;
         createdIdRef.current = note.id;
 
@@ -141,6 +144,71 @@ export function NoteEditor({
   const modalRef = useModalDialog(close, !isPanel && Boolean(target));
   const editNote = target?.mode === "edit" ? target.note : null;
 
+  const flushPending = useCallback(
+    (pendingTarget: EditorTarget, options: SaveOptions = {}) => {
+      if (!pendingTarget || !dirtyRef.current) return;
+      const revision = revisionRef.current;
+      if (flushedRevisionRef.current === revision) return;
+      flushedRevisionRef.current = revision;
+      dirtyRef.current = false;
+      setDirty(false);
+
+      const pendingKey =
+        pendingTarget.mode === "edit"
+          ? `${pendingTarget.note.id}${
+              pendingTarget.highlightQuery ? `:q:${pendingTarget.highlightQuery}` : ""
+            }`
+          : pendingTarget.mode;
+      const restoreDirty = () => {
+        if (
+          !mountedRef.current ||
+          activeTargetKeyRef.current !== pendingKey ||
+          revisionRef.current !== revision
+        ) return;
+        flushedRevisionRef.current = -1;
+        dirtyRef.current = true;
+        setDirty(true);
+      };
+      if (pendingTarget.mode === "edit") {
+        const result = options.keepalive
+          ? onUpdate(pendingTarget.note.id, draftRef.current, options)
+          : onUpdate(pendingTarget.note.id, draftRef.current);
+        void Promise.resolve(result).catch(restoreDirty);
+        return;
+      }
+      if (createdIdRef.current) {
+        const result = options.keepalive
+          ? onUpdate(createdIdRef.current, draftRef.current, options)
+          : onUpdate(createdIdRef.current, draftRef.current);
+        void Promise.resolve(result).catch(restoreDirty);
+      } else if (draftRef.current.body.trim() && !creatingRef.current) {
+        void startCreate(draftRef.current, revision, options).catch(restoreDirty);
+      }
+    },
+    [onUpdate, startCreate],
+  );
+  const flushPendingRef = useRef(flushPending);
+  flushPendingRef.current = flushPending;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const flushForExit = () =>
+      flushPendingRef.current(activeTargetRef.current, { keepalive: true });
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") flushForExit();
+    };
+    window.addEventListener("beforeunload", flushForExit);
+    window.addEventListener("pagehide", flushForExit);
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => {
+      flushForExit();
+      mountedRef.current = false;
+      window.removeEventListener("beforeunload", flushForExit);
+      window.removeEventListener("pagehide", flushForExit);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
+    };
+  }, []);
+
   // Pin/archive can change outside the editor (sidebar menu, keyboard
   // shortcuts) while an edit is pending. The draft snapshots both flags, so
   // resync them or the next autosave flush writes the stale values back.
@@ -154,11 +222,23 @@ export function NoteEditor({
 
   useEffect(() => {
     if (!target) return;
+    const bridgingCreatedNote =
+      target.mode === "edit" && createdIdRef.current === target.note.id;
+    if (
+      activeTargetKeyRef.current !== null &&
+      activeTargetKeyRef.current !== targetKey &&
+      !bridgingCreatedNote
+    ) {
+      flushPendingRef.current(activeTargetRef.current);
+    }
+    activeTargetRef.current = target;
+    activeTargetKeyRef.current = targetKey;
+    flushedRevisionRef.current = -1;
     if (target.mode === "edit") {
       // Bridging "new" → "edit" of the note we just autosaved: keep the local
       // body/pinned/archived so any keystrokes the user kept making during
       // the create round-trip aren't clobbered by the saved snapshot.
-      if (createdIdRef.current === target.note.id) {
+      if (bridgingCreatedNote) {
         createdIdRef.current = null;
         return;
       }
@@ -174,6 +254,7 @@ export function NoteEditor({
       setPreviewOpen(false);
       setHighlight(false);
     }
+    dirtyRef.current = false;
     setDirty(false);
     setCopied(false);
     createdIdRef.current = null;
@@ -506,18 +587,14 @@ export function NoteEditor({
   }
 
   function flushEdit() {
-    if (!target || target.mode !== "edit" || !dirty) return;
-    void onUpdate(target.note.id, draftRef.current);
+    if (!target || target.mode !== "edit") return;
+    flushPending(target);
   }
 
   function close() {
     if (!target) return;
     if (target.mode === "new") {
-      if (createdIdRef.current && dirty) {
-        void onUpdate(createdIdRef.current, draftRef.current);
-      } else if (body.trim() && !creatingRef.current) {
-        void startCreate(draftRef.current, revisionRef.current);
-      }
+      flushPending(target);
     } else {
       flushEdit();
     }
