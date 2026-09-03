@@ -4,7 +4,7 @@ A small, opinionated notes app with autosave, pin/archive/trash, full-text
 search, and a date-grouped sidebar. It is a Next.js application backed by
 Postgres, with a guest mode that keeps notes in the browser until sign-in.
 
-![Keep — sidebar with date-grouped notes and an open note editor](./docs/screenshot.png)
+![Keep — note editor with a docked AI chat and proposed edit](./docs/screenshot.png)
 
 ## Stack
 
