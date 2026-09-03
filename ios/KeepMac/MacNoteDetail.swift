@@ -51,12 +51,18 @@ struct MacNoteDetail: View {
                     .font(KeepTheme.editorFont())
                     .textEditorStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    // The app-wide cobalt tint recolors the insertion point;
+                    // keep the caret paper-white like the text itself.
+                    .accentColor(.white)
                     .overlay(alignment: .topLeading) {
                         if text.isEmpty {
+                            // Aligned to the text container origin: NSTextView
+                            // carries a 5pt line-fragment pad horizontally and
+                            // (near-)zero top inset, so any extra top padding
+                            // visibly sinks the hint below the caret.
                             Text("Start writing…")
                                 .font(KeepTheme.editorFont())
                                 .foregroundStyle(.tertiary)
-                                .padding(.top, 8)
                                 .padding(.leading, 5)
                                 .allowsHitTesting(false)
                         }
