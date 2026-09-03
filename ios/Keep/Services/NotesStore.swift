@@ -22,13 +22,11 @@ final class NotesStore {
     }
 
     /// Pinned first, then most-recently-updated — matches the web ordering.
-    var sorted: [Note] {
-        notes
-            .filter { !$0.trashed && !$0.archived }
-            .sorted { a, b in
-                if a.pinned != b.pinned { return a.pinned }
-                return a.updatedAt > b.updatedAt
-            }
+    static func inDisplayOrder(_ notes: [Note]) -> [Note] {
+        notes.sorted { a, b in
+            if a.pinned != b.pinned { return a.pinned }
+            return a.updatedAt > b.updatedAt
+        }
     }
 
     func load() async {
@@ -80,8 +78,12 @@ final class NotesStore {
         await update(note.id, patch: ["pinned": !note.pinned])
     }
 
-    /// Trashing updates in place (rather than dropping the note) so a Trash
-    /// view sees it immediately; `sorted` keeps it out of the main list.
+    func setArchived(_ note: Note, _ archived: Bool) async {
+        await update(note.id, patch: ["archived": archived])
+    }
+
+    /// Trashing updates in place rather than dropping the note, so the Trash
+    /// view can show it immediately.
     func trash(_ note: Note) async {
         await update(note.id, patch: ["trashed": true])
     }
@@ -112,6 +114,12 @@ final class NotesStore {
             handle(error)
             return nil
         }
+    }
+
+    /// Ensures the note has a public link and hands back its URL.
+    func shareURL(for note: Note) async -> URL? {
+        guard let token = (await share(note))?.shareToken else { return nil }
+        return Config.baseURL.appendingPathComponent("p/\(token)")
     }
 
     func unshare(_ note: Note) async {
