@@ -29,16 +29,38 @@ struct MacNoteDetail: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Note-colour edge, mirroring the web card's inset top border.
+            if let key = current?.color, let swatch = NotePalette.color(for: key) {
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(swatch)
+                    .frame(height: 3)
+                    .padding(.bottom, 10)
+            }
             if let n = current {
                 titleField(for: n)
+                Text(editedCaption(n.updatedDate))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.bottom, 10)
             }
             if current?.markdown == true {
                 MacMarkdownView(source: text)
             } else {
                 TextEditor(text: $text)
-                    .font(.body)
+                    .font(KeepTheme.editorFont())
                     .textEditorStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    .overlay(alignment: .topLeading) {
+                        if text.isEmpty {
+                            Text("Start writing…")
+                                .font(KeepTheme.editorFont())
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 8)
+                                .padding(.leading, 5)
+                                .allowsHitTesting(false)
+                        }
+                    }
             }
         }
         .padding(12)
