@@ -41,6 +41,71 @@ afterEach(() => {
 });
 
 describe("useNotes synchronization", () => {
+  it("uses keepalive and local title inference for lifecycle saves", async () => {
+    const owner = `owner-${crypto.randomUUID()}`;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === "/api/notes") return Promise.resolve(json({ notes: [note()] }));
+      if (path === `/api/notes/${NOTE_ID}`) {
+        expect(init?.keepalive).toBe(true);
+        const patch = JSON.parse(String(init?.body));
+        expect(patch).toMatchObject({ body: "Local title\nbody", title: "Local title" });
+        return Promise.resolve(json({ note: note(patch) }));
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useNotes(owner));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    await act(async () => {
+      await result.current.update(
+        NOTE_ID,
+        { body: "Local title\nbody" },
+        { keepalive: true },
+      );
+    });
+
+    expect(fetchMock.mock.calls.map(([input]) => String(input))).not.toContain(
+      "/api/notes/title",
+    );
+  });
+
+  it("starts a lifecycle save while an older save is still in flight", async () => {
+    const owner = `owner-${crypto.randomUUID()}`;
+    let finishFirst!: (response: Response) => void;
+    const firstResponse = new Promise<Response>((resolve) => { finishFirst = resolve; });
+    let patchRequests = 0;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === "/api/notes") return Promise.resolve(json({ notes: [note()] }));
+      if (path === `/api/notes/${NOTE_ID}`) {
+        patchRequests += 1;
+        if (patchRequests === 1) return firstResponse;
+        expect(init?.keepalive).toBe(true);
+        return Promise.resolve(json({ note: note({ pinned: true, archived: true }) }));
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    }));
+
+    const { result } = renderHook(() => useNotes(owner));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    let first!: Promise<void>;
+    act(() => { first = result.current.update(NOTE_ID, { pinned: true }); });
+    await waitFor(() => expect(patchRequests).toBe(1));
+    await act(async () => {
+      await result.current.update(NOTE_ID, { archived: true }, { keepalive: true });
+    });
+    expect(patchRequests).toBe(2);
+
+    await act(async () => {
+      finishFirst(json({ note: note({ pinned: true }) }));
+      await first;
+    });
+  });
+
   it("serializes mutations for one note and ignores stale responses", async () => {
     const owner = `owner-${crypto.randomUUID()}`;
     let finishFirst!: (response: Response) => void;

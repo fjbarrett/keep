@@ -58,6 +58,7 @@ export async function notesApi<T>(
       : init?.headers,
     body: init?.json ? JSON.stringify(init.json) : init?.body,
     cache: "no-store",
+    keepalive: init?.keepalive,
   });
   if (!response.ok) {
     let message = `${response.status}`;
