@@ -160,15 +160,18 @@ describe("NotesView deep links", () => {
     expect(card).toBeTruthy();
     fireEvent.click(card!);
     await waitFor(() => {
-      expect(routerState.replace).toHaveBeenCalledWith("/note/N42", { scroll: false });
+      expect(window.location.pathname).toBe("/note/N42");
     });
+    expect(routerState.replace).not.toHaveBeenCalled();
 
+    routerState.pathname = window.location.pathname;
     view.rerender(<NotesView initialNoteId={null} ownerId={null} />);
     await waitFor(() => expect(screen.getAllByDisplayValue("grid body")).toHaveLength(2));
     fireEvent.click(screen.getAllByRole("button", { name: "Open N43" })[0]);
 
     await waitFor(() => {
-      expect(routerState.replace).toHaveBeenLastCalledWith("/note/N43", { scroll: false });
+      expect(window.location.pathname).toBe("/note/N43");
     });
+    expect(routerState.replace).not.toHaveBeenCalled();
   });
 });

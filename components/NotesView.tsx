@@ -279,8 +279,10 @@ export function NotesView({
     const desired = id ? `/note/${id}` : "/";
     if (pathname === desired || pendingPathRef.current === desired) return;
     pendingPathRef.current = desired;
-    router.replace(desired + window.location.search, { scroll: false });
-  }, [hydrated, pathname, restoringFromUrl, router, target]);
+    // Next patches native history into usePathname; this keeps the editor DOM
+    // mounted while still making the current note URL copyable and restorable.
+    window.history.replaceState(null, "", desired + window.location.search);
+  }, [hydrated, pathname, restoringFromUrl, target]);
 
   useEffect(() => {
     // Don't auto-select while composing a new note — sidebar should show nothing selected
