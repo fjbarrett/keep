@@ -112,6 +112,26 @@ describe("NotesView deep links", () => {
     expect(routerState.replace).not.toHaveBeenCalled();
   });
 
+  it("does not route away from a direct note while notes are hydrating", async () => {
+    notesState.notes = [note("N42", "Delayed note", "loaded after hydration")];
+    notesState.hydrated = false;
+    routerState.pathname = "/note/N42";
+    window.history.replaceState(null, "", "/note/N42");
+    const view = render(<NotesView initialNoteId="N42" ownerId={null} />);
+
+    expect(routerState.replace).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/note/N42");
+
+    notesState.hydrated = true;
+    view.rerender(<NotesView initialNoteId="N42" ownerId={null} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("loaded after hydration")).toHaveLength(2);
+    });
+    expect(routerState.replace).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/note/N42");
+  });
+
   it("closes the note when browser history returns to the notes route", async () => {
     notesState.notes = [note("N42", "History note", "history body")];
     routerState.pathname = "/note/N42";

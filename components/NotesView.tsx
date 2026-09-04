@@ -270,7 +270,7 @@ export function NotesView({
   }, [hydrated, notes, pathname, router, target]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !hydrated || restoringFromUrl) return;
     if (applyingRouteRef.current) {
       applyingRouteRef.current = false;
       return;
@@ -280,7 +280,7 @@ export function NotesView({
     if (pathname === desired || pendingPathRef.current === desired) return;
     pendingPathRef.current = desired;
     router.replace(desired + window.location.search, { scroll: false });
-  }, [pathname, router, target]);
+  }, [hydrated, pathname, restoringFromUrl, router, target]);
 
   useEffect(() => {
     // Don't auto-select while composing a new note — sidebar should show nothing selected
