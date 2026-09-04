@@ -541,9 +541,9 @@ export function NotesView({
             }
             presentation="panel"
           />
-        ) : restoringFromUrl ? (
+        ) : restoringFromUrl || !hydrated ? (
           <div className="flex-1" aria-hidden />
-        ) : hydrated && visibleNotes.length > 0 ? (
+        ) : visibleNotes.length > 0 ? (
           <NotesGrid
             notes={visibleNotes}
             trashMode={viewMode === "trash"}
@@ -558,7 +558,7 @@ export function NotesView({
           />
         ) : (
           <MainPlaceholder
-            hasNotes={!hydrated || notes.length > 0}
+            hasNotes={notes.length > 0}
             onNewNote={() => setTarget({ mode: "new" })}
           />
         )}

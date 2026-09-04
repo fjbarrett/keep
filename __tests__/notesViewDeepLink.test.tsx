@@ -132,6 +132,22 @@ describe("NotesView deep links", () => {
     expect(window.location.pathname).toBe("/note/N42");
   });
 
+  it("does not flash an empty state while the note catalogue is hydrating", () => {
+    notesState.notes = [];
+    notesState.hydrated = false;
+    routerState.pathname = "/";
+    window.history.replaceState(null, "", "/");
+    const view = render(<NotesView initialNoteId={null} ownerId="owner-1" />);
+
+    expect(screen.queryByText("Select a note")).toBeNull();
+    expect(screen.queryByText(/No (?:texts|notes) yet/)).toBeNull();
+
+    notesState.hydrated = true;
+    view.rerender(<NotesView initialNoteId={null} ownerId="owner-1" />);
+
+    expect(screen.getByText(/No (?:texts|notes) yet/)).toBeTruthy();
+  });
+
   it("closes the note when browser history returns to the notes route", async () => {
     notesState.notes = [note("N42", "History note", "history body")];
     routerState.pathname = "/note/N42";
