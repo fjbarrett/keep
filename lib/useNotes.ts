@@ -27,6 +27,32 @@ import { inferNoteTitle } from "./inferTitle";
 
 export type SyncStatus = "idle" | "syncing" | "saved" | "error" | "offline";
 
+function sameNoteSnapshot(left: Note[], right: Note[]) {
+  if (left.length !== right.length) return false;
+  const rightById = new Map(right.map((note) => [note.id, note]));
+  if (rightById.size !== right.length) return false;
+  return left.every((note) => {
+    const other = rightById.get(note.id);
+    return Boolean(
+      other &&
+        note.title === other.title &&
+        note.summary === other.summary &&
+        note.color === other.color &&
+        note.body === other.body &&
+        note.pinned === other.pinned &&
+        note.archived === other.archived &&
+        note.trashed === other.trashed &&
+        note.markdown === other.markdown &&
+        note.highlight === other.highlight &&
+        note.shareToken === other.shareToken &&
+        note.createdAt === other.createdAt &&
+        note.updatedAt === other.updatedAt &&
+        note.tags.length === other.tags.length &&
+        note.tags.every((tag, index) => tag === other.tags[index]),
+    );
+  });
+}
+
 export function useNotes(ownerId: string | null) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -42,6 +68,7 @@ export function useNotes(ownerId: string | null) {
   const mutationRevisionRef = useRef(new Map<string, number>());
   const saveChainsRef = useRef(new Map<string, Promise<void>>());
   const queuedNoteIdsRef = useRef(new Set<string>());
+  const cacheLoadGenerationRef = useRef(0);
   const ownerRef = useRef(ownerId);
   ownerRef.current = ownerId;
 
@@ -138,17 +165,20 @@ export function useNotes(ownerId: string | null) {
     try {
       const data = await notesApi<{ notes: Note[] }>("/api/notes");
       if (ownerRef.current !== ownerId) return;
+      // Once the server answers, an older IndexedDB read must not replace it.
+      cacheLoadGenerationRef.current += 1;
+      try {
+        await cacheNotes(ownerId, data.notes);
+      } catch (cacheError) {
+        console.warn("Could not refresh the offline note cache.", cacheError);
+      }
+      if (ownerRef.current !== ownerId) return;
       const guestNotes = readGuestNotes();
-      cacheNotes(ownerId, data.notes).catch(() => {});
-      if (guestNotes.length > 0) {
-        const loaded = [...guestNotes, ...data.notes];
-        setLocalNoteIds(new Set(guestNotes.map((note) => note.id)));
+      const loaded = guestNotes.length > 0 ? [...guestNotes, ...data.notes] : data.notes;
+      setLocalNoteIds(new Set(guestNotes.map((note) => note.id)));
+      if (!sameNoteSnapshot(notesRef.current, loaded)) {
         notesRef.current = loaded;
         setNotes(loaded);
-      } else {
-        setLocalNoteIds(new Set());
-        notesRef.current = data.notes;
-        setNotes(data.notes);
       }
       setError(null);
     } catch (e) {
@@ -190,19 +220,21 @@ export function useNotes(ownerId: string | null) {
       void refresh();
       return;
     }
-    getCachedNotes(ownerId)
+    const cacheLoadGeneration = ++cacheLoadGenerationRef.current;
+    void getCachedNotes(ownerId)
       .then((cached) => {
-        if (ownerRef.current !== ownerId) return;
+        if (
+          ownerRef.current !== ownerId ||
+          cacheLoadGenerationRef.current !== cacheLoadGeneration
+        ) return;
         if (cached.length > 0) {
           notesRef.current = cached;
           setNotes(cached);
           setHydrated(true);
         }
       })
-      .catch(() => {})
-      .finally(() => {
-        if (ownerRef.current === ownerId) void refresh();
-      });
+      .catch(() => {});
+    void refresh();
   }, [ownerId, refresh]);
 
   useEffect(() => {
