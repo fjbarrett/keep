@@ -45,6 +45,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid note update." }, { status: 400 });
     }
     const patch = parsed as Record<string, unknown>;
+    const expected = patch.expectedUpdatedAt;
+    if (expected !== undefined && (typeof expected !== "number" ||
+        !Number.isSafeInteger(expected) || expected < 0)) {
+      return NextResponse.json({ error: "Invalid note version." }, { status: 400 });
+    }
 
     // Validate the few client-controlled fields before they reach SQL.
     if ("color" in patch && patch.color !== null && !isNoteColor(patch.color)) {
@@ -85,7 +90,7 @@ export async function PATCH(
       sets.push(`${k} = $${i++}`);
       values.push(v);
     }
-    sets.push(`updated_at = $${i++}`);
+    sets.push(`updated_at = GREATEST(updated_at + 1, $${i++})`);
     values.push(Date.now());
     const idPlaceholder = `$${i++}`;
     const userPlaceholder = `$${i++}`;
@@ -103,13 +108,26 @@ export async function PATCH(
       return NextResponse.json({ note: rowToNote(rows[0]) });
     }
 
+    const versionClause = expected === undefined ? "" : ` AND updated_at = $${i++}`;
+    if (expected !== undefined) values.push(expected);
     const { rows } = await pool().query<NoteRow>(
       `UPDATE notes SET ${sets.join(", ")}
-         WHERE id = ${idPlaceholder} AND user_id = ${userPlaceholder}
+         WHERE id = ${idPlaceholder} AND user_id = ${userPlaceholder}${versionClause}
          RETURNING *`,
       values,
     );
     if (!rows[0]) {
+      if (expected !== undefined) {
+        const current = await pool().query<NoteRow>(
+          "SELECT * FROM notes WHERE id = $1 AND user_id = $2", [id, session.user.id],
+        );
+        if (current.rows[0]) {
+          return NextResponse.json({
+            error: "This note changed elsewhere. Save a copy or reload before retrying.",
+            note: rowToNote(current.rows[0]),
+          }, { status: 409 });
+        }
+      }
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     return NextResponse.json({ note: rowToNote(rows[0]) });
