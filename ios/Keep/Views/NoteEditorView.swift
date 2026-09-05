@@ -6,6 +6,9 @@ struct NoteEditorView: View {
     @Environment(NotesStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AppStorage("readingMeasure") private var comfortableWidth = false
     private enum Field { case title, body }
     @FocusState private var focusedField: Field?
 
@@ -23,27 +26,13 @@ struct NoteEditorView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading) {
-            TextField("Title", text: Binding(get: { title }, set: { value in
-                guard value != title else { return }
-                title = value
-                stageDraft()
-            }))
-                .font(.title2.weight(.semibold))
-                .textFieldStyle(.roundedBorder)
-                .focused($focusedField, equals: .title)
-                .submitLabel(.next)
-                .onSubmit { focusedField = .body }
-                .accessibilityLabel("Note title")
-                .disabled(!store.canEdit)
-            Group {
-                if current == nil {
-                    Text("Saves automatically").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    DraftSaveStatus(id: id, horizontalPadding: 0) { _ in dismiss() }
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            if !isCompactWriting {
+                titleField
+                saveStatus
+            } else if store.drafts.errors[id] != nil {
+                saveStatus
             }
-            .padding(.vertical, 4)
             TextEditor(text: Binding(get: { body_ }, set: { value in
                 guard value != body_ else { return }
                 body_ = value
@@ -61,23 +50,20 @@ struct NoteEditorView: View {
                             .accessibilityHidden(true)
                     }
                 }
-                .modifier(ReadingStyle())
+                .modifier(ReadingStyle(constrainWidth: false))
                 .padding(8)
-                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(focusedField == .body ? Color.accentColor : Color.secondary,
-                                      lineWidth: focusedField == .body ? 2 : 1)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
+                .modifier(EditorFieldSurface(isFocused: focusedField == .body))
                 .accessibilityLabel("Note body")
                 .accessibilityHint("Edit or add text. Changes save automatically.")
                 .disabled(!store.canEdit)
         }
+        .frame(maxWidth: comfortableWidth ? 620 : 720)
+        .frame(maxWidth: .infinity)
         .padding(.horizontal)
+        .padding(.vertical, 12)
         .navigationTitle(note == nil ? "New note" : "Note")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(isCompactWriting ? .hidden : .visible, for: .navigationBar)
         .onAppear {
             body_ = store.drafts.items[id]?.body ?? note?.body ?? ""
             title = store.drafts.items[id]?.title ?? note?.title ?? ""
@@ -130,9 +116,10 @@ struct NoteEditorView: View {
                             }
                         }
                     } label: {
-                        Label("Note color", systemImage: "paintpalette")
+                        colorMenuLabel(for: saved.color)
+                            .accessibilityLabel("Note color")
+                            .accessibilityValue(NotePalette.all.first { $0.key == saved.color }?.label ?? "None")
                     }
-                    .accessibilityValue(NotePalette.all.first { $0.key == saved.color }?.label ?? "None")
                     .disabled(!store.canEdit || isChangingColor)
                 }
             }
@@ -144,8 +131,71 @@ struct NoteEditorView: View {
         }
     }
 
+    private var isCompactWriting: Bool {
+        focusedField == .body && (verticalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize)
+    }
+
+    private var titleLineLimit: Int {
+        verticalSizeClass == .compact || focusedField == .body
+            || (dynamicTypeSize.isAccessibilitySize && focusedField == .title) ? 1 : 3
+    }
+
+    private var titleField: some View {
+        TextField("Title", text: Binding(get: { title }, set: { value in
+            guard value != title else { return }
+            title = value
+            stageDraft()
+        }), prompt: Text("Title").foregroundStyle(.secondary), axis: .vertical)
+            .font(.title2.weight(.semibold))
+            .textFieldStyle(.plain)
+            .lineLimit(1...titleLineLimit)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .modifier(EditorFieldSurface(isFocused: focusedField == .title))
+            .focused($focusedField, equals: .title)
+            .submitLabel(.next)
+            .onSubmit { focusedField = .body }
+            .accessibilityLabel("Note title")
+            .disabled(!store.canEdit)
+    }
+
+    private var saveStatus: some View {
+        Group {
+            if current == nil {
+                Text("Saves automatically").font(.caption).foregroundStyle(.secondary)
+            } else {
+                DraftSaveStatus(id: id, horizontalPadding: 0) { _ in dismiss() }
+            }
+        }
+        .padding(.horizontal, 14)
+    }
+
+    private func colorMenuLabel(for key: String?) -> Text {
+        let name = NotePalette.all.first { $0.key == key }?.label ?? "Color"
+        let swatch = key.map { NotePalette.swatch(for: $0, scheme: colorScheme) }
+            ?? Image(systemName: "paintpalette")
+        return Text("\(swatch) \(name)")
+    }
+
     private func stageDraft() {
         store.drafts.stage(id: id, body: body_, base: store.notes.first { $0.id == id }, title: title)
     }
 
+}
+
+private struct EditorFieldSurface: ViewModifier {
+    let isFocused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(isFocused ? Color.accentColor : Color.secondary,
+                                  lineWidth: isFocused ? 2 : 1)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+    }
 }

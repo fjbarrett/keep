@@ -1,38 +1,15 @@
 import Foundation
 
-/// Swift port of `lib/inferTitle.ts`, so the iOS app derives a note's display
-/// title exactly like the web. When the stored title is missing, too long, too
-/// wordy, or simply equals the body, the web infers a title from the body's
-/// first meaningful line instead of showing the raw stored value.
-///
-/// Kept in lockstep with the web logic and its `__tests__/inferTitle.test.ts`.
+/// Native clients preserve authored titles. Only untitled notes use the
+/// body-derived fallback shared with the web's `lib/inferTitle.ts`.
 enum NoteTitle {
     private static let wordLimit = 4
     private static let charLimit = 36
 
-    /// What to display for a note — mirrors the web's `previewText`.
+    /// Let the view wrap or truncate a title without replacing its contents.
     static func preview(title: String, body: String) -> String {
-        let resolved = needsInferred(title: title, body: body)
-            ? infer(searchableText(title: title, body: body))
-            : title
-        let text = trim(collapseWhitespace(resolved))
-        return text.isEmpty ? "(empty)" : text
-    }
-
-    /// Mirrors `needsInferredTitle`: the stored title is unusable as-is.
-    static func needsInferred(title: String, body: String) -> Bool {
-        let compactTitle = trim(collapseWhitespace(title))
-        let compactBody = trim(collapseWhitespace(body))
-        return compactTitle.isEmpty
-            || compactTitle.count > charLimit
-            || compactTitle.split(whereSeparator: \.isWhitespace).count > wordLimit
-            || compactTitle == compactBody
-    }
-
-    /// Mirrors `searchableText`: the body if present, else the title.
-    static func searchableText(title: String, body: String) -> String {
-        let b = trim(body)
-        return b.isEmpty ? trim(title) : b
+        let text = trim(collapseWhitespace(title))
+        return text.isEmpty ? infer(body, fallback: "(empty)") : text
     }
 
     /// Mirrors `inferNoteTitle`: first non-empty, non-noise line of the body.

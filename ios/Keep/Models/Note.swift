@@ -26,8 +26,7 @@ struct Note: Identifiable, Codable, Equatable {
 
     var updatedDate: Date { Date(timeIntervalSince1970: updatedAt / 1000) }
 
-    /// Display title, matching the web: infers from the body when the stored
-    /// title is missing, too long/wordy, or just equals the body.
+    /// Keep authored titles; infer from the body only when a title is missing.
     var displayTitle: String {
         NoteTitle.preview(title: title, body: body)
     }

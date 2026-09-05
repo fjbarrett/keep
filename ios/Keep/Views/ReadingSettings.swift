@@ -40,6 +40,7 @@ struct ReadingSettings: View {
 }
 
 struct ReadingStyle: ViewModifier {
+    var constrainWidth = true
     @AppStorage("readingTextSize") private var textSize = 0
     @AppStorage("readingLineSpacing") private var lineSpacing = 0.0
     @AppStorage("readingMeasure") private var comfortableWidth = false
@@ -48,7 +49,7 @@ struct ReadingStyle: ViewModifier {
         content
             .font(textSize == 2 ? .title2 : textSize == 1 ? .title3 : .body)
             .lineSpacing(lineSpacing)
-            .frame(maxWidth: comfortableWidth ? 680 : .infinity, alignment: .leading)
+            .frame(maxWidth: constrainWidth && comfortableWidth ? 680 : .infinity, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
     }
 }
