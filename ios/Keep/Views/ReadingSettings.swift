@@ -9,10 +9,13 @@ struct ReadingSettings: View {
         Form {
             Section("Reading and editing") {
                 Picker("Text size", selection: $textSize) {
-                    Text("System default").tag(0)
-                    Text("Large").tag(1)
-                    Text("Extra large").tag(2)
+                    Text("System default").fixedSize(horizontal: false, vertical: true).tag(0)
+                    Text("Large").fixedSize(horizontal: false, vertical: true).tag(1)
+                    Text("Extra large").fixedSize(horizontal: false, vertical: true).tag(2)
                 }
+                #if os(iOS)
+                .pickerStyle(.inline)
+                #endif
                 VStack(alignment: .leading) {
                     Text("Extra line spacing: \(Int(lineSpacing)) points")
                     Slider(value: $lineSpacing, in: 0...16, step: 2) {
@@ -30,6 +33,9 @@ struct ReadingSettings: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Reading settings")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 }
 

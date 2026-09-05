@@ -244,20 +244,34 @@ struct NotesListView: View {
 }
 
 private struct NoteRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let note: Note
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             if let swatch = NotePalette.color(for: note.color) {
                 Circle().fill(swatch).frame(width: 8, height: 8)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(note.displayTitle).font(.body).lineLimit(1)
+                Text(note.displayTitle).font(.body)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let summary = note.displaySummary {
                     Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
+                if dynamicTypeSize.isAccessibilitySize {
+                    indicators
+                }
             }
             Spacer()
+            if !dynamicTypeSize.isAccessibilitySize {
+                indicators
+            }
+        }
+    }
+
+    private var indicators: some View {
+        HStack {
             if note.shareToken != nil {
                 Image(systemName: "link").font(.caption2).foregroundStyle(.secondary)
             }
@@ -265,5 +279,6 @@ private struct NoteRow: View {
                 Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.secondary)
             }
         }
+        .accessibilityHidden(true)
     }
 }

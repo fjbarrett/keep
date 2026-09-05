@@ -2,25 +2,64 @@ import SwiftUI
 
 struct DraftSaveStatus: View {
     @Environment(NotesStore.self) private var store
+    @State private var showRecovery = false
     let id: String
     var onCopy: (String) -> Void = { _ in }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(status).font(.caption).foregroundStyle(.secondary)
-                .accessibilityLabel("Save status: " + status)
-            if let error = store.drafts.errors[id] {
-                Text(error).font(.caption)
-                HStack {
-                    Button("Retry") { store.drafts.start(id) }
-                    Button("Save a copy") {
-                        if let copy = store.drafts.saveCopy(id) { onCopy(copy) }
-                    }
+        Group {
+            if store.drafts.errors[id] != nil {
+                Button { showRecovery = true } label: {
+                    Label(status, systemImage: "exclamationmark.triangle")
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .disabled(store.drafts.saving.contains(id))
+                .accessibilityHint("Show the save error and recovery options")
+            } else {
+                Text(status).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .font(.caption)
+        .accessibilityLabel("Save status: " + status)
         .padding(.horizontal)
+        .sheet(isPresented: $showRecovery) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Retry saving, or create a separate copy.")
+                        Button { store.drafts.start(id) } label: {
+                            Text(store.drafts.saving.contains(id) ? "Retrying…" : "Retry")
+                                .frame(maxWidth: .infinity)
+                        }
+                        Button {
+                            if let copy = store.drafts.saveCopy(id) {
+                                showRecovery = false
+                                onCopy(copy)
+                            }
+                        } label: {
+                            Text("Save a copy").frame(maxWidth: .infinity)
+                        }
+                        if let error = store.drafts.errors[id] {
+                            Text(error).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .buttonStyle(.bordered)
+                    .disabled(store.drafts.saving.contains(id))
+                    .padding()
+                }
+                .navigationTitle("Save recovery")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #else
+                .frame(minWidth: 360, minHeight: 360)
+                #endif
+                .toolbar { Button("Done") { showRecovery = false } }
+            }
+        }
+        .onChange(of: store.drafts.items[id] == nil) { _, saved in
+            if saved { showRecovery = false }
+        }
         .onChange(of: store.drafts.errors[id]) { _, error in
             if let error { AccessibilityNotification.Announcement("Save needs attention. " + error).post() }
         }
