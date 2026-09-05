@@ -13,19 +13,26 @@ struct NoteEditorView: View {
     @FocusState private var focusedField: Field?
 
     let note: Note?
-    @State private var body_ = ""
-    @State private var title = ""
+    @State private var body_: String
+    @State private var title: String
     @State private var isColorPickerPresented = false
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
     private var selectedColor: String? { (store.visibleNotes.first { $0.id == id } ?? note)?.color }
+
+    init(note: Note?, draft: NoteDraft? = nil) {
+        self.note = note
+        // Lay out the final text before the first frame of the card expansion.
+        _body_ = State(initialValue: draft?.body ?? note?.body ?? "")
+        _title = State(initialValue: draft?.title ?? note?.title ?? "")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             editorHeader
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
                 .frame(maxWidth: .infinity)
-                .padding(.leading, 16)
+                .padding(.leading, 26)
                 .padding(.trailing, 4)
                 .padding(.top, 8)
             TextEditor(text: Binding(get: { body_ }, set: { value in
@@ -38,7 +45,7 @@ struct NoteEditorView: View {
                 .keyboardType(.asciiCapable)
                 .scrollContentBackground(.hidden)
                 .modifier(ReadingStyle(constrainWidth: false))
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 22)
                 .padding(.vertical, 8)
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity)
                 .frame(maxWidth: .infinity)
@@ -67,7 +74,7 @@ struct NoteEditorView: View {
             shape.fill(.regularMaterial)
                 .overlay {
                     if colorScheme == .dark {
-                        shape.fill(.black.opacity(0.32))
+                        shape.fill(.black.opacity(0.64))
                     }
                 }
         }
@@ -76,10 +83,6 @@ struct NoteEditorView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear {
-            body_ = store.drafts.items[id]?.body ?? note?.body ?? ""
-            title = store.drafts.items[id]?.title ?? note?.title ?? ""
-        }
         .task {
             if note == nil {
                 await Task.yield()
@@ -174,7 +177,7 @@ struct NoteEditorView: View {
             title = value
             stageDraft()
         }), prompt: Text("Title").foregroundStyle(.secondary), axis: .vertical)
-            .font(.headline)
+            .font(.title2.weight(.semibold))
             .textFieldStyle(.plain)
             .autocorrectionDisabled()
             .keyboardType(.asciiCapable)
