@@ -27,6 +27,8 @@ struct MacRootView: View {
     @State private var filter: Filter? = .all
     @State private var selection: Note.ID?
     @State private var composing = false
+    @State private var composeFocusRequest = 0
+    @State private var createdNoteFocus: Note.ID?
     @State private var query = ""
     @State private var showSignIn = false
     @State private var pendingDelete: Note?
@@ -45,6 +47,9 @@ struct MacRootView: View {
             if phase == .background { store.drafts.retryAll() }
         }
         .focusedSceneValue(\.selectedNote, selectedNote)
+        .onChange(of: selection) { _, id in
+            if id != createdNoteFocus { createdNoteFocus = nil }
+        }
         .task {
             await store.load()
             SpotlightIndexer.sync(store.notes)
@@ -166,7 +171,8 @@ struct MacRootView: View {
     @ViewBuilder
     private var detail: some View {
         if composing {
-            MacNoteDetail(note: nil) { id in
+            MacNoteDetail(note: nil, focusRequest: composeFocusRequest) { id in
+                createdNoteFocus = id
                 composing = false
                 filter = .all
                 selection = id
@@ -174,7 +180,7 @@ struct MacRootView: View {
             .id("new-note")
         } else if let id = selection,
                   let note = store.visibleNotes.first(where: { $0.id == id }) {
-            MacNoteDetail(note: note)
+            MacNoteDetail(note: note, focusRequest: createdNoteFocus == id ? composeFocusRequest : 0)
                 .id(note.id)
         } else {
             ContentUnavailableView(
@@ -255,6 +261,7 @@ struct MacRootView: View {
 
     private func startCompose() {
         guard store.canEdit else { return }
+        composeFocusRequest += 1
         selection = nil
         composing = true
     }
