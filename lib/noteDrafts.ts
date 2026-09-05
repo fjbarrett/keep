@@ -12,6 +12,7 @@ const prefix = (owner: string) => `keep.draft.v1.${encodeURIComponent(owner)}.`;
 
 export function readNoteDrafts(owner: string): NoteDraft[] {
   const drafts: NoteDraft[] = [];
+  try {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (!key?.startsWith(prefix(owner))) continue;
@@ -21,6 +22,7 @@ export function readNoteDrafts(owner: string): NoteDraft[] {
           typeof draft.note.body === "string" && draft.revision) drafts.push(draft);
     } catch { /* Keep unreadable records for manual recovery. */ }
   }
+  } catch { /* Storage may be disabled; writes surface an actionable error. */ }
   return drafts;
 }
 
