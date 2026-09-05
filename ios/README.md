@@ -120,9 +120,11 @@ provide text size, line spacing, and line width. iPhone and iPad always edit raw
 Markdown as plain text. After the first save, the editor's Note color menu offers
 eight named color swatches and None, with a checkmark for the current selection.
 Both fields are directly editable. New notes focus the title first, and Return
-moves into the framed body with a Start writing prompt. The keyboard toolbar
-has Done to dismiss it. Titles wrap, and the title and body share a centered
-column on iPad that respects the comfortable line-width setting. In landscape or
+moves into the body with a Start writing prompt. Both inputs have no outlines;
+the body uses a lighter background that reaches the screen edges, with a small
+text inset. The keyboard toolbar has Done to dismiss it. Titles wrap, and the
+editor uses the available width by default; the comfortable line-width setting
+keeps text in a centered column on iPad. In landscape or
 at accessibility text sizes, focusing the body temporarily hides the title and
 navigation bar to leave room above the keyboard; Done restores them. Save errors
 remain visible. Explicit titles are included in durable drafts and recovery and
