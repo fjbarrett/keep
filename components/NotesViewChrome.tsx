@@ -65,9 +65,11 @@ export function GuestSaveBanner({
 export function DatabaseError({
   error,
   onRetry,
+  onCopy,
 }: {
   error: string;
   onRetry: () => void;
+  onCopy?: () => void;
 }) {
   return (
     <div
@@ -76,12 +78,13 @@ export function DatabaseError({
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-[var(--color-text)]">
-          Couldn&apos;t reach Postgres
+          Changes need attention
         </p>
-        <p className="mt-0.5 truncate font-mono text-xs text-[var(--color-muted)]">
+        <p className="mt-0.5 text-xs text-[var(--color-muted)]">
           {error}
         </p>
       </div>
+      {onCopy && <button type="button" onClick={onCopy} className="shrink-0 text-xs underline">Save a copy</button>}
       <button
         type="button"
         onClick={onRetry}

@@ -1,6 +1,7 @@
 "use client";
 
 import { deleteDB, openDB, type IDBPDatabase } from "idb";
+import { clearNoteDrafts } from "./noteDrafts";
 import { Note } from "./types";
 
 const DB_PREFIX = "keep-offline-v2";
@@ -127,6 +128,7 @@ export async function removePendingOp(ownerId: string, id: string) {
 
 /** Remove cached notes and queued mutations when the user explicitly signs out. */
 export async function clearOwnerData(ownerId: string) {
+  clearNoteDrafts(ownerId);
   const name = databaseName(ownerId);
   const db = await getDb(ownerId);
   const tx = db.transaction(["notes", "pending"], "readwrite");

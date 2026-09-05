@@ -432,7 +432,7 @@ export function NoteEditor({
           if (mountedRef.current && revisionRef.current === submittedRevision) {
             setDirty(false);
           }
-        });
+        }).catch(() => { /* The save error remains visible; retain the dirty draft. */ });
       }, 550);
       return () => window.clearTimeout(timer);
     }
@@ -445,7 +445,7 @@ export function NoteEditor({
             if (mountedRef.current && revisionRef.current === submittedRevision) {
               setDirty(false);
             }
-          });
+          }).catch(() => { /* Retain the draft on storage failure. */ });
         }, 550);
         return () => window.clearTimeout(timer);
       }
@@ -453,7 +453,7 @@ export function NoteEditor({
       const submittedRevision = revisionRef.current;
       const timer = window.setTimeout(() => {
         if (createdIdRef.current || creatingRef.current) return;
-        void startCreate(draftRef.current, submittedRevision);
+        void startCreate(draftRef.current, submittedRevision).catch(() => {});
       }, 550);
       return () => window.clearTimeout(timer);
     }
