@@ -127,6 +127,11 @@ at accessibility text sizes, focusing the body temporarily hides the title and
 navigation bar to leave room above the keyboard; Done restores them. Save errors
 remain visible. Explicit titles are included in durable drafts and recovery and
 remain intact in the notes list. The color control shows the current name and swatch.
+Export file in the editor toolbar or a note's context menu saves its current body
+as UTF-8 text (`.txt`) or Markdown (`.md`) through the system file picker. The title
+provides the filename; body text, whitespace, and Markdown syntax are preserved.
+Export includes unsaved drafts and works without a network save. It is also
+available for archived and trashed notes.
 The Mac Markdown preview retains heading semantics and image alt text with
 loading/retry states.
 The editor has a Note body label, notes expose state and accessibility actions,

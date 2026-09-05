@@ -16,6 +16,7 @@ struct NoteEditorView: View {
     @State private var body_ = ""
     @State private var title = ""
     @State private var isChangingColor = false
+    @State private var export: NoteExport?
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
 
@@ -82,7 +83,15 @@ struct NoteEditorView: View {
         .onChange(of: store.notes.first { $0.id == id }?.title) { _, savedTitle in
             if store.drafts.items[id] == nil, let savedTitle { title = savedTitle }
         }
+        .modifier(NoteFileExporter(export: $export))
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NoteExportMenu { format in
+                    focusedField = nil
+                    export = NoteExport(title: title, body: body_, format: format)
+                }
+                .disabled(title.isEmpty && body_.isEmpty)
+            }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") {

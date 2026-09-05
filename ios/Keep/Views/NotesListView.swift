@@ -55,6 +55,7 @@ struct NotesListView: View {
     @State private var composing = false
     @State private var pendingDelete: Note?
     @State private var shareTarget: ShareTarget?
+    @State private var export: NoteExport?
 
     private var notes: [Note] {
         NotesStore.matching(
@@ -90,6 +91,7 @@ struct NotesListView: View {
             }
         }
         .refreshable { await store.load() }
+        .modifier(NoteFileExporter(export: $export))
         .searchable(text: $query, prompt: "Search \(filter.rawValue.lowercased())")
         .navigationTitle(filter.rawValue)
         .toolbar {
@@ -149,6 +151,12 @@ struct NotesListView: View {
 
     @ViewBuilder
     private func menu(for note: Note) -> some View {
+        NoteExportMenu { format in
+            // Read again when selected so an open menu cannot export an old draft.
+            guard let current = store.visibleNotes.first(where: { $0.id == note.id }) else { return }
+            export = NoteExport(title: current.title, body: current.body, format: format)
+        }
+        Divider()
         if note.trashed {
             Button("Put Back", systemImage: "arrow.uturn.backward") {
                 Task { await store.restore(note) }
