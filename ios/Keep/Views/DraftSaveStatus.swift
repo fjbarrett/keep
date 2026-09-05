@@ -4,6 +4,7 @@ struct DraftSaveStatus: View {
     @Environment(NotesStore.self) private var store
     @State private var showRecovery = false
     let id: String
+    var horizontalPadding: CGFloat = 16
     var onCopy: (String) -> Void = { _ in }
 
     var body: some View {
@@ -21,7 +22,7 @@ struct DraftSaveStatus: View {
         }
         .font(.caption)
         .accessibilityLabel("Save status: " + status)
-        .padding(.horizontal)
+        .padding(.horizontal, horizontalPadding)
         .sheet(isPresented: $showRecovery) {
             NavigationStack {
                 ScrollView {

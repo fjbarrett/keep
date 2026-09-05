@@ -5,6 +5,8 @@ import Foundation
 struct NoteDraft: Codable, Equatable, Identifiable {
     let id: String
     var body: String
+    /// Nil preserves legacy automatic titles; non-nil is an explicitly edited title.
+    var title: String?
     var base: Note?
     var revision: Int
     var editedAt = Date().timeIntervalSince1970 * 1000
@@ -14,13 +16,26 @@ struct NoteDraft: Codable, Equatable, Identifiable {
             pinned: false, archived: false, trashed: false, markdown: false,
             highlight: false, tags: [], createdAt: editedAt, updatedAt: editedAt)
         note.body = body
+        if title != nil { note.title = resolvedTitle }
         note.updatedAt = editedAt
         return note
     }
 
-    init(id: String, body: String, base: Note? = nil, revision: Int = 1) {
+    var resolvedTitle: String {
+        guard let title, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return NoteTitle.infer(body)
+        }
+        return title
+    }
+
+    func matches(_ note: Note) -> Bool {
+        body == note.body && (title == nil || resolvedTitle == note.title)
+    }
+
+    init(id: String, body: String, base: Note? = nil, revision: Int = 1, title: String? = nil) {
         self.id = id
         self.body = body
+        self.title = title
         self.base = base
         self.revision = revision
     }

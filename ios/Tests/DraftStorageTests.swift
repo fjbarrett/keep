@@ -37,6 +37,17 @@ final class DraftStorageTests: XCTestCase {
         XCTAssertTrue(try storage.load(owner: "A").isEmpty)
         XCTAssertEqual(try storage.load(owner: "B")[draft.id], draft)
     }
+    func testLegacyDraftWithoutTitleStillDecodes() throws {
+        let original = NoteDraft(id: String(repeating: "a", count: 32), body: "Legacy body")
+        let data = try JSONEncoder().encode(original)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        json.removeValue(forKey: "title")
+        let restored = try JSONDecoder().decode(NoteDraft.self,
+            from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(restored.title)
+        XCTAssertEqual(restored.resolvedTitle, "Legacy body")
+    }
+
     func testInvalidIdentityCannotEscapeTheAccountDirectory() {
         let storage = DraftStorage(root: directory)
         XCTAssertThrowsError(try storage.save(NoteDraft(id: "../elsewhere", body: "Text"), owner: "A"))
