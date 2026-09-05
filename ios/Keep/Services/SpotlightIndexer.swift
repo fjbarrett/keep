@@ -10,7 +10,10 @@ import os
 ///
 /// Shared by both platforms. Indexing is on-device, which is the right home for
 /// private notes — Apple's web crawler only ever sees public pages.
+@MainActor
 enum SpotlightIndexer {
+    private static var generation = 0
+    private static var work: Task<Void, Never>?
     static let domain = "note"
     private static let log = Logger(subsystem: "com.keeptxt.keep", category: "spotlight")
 
@@ -37,31 +40,26 @@ enum SpotlightIndexer {
             return item
         }
 
-        let index = CSSearchableIndex.default()
-        // Clear the domain first so trashed/archived notes fall out, then index
-        // the current set. Log both steps; a failure here is otherwise silent.
-        index.deleteSearchableItems(withDomainIdentifiers: [domain]) { deleteError in
-            if let deleteError {
-                log.error("clear failed: \(deleteError.localizedDescription, privacy: .public)")
-            }
-            index.indexSearchableItems(items) { indexError in
-                if let indexError {
-                    log.error("index failed: \(indexError.localizedDescription, privacy: .public)")
-                } else {
-                    log.info("indexed \(items.count, privacy: .public) notes into Spotlight")
-                }
+        generation += 1
+        let request = generation
+        let previous = work
+        work = Task {
+            await previous?.value
+            guard request == generation else { return }
+            let index = CSSearchableIndex.default()
+            do {
+                try await index.deleteSearchableItems(withDomainIdentifiers: [domain])
+                guard request == generation, !items.isEmpty else { return }
+                try await index.indexSearchableItems(items)
+            } catch {
+                log.error("index update failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
 
     /// Remove everything this app indexed (e.g. on sign-out).
     static func clear() {
-        CSSearchableIndex.default()
-            .deleteSearchableItems(withDomainIdentifiers: [domain]) { error in
-                if let error {
-                    log.error("clear failed: \(error.localizedDescription, privacy: .public)")
-                }
-            }
+        sync([])
     }
 
 }

@@ -9,6 +9,7 @@ struct RootView: View {
     var body: some View {
         NavigationStack(path: $path) {
             NotesListView()
+                .id(store.sessionGeneration)
                 .navigationTitle("Keep")
                 .navigationDestination(for: String.self) { id in
                     if let note = store.notes.first(where: { $0.id == id }) {
@@ -22,6 +23,7 @@ struct RootView: View {
         }
         // A 401 from the API flips needsAuth; present the native sign-in sheet.
         .onChange(of: store.needsAuth) { _, needs in showSignIn = needs }
+        .onChange(of: store.sessionGeneration) { _, _ in path = [] }
         // Keep Spotlight in step with the notes, and open the note a Spotlight
         // result points at (its activity identifier is the note id).
         .onChange(of: store.notes) { _, notes in SpotlightIndexer.sync(notes) }
