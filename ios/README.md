@@ -139,9 +139,10 @@ Accessibility text sizes move the title below the actions to keep it readable.
 New notes and Spotlight results use the same modal. Both fields are directly
 editable. New notes focus the title first, and Return
 moves into the blank body, without a placeholder. Both inputs have no outlines;
-the body uses a lighter background with rounded corners, a small text inset,
-and a bottom gap that keeps its lower corners visible. The writing area spans
-the available width. The keyboard toolbar has Done to dismiss it. Titles wrap, and the
+the title and body share one neutral Liquid Glass surface matching the grid
+cards, with a regular-material fallback before iOS 26. A four-point outer inset
+reveals the rounded reflective edge; the text keeps its comfortable side insets.
+The writing area spans the available width. The keyboard toolbar has Done to dismiss it. Titles wrap, and the
 editor uses the available width by default; the comfortable line-width setting
 keeps text in a centered column on iPad. In landscape or
 at accessibility text sizes, focusing the body temporarily hides the title and

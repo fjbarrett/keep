@@ -27,8 +27,8 @@ struct NoteEditorView: View {
                 editorHeader
                     .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
                     .frame(maxWidth: .infinity)
-                    .padding(.leading, 20)
-                    .padding(.trailing, 8)
+                    .padding(.leading, 16)
+                    .padding(.trailing, 4)
                     .padding(.top, 8)
             }
             TextEditor(text: Binding(get: { body_ }, set: { value in
@@ -39,13 +39,10 @@ struct NoteEditorView: View {
                 .focused($focusedField, equals: .body)
                 .scrollContentBackground(.hidden)
                 .modifier(ReadingStyle(constrainWidth: false))
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity)
                 .frame(maxWidth: .infinity)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .padding(.bottom, 4)
                 .accessibilityLabel("Note body")
                 .accessibilityHint("Edit or add text. Changes save automatically.")
                 .disabled(!store.canEdit)
@@ -57,7 +54,10 @@ struct NoteEditorView: View {
                     .padding(.vertical, 8)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .modifier(NoteEditorSurface())
+        .padding(.horizontal, 4)
+        .padding(.bottom, 4)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
@@ -221,4 +221,16 @@ struct NoteEditorView: View {
         store.drafts.stage(id: id, body: body_, base: store.notes.first { $0.id == id }, title: title, color: color)
     }
 
+}
+
+/// One material behind both fields keeps the open note visually continuous.
+private struct NoteEditorSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular, in: .rect(cornerRadius: 28))
+        } else {
+            content.background(.regularMaterial,
+                               in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        }
+    }
 }
