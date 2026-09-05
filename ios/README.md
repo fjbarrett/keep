@@ -131,6 +131,11 @@ card for note actions; VoiceOver exposes the same actions. Search, view filters,
 pull-to-refresh, and pinned-first ordering apply to the grid.
 Opening a note presents an editor modal over the grid. Close or swipe down
 returns to the same grid, filter, and search; dismissing flushes pending edits.
+The editor uses a compact header with the editable title, color swatch, floppy-disk export
+icon, and close icon in one row. The title uses 17-point semibold at the default
+text size; title and body text have approximately 20-point side insets.
+Each action has a 44-point touch target.
+Accessibility text sizes move the title below the actions to keep it readable.
 New notes and Spotlight results use the same modal. Both fields are directly
 editable. New notes focus the title first, and Return
 moves into the blank body, without a placeholder. Both inputs have no outlines;
@@ -145,7 +150,7 @@ status is hidden; save errors show recovery below the writing area, including in
 compact mode. Explicit titles are included in durable drafts and recovery and
 remain intact in the notes list. The color control shows only the current swatch
 (a palette icon when unset); VoiceOver still announces its name and selected color.
-The download icon in the editor toolbar or Export file in a note's context menu saves its current body
+The floppy-disk icon in the editor header or Export file in a note's context menu saves its current body
 as UTF-8 text (`.txt`) or Markdown (`.md`) through the system file picker. The title
 provides the filename; body text, whitespace, and Markdown syntax are preserved.
 Export includes unsaved drafts and works without a network save. It is also
