@@ -70,6 +70,8 @@ struct RootView: View {
                 NavigationStack { NoteEditorView(note: note) }
                     .id(destination.id)
                     .presentationDragIndicator(.hidden)
+                    .presentationBackground(.clear)
+                    .presentationCornerRadius(28)
             case .signIn:
                 SignInView()
                     .interactiveDismissDisabled()
