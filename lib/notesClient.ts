@@ -62,19 +62,21 @@ export async function notesApi<T>(
   });
   if (!response.ok) {
     let message = `${response.status}`;
+    let note: Note | undefined;
     try {
       const data = await response.json();
       if (data?.error) message = data.error;
+      if (response.status === 409 && data?.note?.id) note = data.note;
     } catch {
       // Keep the HTTP status when an error response is not JSON.
     }
-    throw new NotesApiError(message, response.status);
+    throw new NotesApiError(message, response.status, note);
   }
   return response.json() as Promise<T>;
 }
 
 export class NotesApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly note?: Note) {
     super(message);
   }
 }

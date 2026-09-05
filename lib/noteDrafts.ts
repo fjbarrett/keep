@@ -5,6 +5,8 @@ export type NoteDraft = {
   patch: Partial<Note>;
   type: "create" | "update";
   revision: string;
+  base?: Note;
+  predecessors?: string[];
 };
 const prefix = (owner: string) => `keep.draft.v1.${encodeURIComponent(owner)}.`;
 
@@ -27,6 +29,13 @@ export function writeNoteDraft(owner: string, draft: Omit<NoteDraft, "revision">
   const entry = { ...draft, revision: crypto.randomUUID() };
   localStorage.setItem(prefix(owner) + draft.note.id, JSON.stringify(entry));
   return entry;
+}
+
+/** Update the saved base without changing the identity of an in-flight draft. */
+export function replaceNoteDraft(owner: string, draft: NoteDraft) {
+  const key = prefix(owner) + draft.note.id;
+  const current = JSON.parse(localStorage.getItem(key) ?? "null");
+  if (current?.revision === draft.revision) localStorage.setItem(key, JSON.stringify(draft));
 }
 
 export function removeNoteDraft(owner: string, draft: NoteDraft) {
