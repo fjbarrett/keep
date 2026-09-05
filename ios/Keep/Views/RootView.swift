@@ -71,7 +71,9 @@ struct RootView: View {
     @ViewBuilder private func sheetContent(for destination: Sheet) -> some View {
         switch destination {
         case .editor(let note, let sourceID):
-            NavigationStack { NoteEditorView(note: note) }
+            NavigationStack {
+                NoteEditorView(note: note, draft: note.flatMap { store.drafts.items[$0.id] })
+            }
                 .id(destination.id)
                 .presentationDragIndicator(.hidden)
                 .presentationBackground(.clear)

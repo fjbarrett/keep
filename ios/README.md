@@ -135,12 +135,14 @@ returns to the same grid, filter, and search; dismissing flushes pending edits.
 On iOS 18 and later, a tapped card expands into the editor with SwiftUI's native
 zoom transition and returns to its source on dismissal. Reduce Motion, new notes,
 Spotlight results, and earlier iOS versions use the standard sheet presentation.
+The editor initializes its title and body from the current draft or saved note
+before presentation so text layout is ready for the first frame of the expansion.
 The editor uses a compact header with the editable title and close icon in one row.
 iOS 26 uses SwiftUI's standard close-role button with a circular glass style.
 The color swatch sits at the modal's bottom-right, above the keyboard when editing.
 The writing area reserves space for this action; the modal has no export button.
-The title uses 17-point semibold at the default
-text size; title and body text have approximately 20-point side insets.
+The title uses 22-point semibold at the default text size; the body retains its
+reading-size preference. Title and body text have approximately 30-point side insets.
 Each action has a 44-point touch target.
 Accessibility text sizes move the title below the close button to keep it readable.
 New notes and Spotlight results use the same modal. Both fields are directly
@@ -150,8 +152,8 @@ autocorrection and suggestions. The ASCII-capable keyboard removes the empty
 prediction strip; pasted Unicode text is preserved. Both inputs have no outlines;
 the title and body share one neutral, translucent material surface inspired by
 the grid cards. The modal has rounded corners without a reflective outline and a
-four-point outer inset; dark mode retains the deeper charcoal tone of the grid
-cards. The text keeps its comfortable side insets.
+four-point outer inset; dark mode deepens the material to match the near-black
+charcoal tone of the grid cards. The text keeps its comfortable side insets.
 The writing area spans the available width. Edits autosave while typing, with no
 Save or Done button; close or swipe dismissal also flushes pending edits. Titles wrap, and the
 editor uses the available width by default; the comfortable line-width setting
