@@ -1,5 +1,6 @@
 "use client";
 
+import { readNoteDrafts } from "@/lib/noteDrafts";
 import { signOut } from "next-auth/react";
 import { clearOwnerData, getPendingOps } from "@/lib/offlineDb";
 
@@ -9,7 +10,7 @@ export function SignOutButton({ ownerId }: { ownerId: string }) {
     // choice instead of silent loss.
     const pending = await getPendingOps(ownerId).catch(() => []);
     if (
-      pending.length > 0 &&
+      (pending.length > 0 || readNoteDrafts(ownerId).length > 0) &&
       !window.confirm(
         "Some note changes haven't synced yet and will be lost if you sign out now. Sign out anyway?",
       )

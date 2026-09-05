@@ -61,6 +61,7 @@ export function NotesView({
     unshare,
     setShareToken,
     syncStatus,
+    retryDrafts,
   } = useNotes(ownerId);
 
   const [query, setQuery] = useState("");
@@ -505,7 +506,8 @@ export function NotesView({
     <>
       {error && (
         <div className="px-6 pt-4">
-          <DatabaseError error={error} onRetry={refresh} />
+          <DatabaseError error={error} onRetry={() => void retryDrafts()}
+            onCopy={activeNoteId ? () => void retryDrafts(activeNoteId) : undefined} />
         </div>
       )}
       {(isGuest || hasLocalNotes) && notes.length > 0 && !bannerDismissed && (

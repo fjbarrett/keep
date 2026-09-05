@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readNoteDrafts, writeNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
 import { Note } from "./types";
 import {
   cacheNotes,
@@ -165,6 +166,8 @@ export function useNotes(ownerId: string | null) {
     try {
       const data = await notesApi<{ notes: Note[] }>("/api/notes");
       if (ownerRef.current !== ownerId) return;
+      const drafts = readNoteDrafts(ownerId);
+      data.notes = overlayNoteDrafts(data.notes, drafts);
       // Once the server answers, an older IndexedDB read must not replace it.
       cacheLoadGenerationRef.current += 1;
       try {
@@ -180,7 +183,7 @@ export function useNotes(ownerId: string | null) {
         notesRef.current = loaded;
         setNotes(loaded);
       }
-      setError(null);
+      setError(drafts.length ? "Some changes are saved on this device and still need to sync." : null);
     } catch (e) {
       if (ownerRef.current !== ownerId) return;
       if (e instanceof NotesApiError && e.status === 401) {
@@ -271,6 +274,11 @@ export function useNotes(ownerId: string | null) {
                 }
               });
               await removePendingOp(ownerId, op.id);
+              const draft = readNoteDrafts(ownerId).find((entry) => entry.note.id === op.noteId);
+              if (draft && op.payload?.body === draft.note.body &&
+                  !(await getPendingOps(ownerId)).some((entry) => entry.noteId === op.noteId)) {
+                removeNoteDraft(ownerId, draft);
+              }
               changed = true;
             } catch (error) {
               const status = error instanceof NotesApiError ? error.status : 0;
@@ -289,6 +297,8 @@ export function useNotes(ownerId: string | null) {
                 requestReplay(5_000);
                 break;
               }
+              const savedDraft = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId);
+              if (savedDraft) setError("Some changes need attention. Retry or save a copy.");
               // Permanent rejection (note deleted elsewhere -> 404, or a
               // 400/409/413 the server will never accept). Drop it: leaving a
               // dead op at the head of the queue would wedge every later
@@ -325,11 +335,9 @@ export function useNotes(ownerId: string | null) {
     options: { keepalive?: boolean } = {},
   ) => {
     const body = partial.body ?? "";
-    const meta = partial.title
+    let meta = partial.title
       ? { title: partial.title, summary: partial.summary ?? "" }
-      : options.keepalive
-        ? { title: inferNoteTitle(body), summary: "" }
-        : await metadataForBody(body);
+      : { title: inferNoteTitle(body), summary: "" };
     const now = Date.now();
     const note: Note = {
       id: localNoteId(),
@@ -360,14 +368,20 @@ export function useNotes(ownerId: string | null) {
     const next = [note, ...notesRef.current];
     notesRef.current = next;
     setNotes(next);
+    let draft: NoteDraft;
+    try { draft = writeNoteDraft(ownerId, { note, patch: note, type: "create" }); }
+    catch { setError("This browser could not keep the draft. Keep this page open and copy your text."); return null; }
     cacheNote(ownerId, note).catch(() => {});
 
     try {
+      if (!options.keepalive && !partial.title) meta = await metadataForBody(body);
+      if (ownerRef.current !== ownerId) return note;
       const data = await trackSync(notesApi<{ note: Note }>("/api/notes", {
         method: "POST",
         keepalive: options.keepalive,
         json: {
           id: note.id,
+          ownerId,
           title: meta.title,
           summary: meta.summary,
           color: note.color,
@@ -380,6 +394,8 @@ export function useNotes(ownerId: string | null) {
           tags: note.tags,
         },
       }));
+      removeNoteDraft(ownerId, draft);
+      if (ownerRef.current !== ownerId) return data.note;
       // Upsert, don't map: a refresh() fired by replay/reconnect can overwrite
       // notesRef with a server list that predates this POST, and a plain map
       // would then find no match and silently drop the note the user just made.
@@ -408,12 +424,8 @@ export function useNotes(ownerId: string | null) {
         setSyncStatus(navigator.onLine ? "error" : "offline");
         return note;
       }
-      setError(e instanceof Error ? e.message : "Failed to create");
-      const reverted = notesRef.current.filter((item) => item.id !== note.id);
-      notesRef.current = reverted;
-      setNotes(reverted);
-      removeCachedNote(ownerId, note.id).catch(() => {});
-      return null;
+      if (ownerRef.current === ownerId) setError(e instanceof Error ? e.message : "Failed to create");
+      return note;
     }
   }, [isGuest, ownerId, requestReplay, trackSync]);
 
@@ -469,6 +481,17 @@ export function useNotes(ownerId: string | null) {
     }
     if (!ownerId) return Promise.resolve();
 
+    const previousDraft = readNoteDrafts(ownerId).find((draft) => draft.note.id === id);
+    let draft: NoteDraft;
+    try {
+      draft = writeNoteDraft(ownerId, {
+        note: optimistic, patch: { ...previousDraft?.patch, ...initialPatch },
+        type: previousDraft?.type ?? "update",
+      });
+    } catch {
+      setError("This browser could not keep the draft. Keep this page open and copy your text.");
+      return Promise.reject(new Error("Draft storage is unavailable"));
+    }
     cacheNote(ownerId, optimistic).catch(() => {});
 
     const save = async () => {
@@ -483,6 +506,10 @@ export function useNotes(ownerId: string | null) {
         applyGeneratedMeta(meta);
       }
 
+      if (draft.type === "create") {
+        setError("This new note is saved on this device. Retry to sync it.");
+        return;
+      }
       const alreadyQueued =
         !options.keepalive &&
         (queuedNoteIdsRef.current.has(id) ||
@@ -506,6 +533,8 @@ export function useNotes(ownerId: string | null) {
           keepalive: options.keepalive,
           json: nextPatch,
         }));
+        removeNoteDraft(ownerId, draft);
+        if (ownerRef.current !== ownerId) return;
         if (mutationRevisionRef.current.get(id) === revision) {
           const next = notesRef.current.map((note) =>
             note.id === id ? data.note : note,
@@ -530,7 +559,7 @@ export function useNotes(ownerId: string | null) {
           setSyncStatus(navigator.onLine ? "error" : "offline");
         } else {
           setError(error instanceof Error ? error.message : "Failed to save");
-          if (mutationRevisionRef.current.get(id) === revision) await refresh();
+          // The journal keeps the optimistic text across refreshes and restarts.
         }
       }
     };
@@ -538,6 +567,35 @@ export function useNotes(ownerId: string | null) {
     // waiting behind an older promise would prevent the request from launching.
     return options.keepalive ? save() : enqueueSave(id, save);
   }, [enqueueSave, isGuest, localNoteIds, ownerId, refresh, requestReplay, trackSync]);
+
+  const retryDrafts = useCallback(async (copyId?: string) => {
+    if (!ownerId) return;
+    try {
+      for (const draft of readNoteDrafts(ownerId)) {
+        if (copyId && draft.note.id !== copyId) continue;
+        await enqueueSave(draft.note.id, async () => {
+          if (ownerRef.current !== ownerId) return;
+          const copy = copyId === draft.note.id;
+          const creating = copy || draft.type === "create";
+          const payload = creating ? { ...draft.note, id: copy ? localNoteId() : draft.note.id, ownerId,
+            shareToken: null } : draft.patch;
+          const queued = await getPendingOps(ownerId);
+          const data = await notesApi<{ note: Note }>(creating ? "/api/notes" : `/api/notes/${draft.note.id}`, {
+            method: creating ? "POST" : "PATCH", json: payload,
+          });
+          if (creating && data.note.body !== draft.note.body) {
+            await notesApi(`/api/notes/${data.note.id}`, { method: "PATCH",
+              json: { ...draft.patch, body: draft.note.body, expectedUpdatedAt: data.note.updatedAt } });
+          }
+          removeNoteDraft(ownerId, draft);
+          for (const op of queued.filter((op) => op.noteId === draft.note.id)) await removePendingOp(ownerId, op.id);
+        });
+      }
+      if (ownerRef.current === ownerId) { requestReplay(); await refresh(); }
+    } catch (error) {
+      if (ownerRef.current === ownerId) setError(error instanceof Error ? error.message : "Failed to sync draft");
+    }
+  }, [enqueueSave, ownerId, refresh, requestReplay]);
 
   const trash = useCallback(async (id: string) => {
     const n = notesRef.current.find((note) => note.id === id);
@@ -796,6 +854,7 @@ export function useNotes(ownerId: string | null) {
     hasLocalNotes: localNoteIds.size > 0,
     error,
     syncStatus,
+    retryDrafts,
     refresh,
     create,
     update,
