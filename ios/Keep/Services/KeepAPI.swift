@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 
 enum APIError: Error, LocalizedError {
     case unauthorized
@@ -80,6 +81,25 @@ actor KeepAPI {
 
     func unshare(id: String) async throws -> Note {
         try await request("/api/notes/\(id)/share", method: "DELETE", as: NoteResponse.self).note
+    }
+
+    /// Downsample away from the main actor; never reuse an authenticated cached response.
+    func image(_ source: URL) async throws -> CGImage {
+        guard let url = URL(string: source.relativeString, relativeTo: Config.baseURL)?.absoluteURL,
+              ["https", "http"].contains(url.scheme?.lowercased() ?? "") else { throw APIError.http(400) }
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw APIError.http((response as? HTTPURLResponse)?.statusCode ?? -1)
+        }
+        guard data.count <= 16 * 1024 * 1024,
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceThumbnailMaxPixelSize: 2048,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+              ] as CFDictionary) else { throw APIError.http(415) }
+        return image
     }
 
     // MARK: - Plumbing

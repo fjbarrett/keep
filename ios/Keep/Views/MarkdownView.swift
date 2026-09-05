@@ -6,6 +6,7 @@ import SwiftUI
 /// that `Text` alone won't style.
 struct MarkdownView: View {
     let source: String
+    @State private var blocks: [MarkdownBlock] = []
 
     var body: some View {
         ScrollView {
@@ -18,66 +19,11 @@ struct MarkdownView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 8)
         }
-    }
-
-    private struct Block: Identifiable {
-        enum Kind {
-            case paragraph
-            case heading(Int)
-            case code
-            case quote
-            case listItem(marker: String)
-            case rule
-        }
-
-        let id: Int
-        let kind: Kind
-        let text: AttributedString
-    }
-
-    private var blocks: [Block] {
-        let options = AttributedString.MarkdownParsingOptions(
-            interpretedSyntax: .full,
-            failurePolicy: .returnPartiallyParsedIfPossible
-        )
-        guard let parsed = try? AttributedString(markdown: source, options: options) else {
-            return [Block(id: 0, kind: .paragraph, text: AttributedString(source))]
-        }
-
-        var result: [Block] = []
-        for (intent, range) in parsed.runs[\.presentationIntent] {
-            var text = AttributedString(parsed[range])
-            text.presentationIntent = nil
-
-            guard let intent else {
-                result.append(Block(id: result.count, kind: .paragraph, text: text))
-                continue
-            }
-
-            var kind = Block.Kind.paragraph
-            var ordinal: Int?
-            var ordered = false
-            for component in intent.components {
-                switch component.kind {
-                case .header(let level): kind = .heading(level)
-                case .codeBlock: kind = .code
-                case .blockQuote: kind = .quote
-                case .listItem(let n): ordinal = n
-                case .orderedList: ordered = true
-                case .thematicBreak: kind = .rule
-                default: break
-                }
-            }
-            if case .paragraph = kind, let ordinal {
-                kind = .listItem(marker: ordered ? "\(ordinal)." : "•")
-            }
-            result.append(Block(id: result.count, kind: kind, text: text))
-        }
-        return result
+        .task(id: source) { blocks = MarkdownBlock.parse(source) }
     }
 
     @ViewBuilder
-    private func view(for block: Block) -> some View {
+    private func view(for block: MarkdownBlock) -> some View {
         switch block.kind {
         case .paragraph:
             Text(block.text)
@@ -116,6 +62,8 @@ struct MarkdownView: View {
             .padding(.leading, 4)
         case .rule:
             Divider()
+        case .image(let url):
+            MarkdownImage(url: url, alt: String(block.text.characters))
         }
     }
 

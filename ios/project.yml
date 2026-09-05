@@ -74,6 +74,7 @@ targets:
       - path: Keep/Support
       - path: Keep/Views/SignInView.swift
       - path: Keep/Views/MarkdownView.swift
+      - path: Keep/Views/MarkdownImage.swift
       - path: Keep/Views/DraftSaveStatus.swift
       - path: Keep/Views/ReadingSettings.swift
       - path: KeepMac
