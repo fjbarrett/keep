@@ -58,7 +58,7 @@ struct NotesListView: View {
     private var notes: [Note] {
         NotesStore.matching(
             query.trimmingCharacters(in: .whitespaces),
-            in: NotesStore.inDisplayOrder(store.notes.filter(filter.matches))
+            in: NotesStore.inDisplayOrder(store.visibleNotes.filter(filter.matches))
         )
     }
 
@@ -74,7 +74,7 @@ struct NotesListView: View {
             }
         }
         .overlay {
-            if store.isLoading && store.notes.isEmpty {
+            if store.isLoading && store.visibleNotes.isEmpty {
                 ProgressView()
             } else if notes.isEmpty && !query.isEmpty {
                 ContentUnavailableView.search(text: query)
@@ -95,6 +95,7 @@ struct NotesListView: View {
                 Button { composing = true } label: {
                     Label("New note", systemImage: "square.and.pencil")
                 }
+                .disabled(!store.canEdit)
             }
         }
         .sheet(isPresented: $composing) {
@@ -102,11 +103,6 @@ struct NotesListView: View {
         }
         .sheet(item: $shareTarget) { target in
             ActivityView(url: target.url)
-        }
-        .alert("Something went wrong", isPresented: .constant(store.errorMessage != nil)) {
-            Button("OK") { store.errorMessage = nil }
-        } message: {
-            Text(store.errorMessage ?? "")
         }
         .alert(
             "Delete this note permanently?",

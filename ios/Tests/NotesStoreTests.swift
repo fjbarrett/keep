@@ -77,6 +77,9 @@ final class NotesStoreTests: XCTestCase {
         var old: FixtureProtocol?
         var loads = 0
         FixtureProtocol.respond = { request in
+            if request.request.url!.path.hasSuffix("/session") {
+                request.reply(["user": ["id": "A"]]); return
+            }
             if request.request.httpMethod == "PATCH" {
                 request.reply(["note": Self.row("Heading\nSaved edit")])
             } else {

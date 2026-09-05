@@ -10,6 +10,7 @@ final class DraftSaver {
     private(set) var errors: [String: String] = [:]
     private(set) var saving: Set<String> = []
     var onSaved: (Note) -> Void = { _ in }
+    var onUnauthorized: () -> Void = {}
 
     private let api: KeepAPI
     private let storage: DraftStorage
@@ -98,6 +99,17 @@ final class DraftSaver {
                     onSaved(saved)
                 } catch {
                     guard session == generation else { return }
+                    if case APIError.conflict(let remote) = error {
+                        onSaved(remote)
+                        if remote.body == draft.base?.body, remote.updatedAt != draft.base?.updatedAt,
+                           var current = items[id] {
+                            // A flag/title change does not conflict with our body edit.
+                            current.base = remote
+                            do { try storage.save(current, owner: owner); items[id] = current; continue }
+                            catch { errors[id] = error.localizedDescription; return }
+                        }
+                    }
+                    if case APIError.unauthorized = error { onUnauthorized() }
                     errors[id] = error.localizedDescription
                     return
                 }

@@ -5,6 +5,7 @@ import SwiftUI
 /// index in step with the notes.
 struct MacRootView: View {
     @Environment(NotesStore.self) private var store
+    @Environment(\.scenePhase) private var phase
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "All Notes"
@@ -39,6 +40,10 @@ struct MacRootView: View {
         } detail: {
             detail
         }
+        .onChange(of: phase) { _, phase in
+            if phase == .active { Task { await store.load() } }
+            if phase == .background { store.drafts.retryAll() }
+        }
         .focusedSceneValue(\.selectedNote, selectedNote)
         .task {
             await store.load()
@@ -72,7 +77,7 @@ struct MacRootView: View {
         // ⌘I / Note menu → Get Info for the focused note.
         .onReceive(NotificationCenter.default.publisher(for: .keepShowInfo)) { note in
             guard let id = note.object as? String,
-                  let found = store.notes.first(where: { $0.id == id })
+                  let found = store.visibleNotes.first(where: { $0.id == id })
             else { return }
             infoNote = found
         }
@@ -135,7 +140,7 @@ struct MacRootView: View {
             else { Task { await store.trash(note) } }
         }
         .overlay {
-            if store.isLoading && store.notes.isEmpty {
+            if store.isLoading && store.visibleNotes.isEmpty {
                 ProgressView()
             } else if filteredNotes.isEmpty {
                 ContentUnavailableView(
@@ -168,7 +173,7 @@ struct MacRootView: View {
             }
             .id("new-note")
         } else if let id = selection,
-                  let note = store.notes.first(where: { $0.id == id }) {
+                  let note = store.visibleNotes.first(where: { $0.id == id }) {
             MacNoteDetail(note: note)
                 .id(note.id)
         } else {
@@ -220,7 +225,7 @@ struct MacRootView: View {
     }
 
     private var selectedNote: Note? {
-        selection.flatMap { id in store.notes.first { $0.id == id } }
+        selection.flatMap { id in store.visibleNotes.first { $0.id == id } }
     }
 
     private func matches(_ note: Note) -> Bool {
@@ -233,7 +238,7 @@ struct MacRootView: View {
     }
 
     private var filteredNotes: [Note] {
-        let sorted = store.notes.filter(matches).sorted { a, b in
+        let sorted = store.visibleNotes.filter(matches).sorted { a, b in
             if a.pinned != b.pinned { return a.pinned }
             return a.updatedAt > b.updatedAt
         }
@@ -247,6 +252,7 @@ struct MacRootView: View {
     }
 
     private func startCompose() {
+        guard store.canEdit else { return }
         selection = nil
         composing = true
     }

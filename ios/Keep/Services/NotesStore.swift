@@ -15,14 +15,37 @@ final class NotesStore {
     private var contentGeneration = 0
     private var loadGeneration = 0
     private var authenticationTask: Task<Void, Error>?
+    private(set) var ownerID: String?
+    let drafts: DraftSaver
+    var canEdit: Bool { ownerID != nil && !needsAuth }
+    var visibleNotes: [Note] {
+        let unsent = drafts.items
+        let savedIDs = Set(notes.map(\.id))
+        return notes.map { saved in
+            guard let draft = unsent[saved.id] else { return saved }
+            var visible = saved
+            visible.body = draft.body
+            visible.updatedAt = draft.editedAt
+            return visible
+        }
+            + unsent.values.filter { draft in !savedIDs.contains(draft.id) }.map(\.snapshot)
+    }
 
     private let api: KeepAPI
     private let auth: AuthClient
     private let google = GoogleSignIn()
 
-    init(api: KeepAPI = KeepAPI(), auth: AuthClient = AuthClient()) {
+    init(api: KeepAPI = KeepAPI(), auth: AuthClient = AuthClient(), draftStorage: DraftStorage = DraftStorage()) {
         self.api = api
         self.auth = auth
+        drafts = DraftSaver(api: api, storage: draftStorage)
+        drafts.onSaved = { [weak self] note in
+            guard let self else { return }
+            contentGeneration += 1
+            if let index = notes.firstIndex(where: { $0.id == note.id }) { notes[index] = note }
+            else { notes.insert(note, at: 0) }
+        }
+        drafts.onUnauthorized = { [weak self] in self?.handle(APIError.unauthorized) }
     }
 
     /// Pinned first, then most-recently-updated — matches the web ordering.
@@ -47,17 +70,29 @@ final class NotesStore {
 
     func load() async {
         guard !needsAuth else { return }
-        let session = sessionGeneration
-        let content = contentGeneration
+        var session = sessionGeneration
+        var content = contentGeneration
         loadGeneration += 1
         let request = loadGeneration
         isLoading = true
         defer { if request == loadGeneration { isLoading = false } }
         do {
+            guard let owner = try await auth.userID() else { throw APIError.unauthorized }
+            guard session == sessionGeneration else { return }
+            if let ownerID, ownerID != owner {
+                sessionGeneration += 1
+                contentGeneration += 1
+                session = sessionGeneration
+                content = contentGeneration
+                notes = []
+            }
+            try drafts.activate(owner: owner)
+            ownerID = owner
             let loaded = try await api.listNotes()
             guard session == sessionGeneration, content == contentGeneration,
                   request == loadGeneration else { return }
             notes = loaded
+            drafts.retryAll()
         } catch { if session == sessionGeneration { handle(error) } }
     }
 
@@ -232,6 +267,8 @@ final class NotesStore {
         contentGeneration += 1
         loadGeneration += 1
         notes = []
+        ownerID = nil
+        try? drafts.activate(owner: nil)
         errorMessage = nil
         isLoading = false
         needsAuth = true

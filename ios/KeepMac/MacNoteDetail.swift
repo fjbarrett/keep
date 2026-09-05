@@ -14,21 +14,20 @@ struct MacNoteDetail: View {
     @State private var text = ""
     @State private var title = ""
     @FocusState private var titleFocused: Bool
-    @State private var createdId: String?
-    @State private var saveTask: Task<Void, Never>?
+    @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+    private var id: String { note?.id ?? draftID }
 
     private let titleCharLimit = 36
 
     /// The live note (existing, or the one we just created), pulled fresh from
     /// the store so toolbar state (pin/archive) reflects the latest.
     private var current: Note? {
-        if let note { return store.notes.first { $0.id == note.id } ?? note }
-        if let createdId { return store.notes.first { $0.id == createdId } }
-        return nil
+        store.visibleNotes.first { $0.id == id } ?? note
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            DraftSaveStatus(id: id, onCopy: onCreated)
             // Note-colour edge, mirroring the web card's inset top border.
             if let key = current?.color, let swatch = NotePalette.color(for: key) {
                 RoundedRectangle(cornerRadius: 1.5)
@@ -47,8 +46,13 @@ struct MacNoteDetail: View {
             if current?.markdown == true {
                 MacMarkdownView(source: text)
             } else {
-                TextEditor(text: $text)
+                TextEditor(text: Binding(get: { text }, set: { value in
+                    text = value
+                    store.drafts.stage(id: id, body: value, base: store.notes.first { $0.id == id })
+                }))
                     .font(KeepTheme.editorFont())
+                    .accessibilityLabel("Note body")
+                    .disabled(!store.canEdit)
                     .textEditorStyle(.plain)
                     .scrollContentBackground(.hidden)
                     // The app-wide cobalt tint recolors the insertion point;
@@ -72,13 +76,17 @@ struct MacNoteDetail: View {
         .padding(12)
         .navigationTitle(current?.displayTitle ?? "New Note")
         .onAppear {
-            text = note?.body ?? ""
+            text = store.drafts.items[id]?.body ?? note?.body ?? ""
             title = current?.displayTitle ?? ""
         }
         .onChange(of: current?.id) { _, _ in
             if !titleFocused { title = current?.displayTitle ?? "" }
         }
-        .onChange(of: text) { _, value in scheduleSave(value) }
+        .onDisappear { store.drafts.start(id) }
+        .onChange(of: store.notes.first { $0.id == id }) { _, saved in
+            if let saved, note == nil { onCreated(saved.id) }
+            if store.drafts.items[id] == nil, let saved { text = saved.body }
+        }
             .toolbar {
                 if let n = current {
                     ToolbarItemGroup {
@@ -160,23 +168,4 @@ struct MacNoteDetail: View {
         Task { await store.update(n.id, patch: ["title": trimmed]) }
     }
 
-    private func scheduleSave(_ value: String) {
-        saveTask?.cancel()
-        saveTask = Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            if Task.isCancelled { return }
-            await save(value)
-        }
-    }
-
-    private func save(_ value: String) async {
-        if let id = note?.id ?? createdId {
-            await store.update(id, patch: ["body": value])
-        } else if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if let created = await store.create(body: value) {
-                createdId = created.id
-                onCreated(created.id)
-            }
-        }
-    }
 }
