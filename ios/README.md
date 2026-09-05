@@ -140,10 +140,16 @@ zoom transition and returns to its source on dismissal. Reduce Motion, new notes
 Spotlight results, and earlier iOS versions use the standard cover presentation.
 The editor initializes its title and body from the current draft or saved note
 before presentation so text layout is ready for the first frame of the expansion.
-The editor uses a compact header with the editable title and close icon in one row.
+The editor initially places its editable title and close icon in one row.
+The title fades upward as the body scrolls and returns at the top; the close button
+floats over the text without a full-width header bar.
 iOS 26 uses SwiftUI's standard close-role button with a circular glass style.
-The color swatch sits at the editor's bottom-right, above the keyboard when editing.
-The writing area reserves space for this action; the editor has no export button.
+The color swatch floats at the editor's bottom-right, above the keyboard when editing,
+on a circular glass surface (thin material before iOS 26). Text scrolls behind it
+without a full-width bottom bar. A native text view keeps header spacing and a
+52-point bottom inset inside the scrolling content, so the final line can scroll
+clear of the control. Save-error recovery still reserves its own space.
+The editor has no export button.
 The title uses 22-point semibold at the default text size; the body retains its
 reading-size preference. Title and body text have approximately 30-point side insets.
 Each action has a 44-point touch target.
