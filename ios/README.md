@@ -117,18 +117,22 @@ Permanent deletion waits for pending saves and retires the draft.
 
 The interface uses SwiftUI controls, including `ShareLink`. Reading settings
 provide text size, line spacing, and line width. iPhone and iPad always edit raw
-Markdown as plain text. After the first save, the editor's Note color menu offers
-eight named color swatches and None, with a checkmark for the current selection.
+Markdown as plain text. After the first save, the editor's Note color button opens
+a compact grid of eight swatches and a no-color icon, with a checkmark for the
+current selection. Options have 44-point touch targets and VoiceOver color names.
 Both fields are directly editable. New notes focus the title first, and Return
 moves into the body with a Start writing prompt. Both inputs have no outlines;
-the body uses a lighter background that reaches the screen edges, with a small
-text inset. The keyboard toolbar has Done to dismiss it. Titles wrap, and the
+the body uses a lighter background with rounded corners, a small text inset,
+and a bottom gap that keeps its lower corners visible. The writing area spans
+the available width. The keyboard toolbar has Done to dismiss it. Titles wrap, and the
 editor uses the available width by default; the comfortable line-width setting
 keeps text in a centered column on iPad. In landscape or
 at accessibility text sizes, focusing the body temporarily hides the title and
-navigation bar to leave room above the keyboard; Done restores them. Save errors
-remain visible. Explicit titles are included in durable drafts and recovery and
-remain intact in the notes list. The color control shows the current name and swatch.
+navigation bar to leave room above the keyboard; Done restores them. Routine save
+status is hidden; save errors show recovery below the writing area, including in
+compact mode. Explicit titles are included in durable drafts and recovery and
+remain intact in the notes list. The color control shows only the current swatch
+(a palette icon when unset); VoiceOver still announces its name and selected color.
 Export file in the editor toolbar or a note's context menu saves its current body
 as UTF-8 text (`.txt`) or Markdown (`.md`) through the system file picker. The title
 provides the filename; body text, whitespace, and Markdown syntax are preserved.

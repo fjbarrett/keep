@@ -16,31 +16,19 @@ struct NoteEditorView: View {
     @State private var body_ = ""
     @State private var title = ""
     @State private var isChangingColor = false
+    @State private var isColorPickerPresented = false
     @State private var export: NoteExport?
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
 
-    /// The live note (the one passed in, or the one just created), read back
-    /// from the store so the toolbar reflects the latest flags.
-    private var current: Note? {
-        store.visibleNotes.first { $0.id == id } ?? note
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if !isCompactWriting {
-                VStack(alignment: .leading, spacing: 8) {
-                    titleField
-                    saveStatus
-                }
-                .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-            } else if store.drafts.errors[id] != nil {
-                saveStatus
+                titleField
+                    .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 12)
-                    .padding(.top, 8)
+                    .padding(.top, 12)
             }
             TextEditor(text: Binding(get: { body_ }, set: { value in
                 guard value != body_ else { return }
@@ -61,14 +49,22 @@ struct NoteEditorView: View {
                 }
                 .modifier(ReadingStyle(constrainWidth: false))
                 .padding(.horizontal, 8)
-                .padding(.top, 4)
+                .padding(.vertical, 4)
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity)
                 .frame(maxWidth: .infinity)
-                .background(Color(.secondarySystemGroupedBackground)
-                    .ignoresSafeArea(.container, edges: .bottom))
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.bottom, 4)
                 .accessibilityLabel("Note body")
                 .accessibilityHint("Edit or add text. Changes save automatically.")
                 .disabled(!store.canEdit)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if store.drafts.errors[id] != nil {
+                DraftSaveStatus(id: id, horizontalPadding: 12) { _ in dismiss() }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+            }
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(note == nil ? "New note" : "Note")
@@ -111,34 +107,22 @@ struct NoteEditorView: View {
             // Wait for first autosave before offering a server-backed color change.
             if let saved = store.notes.first(where: { $0.id == id }) {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Note color", selection: Binding(
-                            get: { saved.color ?? "" },
-                            set: { key in
-                                isChangingColor = true
-                                Task {
-                                    await store.setColor(saved, to: key.isEmpty ? nil : key)
-                                    isChangingColor = false
-                                }
-                            }
-                        )) {
-                            Label("None", systemImage: "circle.slash").tag("")
-                            ForEach(NotePalette.all, id: \.key) { option in
-                                Label {
-                                    Text(option.label)
-                                } icon: {
-                                    NotePalette.swatch(for: option.key, scheme: colorScheme)
-                                }
-                                .accessibilityLabel(option.label)
-                                .tag(option.key)
-                            }
-                        }
-                    } label: {
+                    Button { isColorPickerPresented = true } label: {
                         colorMenuLabel(for: saved.color)
                             .accessibilityLabel("Note color")
                             .accessibilityValue(NotePalette.all.first { $0.key == saved.color }?.label ?? "None")
                     }
                     .disabled(!store.canEdit || isChangingColor)
+                    .popover(isPresented: $isColorPickerPresented) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 8), count: 3), spacing: 8) {
+                            colorOption(nil, for: saved)
+                            ForEach(NotePalette.all, id: \.key) { option in
+                                colorOption(option.key, for: saved)
+                            }
+                        }
+                        .padding(12)
+                        .presentationCompactAdaptation(.popover)
+                    }
                 }
             }
             if note == nil {
@@ -176,21 +160,43 @@ struct NoteEditorView: View {
             .disabled(!store.canEdit)
     }
 
-    private var saveStatus: some View {
-        Group {
-            if current == nil {
-                Text("Saves automatically").font(.caption).foregroundStyle(.secondary)
-            } else {
-                DraftSaveStatus(id: id, horizontalPadding: 0) { _ in dismiss() }
-            }
-        }
+    private func colorMenuLabel(for key: String?) -> Image {
+        key.map { NotePalette.swatch(for: $0, scheme: colorScheme) }
+            ?? Image(systemName: "paintpalette")
     }
 
-    private func colorMenuLabel(for key: String?) -> Text {
-        let name = NotePalette.all.first { $0.key == key }?.label ?? "Color"
-        let swatch = key.map { NotePalette.swatch(for: $0, scheme: colorScheme) }
-            ?? Image(systemName: "paintpalette")
-        return Text("\(swatch) \(name)")
+    private func colorOption(_ key: String?, for saved: Note) -> some View {
+        Button {
+            isColorPickerPresented = false
+            isChangingColor = true
+            Task {
+                await store.setColor(saved, to: key)
+                isChangingColor = false
+            }
+        } label: {
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let key {
+                        Circle().fill(NotePalette.color(for: key) ?? .gray)
+                    } else {
+                        Image(systemName: "circle.slash").font(.system(size: 28))
+                    }
+                }
+                .frame(width: 28, height: 28)
+                if saved.color == key {
+                    Image(systemName: "checkmark.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .blue)
+                        .font(.system(size: 14))
+                }
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!store.canEdit || isChangingColor)
+        .accessibilityLabel(NotePalette.all.first { $0.key == key }?.label ?? "None")
+        .accessibilityAddTraits(saved.color == key ? .isSelected : [])
     }
 
     private func stageDraft() {
