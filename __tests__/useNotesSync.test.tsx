@@ -127,10 +127,9 @@ describe("useNotes synchronization", () => {
 
     let first!: Promise<void>;
     let second!: Promise<void>;
-    act(() => {
-      first = result.current.update(NOTE_ID, { pinned: true });
-      second = result.current.update(NOTE_ID, { archived: true });
-    });
+    act(() => { first = result.current.update(NOTE_ID, { pinned: true }); });
+    await waitFor(() => expect(patchRequests).toBe(1));
+    act(() => { second = result.current.update(NOTE_ID, { archived: true }); });
 
     await waitFor(() => expect(patchRequests).toBe(1));
     expect(result.current.notes[0]).toMatchObject({ pinned: true, archived: true });

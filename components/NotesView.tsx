@@ -173,8 +173,8 @@ export function NotesView({
     setTarget({ mode: "edit", note, highlightQuery });
   }
 
-  async function handleCreate(partial: Partial<Note>) {
-    const note = await create(partial);
+  async function handleCreate(partial: Partial<Note>, options?: { keepalive?: boolean }) {
+    const note = await create(partial, options);
     if (note) {
       composedIdRef.current = note.id;
       setActiveNoteId(note.id);

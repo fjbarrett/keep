@@ -89,6 +89,21 @@ describe("NotesView deep links", () => {
     window.history.replaceState(null, "", "/note/missing-note");
   });
 
+  it("forwards page-exit keepalive through the new-note wrapper", async () => {
+    routerState.pathname = "/";
+    window.history.replaceState(null, "", "/");
+    notesState.create.mockReset().mockResolvedValue(null);
+    render(<NotesView initialNoteId={null} ownerId="fixture-owner" />);
+    fireEvent.keyDown(window, { key: "n" });
+    fireEvent.change(screen.getAllByPlaceholderText("Start writing...")[0], {
+      target: { value: "New lifecycle draft" },
+    });
+    window.dispatchEvent(new Event("pagehide"));
+    await waitFor(() => expect(notesState.create).toHaveBeenCalledWith(
+      expect.objectContaining({ body: "New lifecycle draft" }), { keepalive: true },
+    ));
+  });
+
   it("leaves the restoring state when an empty account has no matching note", async () => {
     render(<NotesView initialNoteId="missing-note" ownerId={null} />);
 

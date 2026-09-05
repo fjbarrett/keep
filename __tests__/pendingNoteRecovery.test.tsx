@@ -14,6 +14,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localS
 it("overlays queued edits over refresh in both visible and cached notes", async () => {
   const owner = crypto.randomUUID();
   await cacheNotes(owner, [note]);
+  writeNoteDraft(owner, { note: { ...note, body: "Offline text" }, patch: { body: "Offline text" }, type: "update", base: note });
   await addPendingOp(owner, { type: "update", noteId: note.id, payload: { body: "Offline text" } });
   vi.stubGlobal("fetch", vi.fn((_path, init) => init?.method === "PATCH"
     ? json({ error: "Rate limited" }, 429) : json({ notes: [note] })));
