@@ -80,6 +80,7 @@ struct RootView: View {
                 .presentationCornerRadius(28)
                 .modifier(NotePresentationTransition(sourceID: sourceID,
                                                      namespace: noteTransition))
+                .interactiveDismissDisabled()
         case .signIn:
             SignInView()
                 .interactiveDismissDisabled()
