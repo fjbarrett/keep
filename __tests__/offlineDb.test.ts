@@ -31,7 +31,7 @@ function note(id: string, body: string): Note {
 }
 
 describe("account-scoped offline storage", () => {
-  it("migrates un-replayed legacy pending ops into the first per-owner DB", async () => {
+  it("quarantines ownerless legacy operations without deleting them", async () => {
     const legacy = await openDB("keep-offline", 1, {
       upgrade(db) {
         db.createObjectStore("notes", { keyPath: "id" });
@@ -48,7 +48,10 @@ describe("account-scoped offline storage", () => {
     await legacy.put("pending", op);
     legacy.close();
 
-    await expect(getPendingOps(`new-owner-${crypto.randomUUID()}`)).resolves.toEqual([op]);
+    await expect(getPendingOps(`new-owner-${crypto.randomUUID()}`)).resolves.toEqual([]);
+    const preserved = await openDB("keep-offline", 1);
+    expect(await preserved.getAll("pending")).toEqual([op]);
+    preserved.close();
   });
 
   it("never returns one account's cached notes to another account", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { overlayPendingNotes } from "./pendingNotes";
 import { readNoteDrafts, writeNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
 import { Note } from "./types";
 import {
@@ -166,8 +167,11 @@ export function useNotes(ownerId: string | null) {
     try {
       const data = await notesApi<{ notes: Note[] }>("/api/notes");
       if (ownerRef.current !== ownerId) return;
+      const pending = await getPendingOps(ownerId);
+      const cached = pending.length ? await getCachedNotes(ownerId) : [];
+      if (ownerRef.current !== ownerId) return;
       const drafts = readNoteDrafts(ownerId);
-      data.notes = overlayNoteDrafts(data.notes, drafts);
+      data.notes = overlayNoteDrafts(overlayPendingNotes(data.notes, cached, pending), drafts);
       // Once the server answers, an older IndexedDB read must not replace it.
       cacheLoadGenerationRef.current += 1;
       try {
@@ -265,9 +269,14 @@ export function useNotes(ownerId: string | null) {
           for (const op of ops) {
             try {
               await enqueueSave(op.noteId, async () => {
+                if (ownerRef.current !== ownerId) throw new NotesApiError("Account changed", 401);
                 if (op.type === "create" && op.payload) {
-                  await notesApi("/api/notes", { method: "POST", json: op.payload });
+                  await notesApi("/api/notes", { method: "POST", json: { ...op.payload, id: op.noteId, ownerId } });
+                  const draft = readNoteDrafts(ownerId).find((entry) => entry.note.id === op.noteId);
+                  if (draft) writeNoteDraft(ownerId, { ...draft, type: "update" });
                 } else if (op.type === "update" && op.payload) {
+                  const failedCreate = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId && draft.type === "create");
+                  if (failedCreate) throw new NotesApiError("The new note needs recovery before updates can sync.", 409);
                   await notesApi(`/api/notes/${op.noteId}`, { method: "PATCH", json: op.payload });
                 } else if (op.type === "delete") {
                   await notesApi(`/api/notes/${op.noteId}`, { method: "DELETE" });
@@ -294,10 +303,17 @@ export function useNotes(ownerId: string | null) {
                 // Transient (network/408/429/5xx): keep the op, retry shortly.
                 blocked = true;
                 drained = false;
+                setSyncStatus(navigator.onLine ? "error" : "offline");
                 requestReplay(5_000);
                 break;
               }
-              const savedDraft = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId);
+              let savedDraft = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId);
+              if (!savedDraft && typeof op.payload?.body === "string") {
+                const recovered = overlayPendingNotes([], notesRef.current, ops.filter((entry) => entry.noteId === op.noteId))[0];
+                if (recovered) savedDraft = writeNoteDraft(ownerId, {
+                  note: recovered, patch: recovered, type: op.type === "create" ? "create" : "update",
+                });
+              }
               if (savedDraft) setError("Some changes need attention. Retry or save a copy.");
               // Permanent rejection (note deleted elsewhere -> 404, or a
               // 400/409/413 the server will never accept). Drop it: leaving a
@@ -316,9 +332,12 @@ export function useNotes(ownerId: string | null) {
         // a status left at "error"/"syncing"/"offline" by the queued-op paths
         // never clears on a clean drain. Settle it here once the queue is empty.
         if (drained && remaining.length === 0 && inflightRef.current === 0 && navigator.onLine) {
-          setSyncStatus((prev) =>
-            prev === "error" || prev === "syncing" || prev === "offline" ? "idle" : prev,
-          );
+          setSyncStatus(readNoteDrafts(ownerId).length ? "error" : "idle");
+        }
+      } catch (error) {
+        if (ownerRef.current === ownerId) {
+          setError(error instanceof Error ? error.message : "Could not read queued changes.");
+          setSyncStatus("error");
         }
       } finally {
         syncingRef.current = false;
