@@ -45,6 +45,13 @@ struct MacRootView: View {
             SpotlightIndexer.sync(store.notes)
         }
         .onChange(of: store.needsAuth) { _, needs in showSignIn = needs }
+        .onChange(of: store.sessionGeneration) { _, _ in
+            selection = nil
+            composing = false
+            query = ""
+            infoNote = nil
+            pendingDelete = nil
+        }
         // Deselect when an action (pin/archive/trash/restore) moves the note
         // out of the current filter, so the detail pane follows the list.
         .onChange(of: selectedNote) { _, note in

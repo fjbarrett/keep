@@ -18,6 +18,19 @@ settings:
     DEVELOPMENT_TEAM: "636U736G9T"
 
 targets:
+  KeepCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Keep/Models
+      - Keep/Services
+      - Keep/Support
+      - Tests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+
   Keep:
     type: application
     platform: iOS

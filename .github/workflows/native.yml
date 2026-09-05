@@ -1,0 +1,26 @@
+name: Native
+
+on:
+  pull_request:
+    paths: ["ios/**", ".github/workflows/native.yml"]
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/native.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - run: brew install xcodegen
+      - run: xcodegen generate
+        working-directory: ios
+      - run: xcodebuild -project Keep.xcodeproj -scheme KeepCoreTests -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO test
+        working-directory: ios
+      - run: xcodebuild -project Keep.xcodeproj -scheme KeepMac -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
+        working-directory: ios
+      - run: xcodebuild -project Keep.xcodeproj -scheme Keep -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+        working-directory: ios
