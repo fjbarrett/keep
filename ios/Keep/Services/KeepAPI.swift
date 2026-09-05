@@ -5,6 +5,7 @@ enum APIError: Error, LocalizedError {
     case http(Int)
     case decoding(Error)
     case transport(Error)
+    case conflict(Note)
 
     var errorDescription: String? {
         switch self {
@@ -12,6 +13,7 @@ enum APIError: Error, LocalizedError {
         case .http(let code): return "Server error (\(code))."
         case .decoding: return "Couldn't read the server response."
         case .transport(let e): return e.localizedDescription
+        case .conflict: return "This note changed elsewhere. Your draft is kept on this device."
         }
     }
 }
@@ -36,8 +38,11 @@ actor KeepAPI {
         try await request("/api/notes", method: "GET", as: NotesResponse.self).notes
     }
 
-    func create(body: String, title: String? = nil, summary: String? = nil) async throws -> Note {
+    func create(body: String, title: String? = nil, summary: String? = nil,
+                id: String? = nil, ownerID: String? = nil) async throws -> Note {
         var json: [String: Any] = ["body": body]
+        if let id { json["id"] = id }
+        if let ownerID { json["ownerId"] = ownerID }
         if let title { json["title"] = title }
         if let summary, !summary.isEmpty { json["summary"] = summary }
         return try await request(
@@ -95,6 +100,9 @@ actor KeepAPI {
             let (data, response) = try await session.data(for: req)
             guard let http = response as? HTTPURLResponse else { throw APIError.http(-1) }
             if http.statusCode == 401 { throw APIError.unauthorized }
+            if http.statusCode == 409, let conflict = try? decoder.decode(NoteResponse.self, from: data) {
+                throw APIError.conflict(conflict.note)
+            }
             guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
             do { return try decoder.decode(T.self, from: data) }
             catch { throw APIError.decoding(error) }
