@@ -188,6 +188,8 @@ struct MacRootView: View {
     private func rows(_ notes: [Note]) -> some View {
         ForEach(notes) { note in
             MacNoteRow(note: note)
+                .accessibilityValue(note.accessibilityState)
+                .accessibilityActions { contextMenu(for: note) }
                 .tag(note.id)
                 .contextMenu { contextMenu(for: note) }
         }

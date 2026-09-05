@@ -27,7 +27,7 @@ struct NoteEditorView: View {
                     body_ = value
                     store.drafts.stage(id: id, body: value, base: store.notes.first { $0.id == id })
                 }))
-                    .font(.body)
+                    .modifier(ReadingStyle())
                     .accessibilityLabel("Note body")
                     .disabled(!store.canEdit)
             }

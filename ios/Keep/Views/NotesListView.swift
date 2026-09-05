@@ -51,6 +51,7 @@ struct NotesListView: View {
     @Environment(NotesStore.self) private var store
     @State private var filter: NoteFilter = .all
     @State private var query = ""
+    @State private var showReadingSettings = false
     @State private var composing = false
     @State private var pendingDelete: Note?
     @State private var shareTarget: ShareTarget?
@@ -68,6 +69,8 @@ struct NotesListView: View {
                 NavigationLink(value: note.id) {
                     NoteRow(note: note)
                 }
+                .accessibilityValue(note.accessibilityState)
+                .accessibilityActions { menu(for: note) }
                 .contextMenu { menu(for: note) }
                 .swipeActions(edge: .leading) { leadingActions(for: note) }
                 .swipeActions(edge: .trailing) { trailingActions(for: note) }
@@ -101,8 +104,14 @@ struct NotesListView: View {
         .sheet(isPresented: $composing) {
             NavigationStack { NoteEditorView(note: nil) }
         }
+        .sheet(isPresented: $showReadingSettings) {
+            NavigationStack {
+                ReadingSettings()
+                    .toolbar { Button("Done") { showReadingSettings = false } }
+            }
+        }
         .sheet(item: $shareTarget) { target in
-            ActivityView(url: target.url)
+            NoteShareView(url: target.url)
         }
         .alert(
             "Delete this note permanently?",
@@ -129,6 +138,7 @@ struct NotesListView: View {
             }
             .pickerStyle(.inline)
             Divider()
+            Button("Reading settings", systemImage: "textformat.size") { showReadingSettings = true }
             Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                 Task { await store.signOut() }
             }

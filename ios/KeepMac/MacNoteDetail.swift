@@ -50,14 +50,14 @@ struct MacNoteDetail: View {
                     text = value
                     store.drafts.stage(id: id, body: value, base: store.notes.first { $0.id == id })
                 }))
-                    .font(KeepTheme.editorFont())
+                    .modifier(ReadingStyle())
                     .accessibilityLabel("Note body")
                     .disabled(!store.canEdit)
                     .textEditorStyle(.plain)
                     .scrollContentBackground(.hidden)
                     // The app-wide cobalt tint recolors the insertion point;
-                    // keep the caret paper-white like the text itself.
-                    .accentColor(.white)
+                    // use the system text color in both light and dark appearances.
+                    .tint(.primary)
                     .overlay(alignment: .topLeading) {
                         if text.isEmpty {
                             // Aligned to the text container origin: NSTextView
@@ -65,7 +65,7 @@ struct MacNoteDetail: View {
                             // (near-)zero top inset, so any extra top padding
                             // visibly sinks the hint below the caret.
                             Text("Start writing…")
-                                .font(KeepTheme.editorFont())
+                                .modifier(ReadingStyle())
                                 .foregroundStyle(.tertiary)
                                 .padding(.leading, 5)
                                 .allowsHitTesting(false)

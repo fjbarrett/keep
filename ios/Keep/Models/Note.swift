@@ -18,6 +18,12 @@ struct Note: Identifiable, Codable, Equatable {
     var createdAt: Double
     var updatedAt: Double
 
+    var accessibilityState: String {
+        [pinned ? "Pinned" : nil, archived ? "Archived" : nil,
+         trashed ? "In Trash" : nil, shareToken != nil ? "Shared by link" : nil,
+         color.map { "Color: " + $0 }].compactMap { $0 }.joined(separator: ", ")
+    }
+
     var updatedDate: Date { Date(timeIntervalSince1970: updatedAt / 1000) }
 
     /// Display title, matching the web: infers from the body when the stored
