@@ -49,6 +49,7 @@ enum NoteFilter: String, CaseIterable, Identifiable {
 
 struct NotesListView: View {
     @Environment(NotesStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var filter: NoteFilter = .all
     @State private var query = ""
     @State private var showReadingSettings = false
@@ -64,21 +65,22 @@ struct NotesListView: View {
         )
     }
 
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
+              count: dynamicTypeSize.isAccessibilitySize ? 1 : 2)
+    }
+
     var body: some View {
-        List {
-            ForEach(notes) { note in
-                Button { openNote(note) } label: {
-                    NoteRow(note: note)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityValue(note.accessibilityState)
-                .accessibilityActions { menu(for: note) }
-                .contextMenu { menu(for: note) }
-                .swipeActions(edge: .leading) { leadingActions(for: note) }
-                .swipeActions(edge: .trailing) { trailingActions(for: note) }
+        ScrollView {
+            if #available(iOS 26, *) {
+                GlassEffectContainer(spacing: 8) { noteGrid }
+            } else {
+                noteGrid
             }
         }
+        .scrollBounceBehavior(.always)
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
         .overlay {
             if store.isLoading && store.visibleNotes.isEmpty {
                 ProgressView()
@@ -95,7 +97,8 @@ struct NotesListView: View {
         .refreshable { await store.load() }
         .modifier(NoteFileExporter(export: $export))
         .searchable(text: $query, prompt: "Search \(filter.rawValue.lowercased())")
-        .navigationTitle(filter.rawValue)
+        .navigationTitle(filter == .all ? "" : filter.rawValue)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { viewMenu }
             ToolbarItem(placement: .primaryAction) {
@@ -128,6 +131,22 @@ struct NotesListView: View {
         } message: {
             Text("“\(pendingDelete?.displayTitle ?? "")” will be deleted from all your devices. You can’t undo this.")
         }
+    }
+
+    private var noteGrid: some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(notes) { note in
+                Button { openNote(note) } label: {
+                    NoteCard(note: note)
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(note.accessibilityState)
+                .accessibilityHint("Opens note. Touch and hold for note actions.")
+                .accessibilityActions { menu(for: note) }
+                .contextMenu { menu(for: note) }
+            }
+        }
+        .padding(12)
     }
 
     private var viewMenu: some View {
@@ -205,87 +224,84 @@ struct NotesListView: View {
         }
     }
 
-    @ViewBuilder
-    private func leadingActions(for note: Note) -> some View {
-        if note.trashed {
-            Button {
-                Task { await store.restore(note) }
-            } label: {
-                Label("Put Back", systemImage: "arrow.uturn.backward")
-            }
-            .tint(.blue)
-        } else {
-            Button {
-                Task { await store.togglePin(note) }
-            } label: {
-                Label(note.pinned ? "Unpin" : "Pin", systemImage: "pin")
-            }
-            .tint(.orange)
-        }
+}
+
+private struct NoteCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var cardHeight = 168
+    let note: Note
+
+    private var preview: String {
+        String((note.displaySummary ?? String(note.body.prefix(320))).prefix(320))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    @ViewBuilder
-    private func trailingActions(for note: Note) -> some View {
-        if note.trashed {
-            // Destructive and unrecoverable, so this one routes through the
-            // confirmation alert rather than acting on the swipe itself.
-            Button(role: .destructive) {
-                pendingDelete = note
-            } label: {
-                Label("Delete", systemImage: "trash")
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(note.displayTitle)
+                .font(.headline)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
+            if !preview.isEmpty {
+                Text(preview)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.primary.opacity(0.72))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 6 : 3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                if let color = NotePalette.color(for: note.color) {
+                    Circle().fill(color).frame(width: 8, height: 8)
+                }
+                Spacer(minLength: 0)
+                if note.pinned { Image(systemName: "pin.fill") }
+                if note.shareToken != nil { Image(systemName: "link") }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(minHeight: 14)
+            .accessibilityHidden(true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 0 : cardHeight,
+               maxHeight: dynamicTypeSize.isAccessibilitySize ? nil : cardHeight,
+               alignment: .topLeading)
+        .modifier(NoteCardSurface())
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct NoteCardSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
         } else {
-            Button(role: .destructive) {
-                Task { await store.trash(note) }
-            } label: {
-                Label("Trash", systemImage: "trash")
-            }
-            Button {
-                Task { await store.setArchived(note, !note.archived) }
-            } label: {
-                Label(note.archived ? "Unarchive" : "Archive", systemImage: "archivebox")
-            }
-            .tint(.indigo)
+            content.background(.regularMaterial,
+                               in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
     }
 }
 
-private struct NoteRow: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    let note: Note
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if let swatch = NotePalette.color(for: note.color) {
-                Circle().fill(swatch).frame(width: 8, height: 8)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(note.displayTitle).font(.body)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let summary = note.displaySummary {
-                    Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                }
-                if dynamicTypeSize.isAccessibilitySize {
-                    indicators
-                }
-            }
-            Spacer()
-            if !dynamicTypeSize.isAccessibilitySize {
-                indicators
-            }
+#Preview("Glass note cards") {
+    let note = Note(id: "preview", title: "Weekend plans", color: "yellow",
+                    body: "Train tickets\nPlaces to visit\nBring a notebook", pinned: true,
+                    archived: false, trashed: false, markdown: false, highlight: false,
+                    tags: [], createdAt: 0, updatedAt: 0)
+    let cards = HStack(alignment: .top, spacing: 12) {
+        NoteCard(note: note)
+        NoteCard(note: Note(id: "empty", title: "A new idea", body: "", pinned: false,
+                           archived: false, trashed: false, markdown: false, highlight: false,
+                           tags: [], createdAt: 0, updatedAt: 0))
+    }
+    Group {
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: 8) { cards }
+        } else {
+            cards
         }
     }
-
-    private var indicators: some View {
-        HStack {
-            if note.shareToken != nil {
-                Image(systemName: "link").font(.caption2).foregroundStyle(.secondary)
-            }
-            if note.pinned {
-                Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-        .accessibilityHidden(true)
-    }
+    .padding(12)
+    .background(Color(.systemGroupedBackground))
 }
