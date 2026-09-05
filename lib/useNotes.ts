@@ -387,7 +387,7 @@ export function useNotes(ownerId: string | null) {
       : { title: inferNoteTitle(body), summary: "" };
     const now = Date.now();
     const note: Note = {
-      id: localNoteId(),
+      id: partial.id ?? localNoteId(),
       title: meta.title,
       summary: meta.summary || null,
       color: partial.color ?? null,
@@ -405,14 +405,14 @@ export function useNotes(ownerId: string | null) {
 
     if (isGuest) {
       setLocalNoteIds((prev) => new Set(prev).add(note.id));
-      const next = [note, ...notesRef.current];
+      const next = [note, ...notesRef.current.filter((item) => item.id !== note.id)];
       notesRef.current = next;
       setNotes(next);
       return note;
     }
 
     if (!ownerId) return null;
-    const next = [note, ...notesRef.current];
+    const next = [note, ...notesRef.current.filter((item) => item.id !== note.id)];
     notesRef.current = next;
     setNotes(next);
     let draft: NoteDraft;
@@ -428,6 +428,8 @@ export function useNotes(ownerId: string | null) {
       const data = { note: await trackSync(submitDraft(ownerId, draft, options)) };
       if (ownerRef.current !== ownerId) return data.note;
       rememberSaved(data.note);
+      data.note = overlayNoteDrafts([serverNotesRef.current.get(note.id) ?? data.note],
+        readNoteDrafts(ownerId).filter((draft) => draft.note.id === note.id))[0];
       // Upsert, don't map: a refresh() fired by replay/reconnect can overwrite
       // notesRef with a server list that predates this POST, and a plain map
       // would then find no match and silently drop the note the user just made.
@@ -440,6 +442,9 @@ export function useNotes(ownerId: string | null) {
       cacheNote(ownerId, data.note).catch(() => {});
       return data.note;
     } catch (e) {
+      if (!readNoteDrafts(ownerId).some((draft) => draft.note.id === note.id)) {
+        return notesRef.current.find((item) => item.id === note.id) ?? note;
+      }
       if (isRetryableNoteError(e)) {
         await addPendingOp(ownerId, {
           type: "create",
@@ -464,7 +469,7 @@ export function useNotes(ownerId: string | null) {
   const update = useCallback((
     id: string,
     patch: Partial<Note>,
-    options: { keepalive?: boolean } = {},
+    options: { keepalive?: boolean; base?: Note } = {},
   ): Promise<void> => {
     const current = notesRef.current.find((note) => note.id === id);
     if (!current) return Promise.resolve();
@@ -522,7 +527,7 @@ export function useNotes(ownerId: string | null) {
       draft = writeNoteDraft(ownerId, {
         note: optimistic, patch: { ...previousDraft?.patch, ...initialPatch },
         type: previousDraft?.type ?? "update",
-        base: previousDraft ? previousDraft.base : serverNotesRef.current.get(id) ?? current,
+        base: previousDraft ? previousDraft.base : options.base ?? serverNotesRef.current.get(id) ?? current,
         predecessors: [...new Set([...(previousDraft?.predecessors ?? []), ...(submittedBodiesRef.current.get(id) ?? [])])],
       });
     } catch {

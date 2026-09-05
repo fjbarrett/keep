@@ -206,3 +206,35 @@ describe("useNotes synchronization", () => {
     expect(ops.map((op) => op.type)).toEqual(["create", "update"]);
   });
 });
+
+it("keeps the newest edit when the original create response arrives last", async () => {
+  const owner = `owner-${crypto.randomUUID()}`;
+  let server: Note | undefined;
+  let finish!: (response: Response) => void;
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input) === "/api/notes" && init?.method !== "POST") return json({ notes: [] });
+    const patch = JSON.parse(String(init?.body));
+    if (init?.method === "POST") {
+      if (server) return json({ note: server });
+      server = note({ ...patch, updatedAt: 2 });
+      return new Promise<Response>((resolve) => { finish = resolve; });
+    }
+    if (init?.method === "PATCH") {
+      expect(patch.expectedUpdatedAt).toBe(server?.updatedAt);
+      server = { ...server!, ...patch, updatedAt: 3 };
+      return json({ note: server });
+    }
+    throw new Error(`Unexpected request ${input}`);
+  }));
+  const { result } = renderHook(() => useNotes(owner));
+  await waitFor(() => expect(result.current.hydrated).toBe(true));
+  let creation!: Promise<Note | null>;
+  act(() => { creation = result.current.create({ id: NOTE_ID, body: "initial", title: "Test" }); });
+  await waitFor(() => expect(finish).toBeDefined());
+  const initial = server!;
+  await act(async () => { await result.current.update(NOTE_ID, { body: "latest" }, { keepalive: true }); });
+  expect(server?.body).toBe("latest");
+  await act(async () => { finish(json({ note: initial })); await creation; });
+  expect(result.current.notes).toHaveLength(1);
+  expect(result.current.notes[0]).toMatchObject({ id: NOTE_ID, body: "latest", updatedAt: 3 });
+});
