@@ -69,6 +69,8 @@ export function useNotes(ownerId: string | null) {
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notesRef = useRef<Note[]>([]);
   const serverNotesRef = useRef(new Map<string, Note>());
+  const deletingRef = useRef(new Set<string>());
+  const activeSavesRef = useRef(new Map<string, Set<Promise<Note>>>());
   const submittedBodiesRef = useRef(new Map<string, Set<string>>());
   const mutationRevisionRef = useRef(new Map<string, number>());
   const saveChainsRef = useRef(new Map<string, Promise<void>>());
@@ -160,11 +162,29 @@ export function useNotes(ownerId: string | null) {
     if (note.updatedAt >= (serverNotesRef.current.get(note.id)?.updatedAt ?? 0)) serverNotesRef.current.set(note.id, note);
   }, []);
   const submitDraft = useCallback(async (owner: string, draft: NoteDraft, options = {}) => {
+    if (deletingRef.current.has(draft.note.id)) return draft.note;
     const bodies = submittedBodiesRef.current.get(draft.note.id) ?? new Set<string>();
     bodies.add(draft.note.body);
     submittedBodiesRef.current.set(draft.note.id, bodies);
-    try { return await saveNoteDraft(owner, draft, options); }
-    finally { bodies.delete(draft.note.body); }
+    const saves = activeSavesRef.current.get(draft.note.id) ?? new Set<Promise<Note>>();
+    const saving = saveNoteDraft(owner, draft, options);
+    saves.add(saving);
+    activeSavesRef.current.set(draft.note.id, saves);
+    try { return await saving; }
+    finally { bodies.delete(draft.note.body); saves.delete(saving); }
+  }, []);
+
+  const finishDeletion = useCallback(async (owner: string, id: string, through: number) => {
+    await Promise.allSettled([...(activeSavesRef.current.get(id) ?? [])]);
+    const draft = readNoteDrafts(owner).find((entry) => entry.note.id === id);
+    try { await notesApi(`/api/notes/${id}`, { method: "DELETE" }); }
+    catch (error) { if (!(error instanceof NotesApiError) || error.status !== 404) throw error; }
+    if (draft) removeNoteDraft(owner, draft);
+    for (const op of await getPendingOps(owner)) {
+      if (op.noteId === id && op.createdAt <= through) await removePendingOp(owner, op.id);
+    }
+    await removeCachedNote(owner, id);
+    if (ownerRef.current === owner) serverNotesRef.current.delete(id);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -186,7 +206,9 @@ export function useNotes(ownerId: string | null) {
       const cached = pending.length ? await getCachedNotes(ownerId) : [];
       if (ownerRef.current !== ownerId) return;
       const drafts = readNoteDrafts(ownerId);
-      data.notes = overlayNoteDrafts(overlayPendingNotes(data.notes, cached, pending), drafts);
+      const deleted = new Set(pending.filter((op) => op.type === "delete").map((op) => op.noteId));
+      data.notes = overlayNoteDrafts(overlayPendingNotes(data.notes, cached, pending), drafts)
+        .filter((note) => !deleted.has(note.id) && !deletingRef.current.has(note.id));
       // Once the server answers, an older IndexedDB read must not replace it.
       cacheLoadGenerationRef.current += 1;
       try {
@@ -236,6 +258,8 @@ export function useNotes(ownerId: string | null) {
   useEffect(() => {
     serverNotesRef.current.clear();
     submittedBodiesRef.current.clear();
+    deletingRef.current.clear();
+    activeSavesRef.current.clear();
     setHydrated(false);
     notesRef.current = [];
     setNotes([]);
@@ -284,7 +308,9 @@ export function useNotes(ownerId: string | null) {
 
           let blocked = false;
           const processed = new Set<string>();
+          const deletes = new Set(ops.filter((op) => op.type === "delete").map((op) => op.noteId));
           for (const op of ops) {
+            if (op.type !== "delete" && deletes.has(op.noteId)) continue;
             if (processed.has(op.noteId) && op.type !== "delete") continue;
             try {
               await enqueueSave(op.noteId, async () => {
@@ -307,7 +333,8 @@ export function useNotes(ownerId: string | null) {
                   if (failedCreate) throw new NotesApiError("The new note needs recovery before updates can sync.", 409);
                   await notesApi(`/api/notes/${op.noteId}`, { method: "PATCH", json: op.payload });
                 } else if (op.type === "delete") {
-                  await notesApi(`/api/notes/${op.noteId}`, { method: "DELETE" });
+                  deletingRef.current.add(op.noteId);
+                  await finishDeletion(ownerId, op.noteId, op.createdAt);
                 }
               });
               await removePendingOp(ownerId, op.id);
@@ -335,6 +362,7 @@ export function useNotes(ownerId: string | null) {
                 requestReplay(5_000);
                 break;
               }
+              if (op.type === "delete") deletingRef.current.delete(op.noteId);
               let savedDraft = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId);
               if (!savedDraft && typeof op.payload?.body === "string") {
                 const recovered = overlayPendingNotes([], notesRef.current, ops.filter((entry) => entry.noteId === op.noteId))[0];
@@ -375,7 +403,7 @@ export function useNotes(ownerId: string | null) {
     window.addEventListener("online", onOnline);
     if (hydrated && navigator.onLine) replayPending();
     return () => window.removeEventListener("online", onOnline);
-  }, [enqueueSave, hydrated, ownerId, refresh, rememberSaved, replayTick, requestReplay, submitDraft]);
+  }, [enqueueSave, finishDeletion, hydrated, ownerId, refresh, rememberSaved, replayTick, requestReplay, submitDraft]);
 
   const create = useCallback(async (
     partial: Partial<Note>,
@@ -427,6 +455,7 @@ export function useNotes(ownerId: string | null) {
       replaceNoteDraft(ownerId, draft);
       const data = { note: await trackSync(submitDraft(ownerId, draft, options)) };
       if (ownerRef.current !== ownerId) return data.note;
+      if (deletingRef.current.has(note.id)) return null;
       rememberSaved(data.note);
       data.note = overlayNoteDrafts([serverNotesRef.current.get(note.id) ?? data.note],
         readNoteDrafts(ownerId).filter((draft) => draft.note.id === note.id))[0];
@@ -673,43 +702,35 @@ export function useNotes(ownerId: string | null) {
     if (!ownerId) return Promise.resolve();
     removeCachedNote(ownerId, id).catch(() => {});
 
-    return enqueueSave(id, async () => {
-      const alreadyQueued =
-        queuedNoteIdsRef.current.has(id) ||
-        (await getPendingOps(ownerId).catch(() => [])).some((op) => op.noteId === id);
-      if (alreadyQueued) {
-        queuedNoteIdsRef.current.add(id);
-        await addPendingOp(ownerId, { type: "delete", noteId: id }).catch(() =>
-          setError("The deletion could not be queued for sync."),
-        );
-        requestReplay();
-        setSyncStatus(navigator.onLine ? "syncing" : "offline");
-        return;
-      }
+    deletingRef.current.add(id);
+    const restoreDeleted = () => {
+      deletingRef.current.delete(id);
+      if (ownerRef.current !== ownerId) return;
+      const restored = [removed, ...notesRef.current.filter((note) => note.id !== id)];
+      notesRef.current = restored;
+      setNotes(restored);
+      cacheNote(ownerId, removed).catch(() => {});
+    };
+    return (async () => {
+      let deletion;
       try {
-        await trackSync(notesApi(`/api/notes/${id}`, { method: "DELETE" }));
-        setError(null);
+        deletion = await addPendingOp(ownerId, { type: "delete", noteId: id });
+        const queuedDeletion = deletion;
+        await enqueueSave(id, () => trackSync(finishDeletion(ownerId, id, queuedDeletion.createdAt)));
+        if (ownerRef.current === ownerId) setError(null);
       } catch (error) {
-        if (isRetryableNoteError(error)) {
-          await addPendingOp(ownerId, { type: "delete", noteId: id })
-            .then(() => {
-              queuedNoteIdsRef.current.add(id);
-              requestReplay();
-            })
-            .catch(() => setError("The deletion could not be queued for sync."));
+        if (deletion && isRetryableNoteError(error)) {
+          queuedNoteIdsRef.current.add(id);
+          requestReplay(5_000);
           setSyncStatus(navigator.onLine ? "error" : "offline");
         } else {
+          if (deletion) await removePendingOp(ownerId, deletion.id);
+          restoreDeleted();
           setError(error instanceof Error ? error.message : "Failed to delete");
-          if (mutationRevisionRef.current.get(id) === revision) {
-            const restored = [removed, ...notesRef.current];
-            notesRef.current = restored;
-            setNotes(restored);
-            cacheNote(ownerId, removed).catch(() => {});
-          }
         }
       }
-    });
-  }, [enqueueSave, isGuest, localNoteIds, ownerId, requestReplay, trackSync]);
+    })();
+  }, [enqueueSave, finishDeletion, isGuest, localNoteIds, ownerId, requestReplay, trackSync]);
 
   const importKeepFile = useCallback(async (file: File) => {
     if (isGuest) {
