@@ -14,6 +14,7 @@ struct MarkdownView: View {
                     view(for: block)
                 }
             }
+            .modifier(ReadingStyle())
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 8)
         }
@@ -84,6 +85,7 @@ struct MarkdownView: View {
         case .heading(let level):
             Text(block.text)
                 .font(headingFont(level))
+                .accessibilityAddTraits(.isHeader)
                 .textSelection(.enabled)
                 .padding(.top, level <= 2 ? 4 : 0)
         case .code:

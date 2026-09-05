@@ -42,6 +42,7 @@ struct KeepMacApp: App {
             }
             NoteCommands(store: store)
         }
+        Settings { ReadingSettings().frame(width: 440, height: 380) }
     }
 }
 

@@ -21,6 +21,9 @@ struct DraftSaveStatus: View {
             }
         }
         .padding(.horizontal)
+        .onChange(of: store.drafts.errors[id]) { _, error in
+            if let error { AccessibilityNotification.Announcement("Save needs attention. " + error).post() }
+        }
     }
 
     private var status: String {

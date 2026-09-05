@@ -15,15 +15,21 @@ struct ShareTarget: Identifiable {
     let url: URL
 }
 
-/// The system share sheet. SwiftUI's `ShareLink` needs its URL up front, but
-/// the link doesn't exist until the server mints a token, so present this once
-/// the token is back instead.
-struct ActivityView: UIViewControllerRepresentable {
+/// ShareLink keeps the sharing interface entirely in SwiftUI after URL creation.
+struct NoteShareView: View {
+    @Environment(\.dismiss) private var dismiss
     let url: URL
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    var body: some View {
+        NavigationStack {
+            Form {
+                Text("Anyone with this link can read this note.")
+                ShareLink("Share note link", item: url)
+                Button("Copy link") { Pasteboard.copy(url.absoluteString) }
+            }
+            .navigationTitle("Share note")
+            .toolbar { Button("Done") { dismiss() } }
+        }
+        .presentationDetents([.medium, .large])
     }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
