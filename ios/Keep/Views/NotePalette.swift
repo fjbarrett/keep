@@ -32,7 +32,8 @@ enum NotePalette {
             .frame(width: 16, height: 16).environment(\.colorScheme, scheme))
         renderer.scale = 3
         guard let pixels = renderer.cgImage else { return Image(systemName: "circle.fill") }
-        let image = Image(decorative: pixels, scale: 3).renderingMode(.original)
+        let label = all.first { $0.key == key }?.label ?? key
+        let image = Image(pixels, scale: 3, label: Text(label)).renderingMode(.original)
         swatches[cacheKey] = image
         return image
     }

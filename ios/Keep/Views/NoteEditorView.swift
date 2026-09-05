@@ -123,6 +123,7 @@ struct NoteEditorView: View {
                                 } icon: {
                                     NotePalette.swatch(for: option.key, scheme: colorScheme)
                                 }
+                                .accessibilityLabel(option.label)
                                 .tag(option.key)
                             }
                         }
