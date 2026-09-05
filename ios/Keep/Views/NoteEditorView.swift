@@ -16,27 +16,25 @@ struct NoteEditorView: View {
     @State private var body_ = ""
     @State private var title = ""
     @State private var isColorPickerPresented = false
-    @State private var export: NoteExport?
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
     private var selectedColor: String? { (store.visibleNotes.first { $0.id == id } ?? note)?.color }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if !isCompactWriting {
-                editorHeader
-                    .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
-                    .frame(maxWidth: .infinity)
-                    .padding(.leading, 16)
-                    .padding(.trailing, 4)
-                    .padding(.top, 8)
-            }
+            editorHeader
+                .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(.leading, 16)
+                .padding(.trailing, 4)
+                .padding(.top, 8)
             TextEditor(text: Binding(get: { body_ }, set: { value in
                 guard value != body_ else { return }
                 body_ = value
                 stageDraft()
             }))
                 .focused($focusedField, equals: .body)
+                .autocorrectionDisabled()
                 .scrollContentBackground(.hidden)
                 .modifier(ReadingStyle(constrainWidth: false))
                 .padding(.horizontal, 12)
@@ -48,14 +46,30 @@ struct NoteEditorView: View {
                 .disabled(!store.canEdit)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if store.drafts.errors[id] != nil {
-                DraftSaveStatus(id: id, horizontalPadding: 12) { _ in dismiss() }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
+            VStack(alignment: .leading, spacing: 0) {
+                if store.drafts.errors[id] != nil {
+                    DraftSaveStatus(id: id, horizontalPadding: 12) { _ in dismiss() }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 8)
+                }
+                colorButton
+                    .buttonStyle(.plain)
+                    .tint(.primary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, 4)
+                    .padding(.bottom, 4)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .modifier(NoteEditorSurface())
+        .background {
+            let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+            shape.fill(.regularMaterial)
+                .overlay {
+                    if colorScheme == .dark {
+                        shape.fill(.black.opacity(0.32))
+                    }
+                }
+        }
         .padding(.horizontal, 4)
         .padding(.bottom, 4)
         .navigationTitle("")
@@ -79,56 +93,45 @@ struct NoteEditorView: View {
         .onChange(of: store.notes.first { $0.id == id }?.title) { _, savedTitle in
             if store.drafts.items[id] == nil, let savedTitle { title = savedTitle }
         }
-        .modifier(NoteFileExporter(export: $export))
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    store.drafts.start(id)
-                    focusedField = nil
-                }
-            }
-        }
     }
 
     private var editorHeader: some View {
         Group {
-            if dynamicTypeSize.isAccessibilitySize {
+            if isCompactWriting {
+                closeButton.frame(maxWidth: .infinity, alignment: .trailing)
+            } else if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack { Spacer(); headerActions }
+                    HStack { Spacer(); closeButton }
                     titleField
                 }
             } else {
                 HStack(spacing: 4) {
                     titleField.frame(maxWidth: .infinity, alignment: .leading)
-                    headerActions
+                    closeButton
                 }
             }
         }
     }
 
-    private var headerActions: some View {
-        HStack(spacing: 0) {
-            colorButton
-            NoteExportMenu { format in
-                focusedField = nil
-                export = NoteExport(title: title, body: body_, format: format)
-            }
-            .labelStyle(.iconOnly)
-            .font(.system(size: 18))
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
-            .disabled(title.isEmpty && body_.isEmpty)
+    @ViewBuilder private var closeButton: some View {
+        if #available(iOS 26, *) {
+            Button(role: .close) { dismiss() }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .controlSize(.large)
+                .accessibilityLabel("Close note")
+        } else {
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 17, weight: .semibold))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .tint(.primary)
             .accessibilityLabel("Close note")
         }
-        .buttonStyle(.plain)
-        .tint(.primary)
     }
 
     private var colorButton: some View {
@@ -172,6 +175,7 @@ struct NoteEditorView: View {
         }), prompt: Text("Title").foregroundStyle(.secondary), axis: .vertical)
             .font(.headline)
             .textFieldStyle(.plain)
+            .autocorrectionDisabled()
             .lineLimit(1...titleLineLimit)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4)
@@ -221,16 +225,4 @@ struct NoteEditorView: View {
         store.drafts.stage(id: id, body: body_, base: store.notes.first { $0.id == id }, title: title, color: color)
     }
 
-}
-
-/// One material behind both fields keeps the open note visually continuous.
-private struct NoteEditorSurface: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content.glassEffect(.regular, in: .rect(cornerRadius: 28))
-        } else {
-            content.background(.regularMaterial,
-                               in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        }
-    }
 }
