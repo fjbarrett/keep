@@ -17,7 +17,7 @@
   --color-link-hover: #7c9df5;
   --color-accent: #2b60f2;
   --color-accent-fg: #ffffff;
-  --color-accent-hover: #527ef3;
+  --color-accent-hover: #2454db;
   --color-accent-border: #2b60f2;
   /* Fixed blue for the "blue" note label, so it stays blue when the accent
      color is changed (the accent overrides --color-accent only). */
