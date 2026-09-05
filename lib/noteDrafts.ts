@@ -15,7 +15,8 @@ export function readNoteDrafts(owner: string): NoteDraft[] {
     if (!key?.startsWith(prefix(owner))) continue;
     try {
       const draft = JSON.parse(localStorage.getItem(key) ?? "null");
-      if (draft?.note?.id && typeof draft.note.body === "string" && draft.revision) drafts.push(draft);
+      if (draft?.note?.id && key === prefix(owner) + draft.note.id &&
+          typeof draft.note.body === "string" && draft.revision) drafts.push(draft);
     } catch { /* Keep unreadable records for manual recovery. */ }
   }
   return drafts;
