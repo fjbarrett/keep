@@ -10,12 +10,16 @@ struct NoteEditorView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage("readingMeasure") private var comfortableWidth = false
     private enum Field { case title, body }
-    @FocusState private var focusedField: Field?
+    @FocusState private var isTitleFocused: Bool
+    @State private var isBodyFocused = false
+    private var focusedField: Field? { isTitleFocused ? .title : isBodyFocused ? .body : nil }
 
     let note: Note?
     @State private var body_: String
     @State private var title: String
     @State private var isColorPickerPresented = false
+    @State private var headerHeight: CGFloat = 44
+    @State private var titleScrollOffset: CGFloat = 0
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
     private var selectedColor: String? { (store.visibleNotes.first { $0.id == id } ?? note)?.color }
@@ -28,44 +32,26 @@ struct NoteEditorView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        bodyEditor
+        .overlay(alignment: .top) {
             editorHeader
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
                 .frame(maxWidth: .infinity)
                 .padding(.leading, 30)
                 .padding(.trailing, 8)
                 .padding(.top, 8)
-            TextEditor(text: Binding(get: { body_ }, set: { value in
-                guard value != body_ else { return }
-                body_ = value
-                stageDraft()
-            }))
-                .focused($focusedField, equals: .body)
-                .autocorrectionDisabled()
-                .keyboardType(.asciiCapable)
-                .scrollContentBackground(.hidden)
-                .modifier(ReadingStyle(constrainWidth: false))
-                .padding(.horizontal, 26)
-                .padding(.vertical, 8)
-                .frame(maxWidth: comfortableWidth ? 620 : .infinity)
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel("Note body")
-                .accessibilityHint("Edit or add text. Changes save automatically.")
-                .disabled(!store.canEdit)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            floatingColorButton
+                .padding(.trailing, 8)
+                .padding(.bottom, 8)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                if store.drafts.errors[id] != nil {
-                    DraftSaveStatus(id: id, horizontalPadding: 16) { _ in dismiss() }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                }
-                colorButton
-                    .buttonStyle(.plain)
-                    .tint(.primary)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.trailing, 8)
-                    .padding(.bottom, 8)
+            if store.drafts.errors[id] != nil {
+                DraftSaveStatus(id: id, horizontalPadding: 16) { _ in dismiss() }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
             }
         }
         .background {
@@ -84,16 +70,36 @@ struct NoteEditorView: View {
             if note == nil {
                 await Task.yield()
                 guard !Task.isCancelled else { return }
-                focusedField = .title
+                isTitleFocused = true
             }
         }
         .onDisappear { store.drafts.start(id) }
+        .onChange(of: isTitleFocused) { _, focused in
+            if focused { isBodyFocused = false }
+        }
+        .onChange(of: isBodyFocused) { _, focused in
+            if focused { isTitleFocused = false }
+        }
         .onChange(of: store.notes.first { $0.id == id }?.body) { _, body in
             if store.drafts.items[id] == nil, let body { body_ = body }
         }
         .onChange(of: store.notes.first { $0.id == id }?.title) { _, savedTitle in
             if store.drafts.items[id] == nil, let savedTitle { title = savedTitle }
         }
+    }
+
+    private var bodyEditor: some View {
+        NoteBodyTextView(text: Binding(get: { body_ }, set: { value in
+            guard value != body_ else { return }
+            body_ = value
+            stageDraft()
+        }), isFocused: $isBodyFocused, topInset: headerHeight + 24, titleScrollOffset: $titleScrollOffset)
+            .padding(.horizontal, 26)
+            .frame(maxWidth: comfortableWidth ? 620 : .infinity)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("Note body")
+            .accessibilityHint("Edit or add text. Changes save automatically.")
+            .disabled(!store.canEdit)
     }
 
     private var editorHeader: some View {
@@ -103,15 +109,28 @@ struct NoteEditorView: View {
             } else if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack { Spacer(); closeButton }
-                    titleField
+                    floatingTitle
                 }
             } else {
                 HStack(spacing: 4) {
-                    titleField.frame(maxWidth: .infinity, alignment: .leading)
+                    floatingTitle.frame(maxWidth: .infinity, alignment: .leading)
                     closeButton
                 }
             }
         }
+    }
+
+    private var titleVisibility: CGFloat {
+        if focusedField == .title { return 1 }
+        return 1 - titleScrollOffset / 32
+    }
+
+    private var floatingTitle: some View {
+        titleField
+            .opacity(titleVisibility)
+            .offset(y: -24 * (1 - titleVisibility))
+            .allowsHitTesting(titleVisibility > 0)
+            .accessibilityHidden(titleVisibility == 0)
     }
 
     @ViewBuilder private var closeButton: some View {
@@ -131,7 +150,16 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .tint(.primary)
+            .background(.ultraThinMaterial, in: Circle())
             .accessibilityLabel("Close note")
+        }
+    }
+
+    @ViewBuilder private var floatingColorButton: some View {
+        if #available(iOS 26, *) {
+            colorButton.glassEffect(.regular.interactive(), in: .circle)
+        } else {
+            colorButton.background(.ultraThinMaterial, in: Circle())
         }
     }
 
@@ -144,6 +172,8 @@ struct NoteEditorView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .tint(.primary)
         .accessibilityLabel("Note color")
         .accessibilityValue(NotePalette.all.first { $0.key == selectedColor }?.label ?? "None")
         .disabled(!store.canEdit)
@@ -181,9 +211,12 @@ struct NoteEditorView: View {
             .lineLimit(1...titleLineLimit)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4)
-            .focused($focusedField, equals: .title)
+            .focused($isTitleFocused)
             .submitLabel(.next)
-            .onSubmit { focusedField = .body }
+            .onSubmit {
+                isTitleFocused = false
+                isBodyFocused = true
+            }
             .accessibilityLabel("Note title")
             .disabled(!store.canEdit)
     }
