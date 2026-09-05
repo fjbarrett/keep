@@ -7,6 +7,20 @@ final class FixtureProtocol: URLProtocol, @unchecked Sendable {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() { Self.respond(self) }
     override func stopLoading() {}
+    var payload: [String: Any] {
+        var data = request.httpBody ?? Data()
+        if let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+            var bytes = [UInt8](repeating: 0, count: 4096)
+            while stream.hasBytesAvailable {
+                let count = stream.read(&bytes, maxLength: bytes.count)
+                if count <= 0 { break }
+                data.append(contentsOf: bytes.prefix(count))
+            }
+        }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+    }
     func reply(_ value: Any, status: Int = 200) {
         let response = HTTPURLResponse(url: request.url!, statusCode: status,
                                        httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
