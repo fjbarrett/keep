@@ -98,6 +98,35 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(sut.notes.first?.body, "Heading\nSaved edit")
     }
 
+    func testFailedDraftCanBeExportedWithoutDiscardingEitherVersion() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FixtureProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let sut = NotesStore(api: KeepAPI(session: session), auth: AuthClient(session: session),
+                             draftStorage: DraftStorage(root: folder))
+        FixtureProtocol.respond = { request in
+            if request.request.url?.path == "/api/auth/session" {
+                request.reply(["user": ["id": "export-owner"]])
+            } else if request.request.httpMethod == "PATCH" {
+                request.reply(["error": "Offline fixture"], status: 503)
+            } else { request.reply(["notes": [Self.row("Server copy")]]) }
+        }
+        await sut.load()
+        sut.drafts.stage(id: Self.id, body: "Latest draft 👩🏽‍💻\n", base: sut.notes.first, title: "Draft title")
+        sut.drafts.start(Self.id)
+        await sut.drafts.waitForSave(Self.id)
+        XCTAssertNotNil(sut.drafts.errors[Self.id])
+        let visible = try XCTUnwrap(sut.visibleNotes.first)
+        let export = NoteExport(title: visible.title, body: visible.body, format: .markdown)
+        XCTAssertEqual(export.filename, "Draft title.md")
+        XCTAssertEqual(export.document.data, Data("Latest draft 👩🏽‍💻\n".utf8))
+        XCTAssertEqual(sut.notes.first?.body, "Server copy")
+        XCTAssertEqual(try DraftStorage(root: folder).load(owner: "export-owner")[Self.id]?.body,
+                       "Latest draft 👩🏽‍💻\n")
+    }
+
     func testPermanentDeleteWaitsForCreateAndRemovesItsDurableDraft() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
