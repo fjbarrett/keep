@@ -35,6 +35,7 @@ struct NoteEditorView: View {
             }))
                 .focused($focusedField, equals: .body)
                 .autocorrectionDisabled()
+                .keyboardType(.asciiCapable)
                 .scrollContentBackground(.hidden)
                 .modifier(ReadingStyle(constrainWidth: false))
                 .padding(.horizontal, 12)
@@ -176,6 +177,7 @@ struct NoteEditorView: View {
             .font(.headline)
             .textFieldStyle(.plain)
             .autocorrectionDisabled()
+            .keyboardType(.asciiCapable)
             .lineLimit(1...titleLineLimit)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4)
@@ -188,7 +190,7 @@ struct NoteEditorView: View {
 
     private func colorMenuLabel(for key: String?) -> Image {
         key.map { NotePalette.swatch(for: $0, scheme: colorScheme) }
-            ?? Image(systemName: "paintpalette")
+            ?? Image(systemName: "circle")
     }
 
     private func colorOption(_ key: String?) -> some View {

@@ -6,14 +6,15 @@ struct RootView: View {
     @Environment(\.scenePhase) private var phase
     @State private var sheet: Sheet?
     @State private var spotlightID: String?
+    @Namespace private var noteTransition
 
     private enum Sheet: Identifiable {
-        case editor(Note?)
+        case editor(Note?, sourceID: String?)
         case signIn
 
         var id: String {
             switch self {
-            case .editor(let note): return note?.id ?? "new-note"
+            case .editor(let note, _): return note?.id ?? "new-note"
             case .signIn: return "sign-in"
             }
         }
@@ -21,9 +22,9 @@ struct RootView: View {
 
     var body: some View {
         NavigationStack {
-            NotesListView(openNote: {
+            NotesListView(transitionNamespace: noteTransition, openNote: {
                 spotlightID = nil
-                sheet = .editor($0)
+                sheet = .editor($0, sourceID: $0?.id)
             })
                 .id(store.sessionGeneration)
                 .navigationTitle("Keep")
@@ -45,7 +46,7 @@ struct RootView: View {
         .onChange(of: store.notes) { _, notes in
             SpotlightIndexer.sync(notes)
             openSpotlightNote()
-            if case .editor(let note?) = sheet,
+            if case .editor(let note?, _) = sheet,
                !store.visibleNotes.contains(where: { $0.id == note.id }) {
                 sheet = nil
             }
@@ -64,18 +65,22 @@ struct RootView: View {
             get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } }
         )) { Button("OK") { store.errorMessage = nil } }
         message: { Text(store.errorMessage ?? "") }
-        .sheet(item: $sheet) { destination in
-            switch destination {
-            case .editor(let note):
-                NavigationStack { NoteEditorView(note: note) }
-                    .id(destination.id)
-                    .presentationDragIndicator(.hidden)
-                    .presentationBackground(.clear)
-                    .presentationCornerRadius(28)
-            case .signIn:
-                SignInView()
-                    .interactiveDismissDisabled()
-            }
+        .sheet(item: $sheet) { sheetContent(for: $0) }
+    }
+
+    @ViewBuilder private func sheetContent(for destination: Sheet) -> some View {
+        switch destination {
+        case .editor(let note, let sourceID):
+            NavigationStack { NoteEditorView(note: note) }
+                .id(destination.id)
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(.clear)
+                .presentationCornerRadius(28)
+                .modifier(NotePresentationTransition(sourceID: sourceID,
+                                                     namespace: noteTransition))
+        case .signIn:
+            SignInView()
+                .interactiveDismissDisabled()
         }
     }
 
@@ -83,6 +88,20 @@ struct RootView: View {
         guard !store.needsAuth, let id = spotlightID,
               let note = store.visibleNotes.first(where: { $0.id == id }) else { return }
         spotlightID = nil
-        sheet = .editor(note)
+        sheet = .editor(note, sourceID: nil)
+    }
+}
+
+private struct NotePresentationTransition: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let sourceID: String?
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18, *), let sourceID, !reduceMotion {
+            content.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+        } else {
+            content
+        }
     }
 }

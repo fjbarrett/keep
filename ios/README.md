@@ -122,8 +122,9 @@ a compact grid of eight swatches and a no-color icon, with a ring around the
 current selection. Options have 44-point touch targets and VoiceOver color names.
 Color choices are stored with the draft and included in creation, retry, and recovery.
 Notes appear in a two-column grid of neutral, translucent rounded cards. iOS 26
-uses native interactive Liquid Glass grouped in a GlassEffectContainer; earlier
-iOS versions use regular material. A small swatch carries each note's color.
+uses native interactive Liquid Glass on each card; earlier iOS versions use
+regular material. Independent surfaces allow each card to be a visible zoom
+transition source. A small swatch carries each note's color.
 The default view omits the All Notes heading to leave more room for cards.
 Each card shows its title and a short summary or body preview, with pin/share indicators.
 Accessibility text sizes use one column and allow longer titles. Touch and hold a
@@ -131,6 +132,9 @@ card for note actions; VoiceOver exposes the same actions. Search, view filters,
 pull-to-refresh, and pinned-first ordering apply to the grid.
 Opening a note presents an editor modal over the grid. Close or swipe down
 returns to the same grid, filter, and search; dismissing flushes pending edits.
+On iOS 18 and later, a tapped card expands into the editor with SwiftUI's native
+zoom transition and returns to its source on dismissal. Reduce Motion, new notes,
+Spotlight results, and earlier iOS versions use the standard sheet presentation.
 The editor uses a compact header with the editable title and close icon in one row.
 iOS 26 uses SwiftUI's standard close-role button with a circular glass style.
 The color swatch sits at the modal's bottom-right, above the keyboard when editing.
@@ -142,7 +146,8 @@ Accessibility text sizes move the title below the close button to keep it readab
 New notes and Spotlight results use the same modal. Both fields are directly
 editable. New notes focus the title first, and Return
 moves into the blank body, without a placeholder. Both fields disable keyboard
-autocorrection and suggestions. Both inputs have no outlines;
+autocorrection and suggestions. The ASCII-capable keyboard removes the empty
+prediction strip; pasted Unicode text is preserved. Both inputs have no outlines;
 the title and body share one neutral, translucent material surface inspired by
 the grid cards. The modal has rounded corners without a reflective outline and a
 four-point outer inset; dark mode retains the deeper charcoal tone of the grid
@@ -156,7 +161,7 @@ leave room above the keyboard; the close button remains available. Routine save
 status is hidden; save errors show recovery below the writing area, including in
 compact mode. Explicit titles are included in durable drafts and recovery and
 remain intact in the notes list. The color control shows only the current swatch
-(a palette icon when unset); VoiceOver still announces its name and selected color.
+(a hollow circle when unset); VoiceOver still announces its name and selected color.
 Export file in a note's context menu saves its current body
 as UTF-8 text (`.txt`) or Markdown (`.md`) through the system file picker. The title
 provides the filename; body text, whitespace, and Markdown syntax are preserved.

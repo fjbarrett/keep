@@ -56,6 +56,7 @@ struct NotesListView: View {
     @State private var pendingDelete: Note?
     @State private var shareTarget: ShareTarget?
     @State private var export: NoteExport?
+    let transitionNamespace: Namespace.ID
     let openNote: (Note?) -> Void
 
     private var notes: [Note] {
@@ -72,11 +73,8 @@ struct NotesListView: View {
 
     var body: some View {
         ScrollView {
-            if #available(iOS 26, *) {
-                GlassEffectContainer(spacing: 8) { noteGrid }
-            } else {
-                noteGrid
-            }
+            // Independent glass surfaces remain visible sources for the card zoom.
+            noteGrid
         }
         .scrollBounceBehavior(.always)
         .scrollDismissesKeyboard(.interactively)
@@ -144,6 +142,7 @@ struct NotesListView: View {
                 .accessibilityHint("Opens note. Touch and hold for note actions.")
                 .accessibilityActions { menu(for: note) }
                 .contextMenu { menu(for: note) }
+                .modifier(NoteCardTransitionSource(id: note.id, namespace: transitionNamespace))
             }
         }
         .padding(12)
@@ -224,6 +223,21 @@ struct NotesListView: View {
         }
     }
 
+}
+
+private struct NoteCardTransitionSource: ViewModifier {
+    let id: String
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18, *) {
+            content.matchedTransitionSource(id: id, in: namespace) {
+                $0.clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+        } else {
+            content
+        }
+    }
 }
 
 private struct NoteCard: View {
