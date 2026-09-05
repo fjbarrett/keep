@@ -29,10 +29,18 @@ struct NoteEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if !isCompactWriting {
-                titleField
-                saveStatus
+                VStack(alignment: .leading, spacing: 8) {
+                    titleField
+                    saveStatus
+                }
+                .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
             } else if store.drafts.errors[id] != nil {
                 saveStatus
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
             }
             TextEditor(text: Binding(get: { body_ }, set: { value in
                 guard value != body_ else { return }
@@ -52,16 +60,17 @@ struct NoteEditorView: View {
                     }
                 }
                 .modifier(ReadingStyle(constrainWidth: false))
-                .padding(8)
-                .modifier(EditorFieldSurface(isFocused: focusedField == .body))
+                .padding(.horizontal, 8)
+                .padding(.top, 4)
+                .frame(maxWidth: comfortableWidth ? 620 : .infinity)
+                .frame(maxWidth: .infinity)
+                .background(Color(.secondarySystemGroupedBackground)
+                    .ignoresSafeArea(.container, edges: .bottom))
                 .accessibilityLabel("Note body")
                 .accessibilityHint("Edit or add text. Changes save automatically.")
                 .disabled(!store.canEdit)
         }
-        .frame(maxWidth: comfortableWidth ? 620 : 720)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal)
-        .padding(.vertical, 12)
+        .background(Color(.systemGroupedBackground))
         .navigationTitle(note == nil ? "New note" : "Note")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isCompactWriting ? .hidden : .visible, for: .navigationBar)
@@ -159,9 +168,7 @@ struct NoteEditorView: View {
             .textFieldStyle(.plain)
             .lineLimit(1...titleLineLimit)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .modifier(EditorFieldSurface(isFocused: focusedField == .title))
+            .padding(.vertical, 4)
             .focused($focusedField, equals: .title)
             .submitLabel(.next)
             .onSubmit { focusedField = .body }
@@ -177,7 +184,6 @@ struct NoteEditorView: View {
                 DraftSaveStatus(id: id, horizontalPadding: 0) { _ in dismiss() }
             }
         }
-        .padding(.horizontal, 14)
     }
 
     private func colorMenuLabel(for key: String?) -> Text {
@@ -191,20 +197,4 @@ struct NoteEditorView: View {
         store.drafts.stage(id: id, body: body_, base: store.notes.first { $0.id == id }, title: title)
     }
 
-}
-
-private struct EditorFieldSurface: ViewModifier {
-    let isFocused: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(isFocused ? Color.accentColor : Color.secondary,
-                                  lineWidth: isFocused ? 2 : 1)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-    }
 }
