@@ -23,15 +23,15 @@ export type Accent = {
 };
 
 export const ACCENTS: Accent[] = [
-  { key: "multicolor", label: "Multicolor", color: "#2b60f2", hover: "#527ef3", fg: "#ffffff" },
-  { key: "blue", label: "Blue", color: "#2b60f2", hover: "#527ef3", fg: "#ffffff" },
-  { key: "purple", label: "Purple", color: "#9a5cf0", hover: "#ad77f4", fg: "#ffffff" },
-  { key: "pink", label: "Pink", color: "#f4408c", hover: "#f76aa6", fg: "#ffffff" },
-  { key: "red", label: "Red", color: "#f0564a", hover: "#f37a70", fg: "#ffffff" },
-  { key: "orange", label: "Orange", color: "#f5872b", hover: "#f7a052", fg: "#ffffff" },
+  { key: "multicolor", label: "Multicolor", color: "#2b60f2", hover: "#2454db", fg: "#ffffff" },
+  { key: "blue", label: "Blue", color: "#2b60f2", hover: "#2454db", fg: "#ffffff" },
+  { key: "purple", label: "Purple", color: "#9a5cf0", hover: "#ad77f4", fg: "#000000" },
+  { key: "pink", label: "Pink", color: "#f4408c", hover: "#f76aa6", fg: "#000000" },
+  { key: "red", label: "Red", color: "#f0564a", hover: "#f37a70", fg: "#000000" },
+  { key: "orange", label: "Orange", color: "#f5872b", hover: "#f7a052", fg: "#000000" },
   { key: "yellow", label: "Yellow", color: "#e0a30f", hover: "#eab534", fg: "#16161a" },
-  { key: "green", label: "Green", color: "#3fb463", hover: "#5cc47d", fg: "#ffffff" },
-  { key: "graphite", label: "Graphite", color: "#8b8b94", hover: "#a0a0a8", fg: "#ffffff" },
+  { key: "green", label: "Green", color: "#3fb463", hover: "#5cc47d", fg: "#000000" },
+  { key: "graphite", label: "Graphite", color: "#8b8b94", hover: "#a0a0a8", fg: "#000000" },
 ];
 
 export const ACCENT_STORAGE_KEY = "keep.accent";

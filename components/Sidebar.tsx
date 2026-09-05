@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { previewText, TITLE_CHAR_LIMIT } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
-import { noteColorVar } from "@/lib/noteColors";
+import { noteColorVar, noteColorForeground } from "@/lib/noteColors";
 import { downloadNoteBody, downloadNotePdf } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
 import { useMenuPresence } from "@/lib/useMenuPresence";
@@ -500,6 +500,7 @@ function SidebarNoteRow({
     <li
       ref={rowRef}
       data-note-id={note.id}
+      style={{ "--note-selection-fg": noteColorForeground(note.color) ?? "var(--color-accent-fg)" } as CSSProperties}
       className="group relative flex items-center rounded-md"
       onContextMenu={(e) => {
         if (isRenaming) return;
@@ -539,7 +540,7 @@ function SidebarNoteRow({
             aria-current={active ? "true" : undefined}
             className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
               active && !slidingIn
-                ? "text-[var(--color-accent-fg)]"
+                ? "text-[var(--note-selection-fg)]"
                 : "text-[var(--color-text)]"
             }`}
           >
@@ -548,7 +549,7 @@ function SidebarNoteRow({
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{
                   background:
-                    active && !slidingIn ? "#fff" : noteColorVar(note.color)!,
+                    active && !slidingIn ? "currentColor" : noteColorVar(note.color)!,
                 }}
                 aria-hidden
               />
@@ -574,7 +575,7 @@ function SidebarNoteRow({
                 : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
             } ${
               active && !slidingIn
-                ? "text-[var(--color-accent-fg)]/70 hover:text-[var(--color-accent-fg)]"
+                ? "text-[var(--note-selection-fg)]"
                 : "text-[var(--color-subtle)] hover:text-[var(--color-text)]"
             }`}
           >
