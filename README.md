@@ -36,11 +36,16 @@ Postgres, with a guest mode that keeps notes in the browser until sign-in.
 Offline support protects edits made while the application is already open.
 For privacy, personalized HTML and public shared notes are never stored by the
 service worker, so a full page reload still requires a network connection. An
-explicit sign-out removes that account's IndexedDB cache and queued mutations.
+explicit sign-out removes that account's IndexedDB cache, queued mutations, and
+draft journal after warning about unsynced text. Conflicting saves keep a local
+draft with retry and save-copy actions.
 
 ## Getting started
 
+Use Node 22 (the version used by CI and `.nvmrc`).
+
 ```bash
+nvm use
 npm install
 cp .env.example .env.local
 # Set AUTH_SECRET, AUTH_URL, and DATABASE_URL.
