@@ -22,13 +22,14 @@ struct NoteEditorView: View {
     private var selectedColor: String? { (store.visibleNotes.first { $0.id == id } ?? note)?.color }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             if !isCompactWriting {
-                titleField
+                editorHeader
                     .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 12)
+                    .padding(.leading, 20)
+                    .padding(.trailing, 8)
+                    .padding(.top, 8)
             }
             TextEditor(text: Binding(get: { body_ }, set: { value in
                 guard value != body_ else { return }
@@ -38,8 +39,8 @@ struct NoteEditorView: View {
                 .focused($focusedField, equals: .body)
                 .scrollContentBackground(.hidden)
                 .modifier(ReadingStyle(constrainWidth: false))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity)
                 .frame(maxWidth: .infinity)
                 .background(Color(.secondarySystemGroupedBackground))
@@ -59,7 +60,7 @@ struct NoteEditorView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(isCompactWriting ? .hidden : .visible, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             body_ = store.drafts.items[id]?.body ?? note?.body ?? ""
             title = store.drafts.items[id]?.title ?? note?.title ?? ""
@@ -80,13 +81,6 @@ struct NoteEditorView: View {
         }
         .modifier(NoteFileExporter(export: $export))
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NoteExportMenu { format in
-                    focusedField = nil
-                    export = NoteExport(title: title, body: body_, format: format)
-                }
-                .disabled(title.isEmpty && body_.isEmpty)
-            }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") {
@@ -94,27 +88,70 @@ struct NoteEditorView: View {
                     focusedField = nil
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { isColorPickerPresented = true } label: {
-                    colorMenuLabel(for: selectedColor)
-                        .accessibilityLabel("Note color")
-                        .accessibilityValue(NotePalette.all.first { $0.key == selectedColor }?.label ?? "None")
+        }
+    }
+
+    private var editorHeader: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack { Spacer(); headerActions }
+                    titleField
                 }
-                .disabled(!store.canEdit)
-                .popover(isPresented: $isColorPickerPresented) {
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 8), count: 3), spacing: 8) {
-                        colorOption(nil)
-                        ForEach(NotePalette.all, id: \.key) { option in
-                            colorOption(option.key)
-                        }
-                    }
-                    .padding(12)
-                    .presentationCompactAdaptation(.popover)
+            } else {
+                HStack(spacing: 4) {
+                    titleField.frame(maxWidth: .infinity, alignment: .leading)
+                    headerActions
                 }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Close") { dismiss() }
+        }
+    }
+
+    private var headerActions: some View {
+        HStack(spacing: 0) {
+            colorButton
+            NoteExportMenu { format in
+                focusedField = nil
+                export = NoteExport(title: title, body: body_, format: format)
             }
+            .labelStyle(.iconOnly)
+            .font(.system(size: 18))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+            .disabled(title.isEmpty && body_.isEmpty)
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Close note")
+        }
+        .buttonStyle(.plain)
+        .tint(.primary)
+    }
+
+    private var colorButton: some View {
+        Button { isColorPickerPresented = true } label: {
+            colorMenuLabel(for: selectedColor)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Note color")
+        .accessibilityValue(NotePalette.all.first { $0.key == selectedColor }?.label ?? "None")
+        .disabled(!store.canEdit)
+        .popover(isPresented: $isColorPickerPresented) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 8), count: 3), spacing: 8) {
+                colorOption(nil)
+                ForEach(NotePalette.all, id: \.key) { option in
+                    colorOption(option.key)
+                }
+            }
+            .padding(12)
+            .presentationCompactAdaptation(.popover)
         }
     }
 
@@ -133,7 +170,7 @@ struct NoteEditorView: View {
             title = value
             stageDraft()
         }), prompt: Text("Title").foregroundStyle(.secondary), axis: .vertical)
-            .font(.title2.weight(.semibold))
+            .font(.headline)
             .textFieldStyle(.plain)
             .lineLimit(1...titleLineLimit)
             .fixedSize(horizontal: false, vertical: true)
