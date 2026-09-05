@@ -9,11 +9,13 @@ struct MacNoteDetail: View {
     @Environment(NotesStore.self) private var store
 
     let note: Note?
+    var focusRequest = 0
     var onCreated: (String) -> Void = { _ in }
 
     @State private var text = ""
     @State private var title = ""
     @FocusState private var titleFocused: Bool
+    @FocusState private var bodyFocused: Bool
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
 
@@ -52,6 +54,7 @@ struct MacNoteDetail: View {
                 }))
                     .modifier(ReadingStyle())
                     .accessibilityLabel("Note body")
+                    .focused($bodyFocused)
                     .disabled(!store.canEdit)
                     .textEditorStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -75,6 +78,12 @@ struct MacNoteDetail: View {
         }
         .padding(12)
         .navigationTitle(current?.displayTitle ?? "New Note")
+        .task(id: focusRequest) {
+            // Let the split view finish installing the editor after selection
+            // changes, including the new-draft to saved-note handoff.
+            await Task.yield()
+            if !Task.isCancelled, focusRequest > 0 { bodyFocused = true }
+        }
         .onAppear {
             text = store.drafts.items[id]?.body ?? note?.body ?? ""
             title = current?.displayTitle ?? ""
