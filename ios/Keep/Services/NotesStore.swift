@@ -176,9 +176,14 @@ final class NotesStore {
         guard !needsAuth else { return }
         let session = sessionGeneration
         contentGeneration += 1
+        await drafts.pause(note.id)
+        guard session == sessionGeneration else { return }
+        defer { if session == sessionGeneration { drafts.resume(note.id) } }
         do {
-            try await api.delete(id: note.id)
+            do { try await api.delete(id: note.id) }
+            catch APIError.http(404) { /* A draft may never have reached the server. */ }
             guard session == sessionGeneration else { return }
+            try drafts.discard(note.id)
             contentGeneration += 1
             notes.removeAll { $0.id == note.id }
         } catch { if session == sessionGeneration { handle(error) } }

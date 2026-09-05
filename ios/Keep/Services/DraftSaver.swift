@@ -16,6 +16,7 @@ final class DraftSaver {
     private let storage: DraftStorage
     private var owner: String?
     private var generation = 0
+    private var paused: Set<String> = []
     private var timers: [String: Task<Void, Never>] = [:]
     private var workers: [String: Task<Void, Never>] = [:]
 
@@ -30,6 +31,7 @@ final class DraftSaver {
         timers.values.forEach { $0.cancel() }
         timers = [:]
         workers = [:]
+        paused = []
         saving = []
         errors = [:]
         items = [:]
@@ -59,7 +61,7 @@ final class DraftSaver {
     }
 
     func start(_ id: String) {
-        guard workers[id] == nil, items[id] != nil, let owner else { return }
+        guard !paused.contains(id), workers[id] == nil, items[id] != nil, let owner else { return }
         timers[id]?.cancel()
         timers[id] = nil
         let session = generation
@@ -69,16 +71,20 @@ final class DraftSaver {
             defer {
                 if session == generation { workers[id] = nil; saving.remove(id) }
             }
-            while session == generation, let draft = items[id] {
+            while session == generation, !paused.contains(id), let draft = items[id] {
                 do {
                     // Retry a failed disk write before any network request.
                     try storage.save(draft, owner: owner)
                     let saved: Note
                     do {
                         if let base = draft.base {
-                            saved = try await api.update(id: id, patch: [
-                                "body": draft.body, "expectedUpdatedAt": base.updatedAt,
-                            ])
+                            var patch: [String: Any] = ["body": draft.body, "expectedUpdatedAt": base.updatedAt]
+                            if draft.body.components(separatedBy: "\n").first != base.body.components(separatedBy: "\n").first
+                                || base.title.trimmingCharacters(in: .whitespaces).isEmpty {
+                                patch["title"] = NoteTitle.infer(draft.body)
+                                patch["summary"] = NSNull()
+                            }
+                            saved = try await api.update(id: id, patch: patch)
                         } else {
                             saved = try await api.create(body: draft.body, title: NoteTitle.infer(draft.body),
                                                          id: id, ownerID: owner)
@@ -115,6 +121,25 @@ final class DraftSaver {
                 }
             }
         }
+    }
+
+    /// Wait for committed network work before a permanent delete can begin.
+    func pause(_ id: String) async {
+        paused.insert(id)
+        timers[id]?.cancel()
+        timers[id] = nil
+        await workers[id]?.value
+    }
+
+    func resume(_ id: String) { paused.remove(id) }
+
+    func discard(_ id: String) throws {
+        guard let owner else { return }
+        try storage.remove(id, owner: owner)
+        timers[id]?.cancel()
+        timers[id] = nil
+        items[id] = nil
+        errors[id] = nil
     }
 
     func retryAll() {
