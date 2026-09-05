@@ -19,3 +19,13 @@ export function tagsInvalid(tags: unknown): boolean {
     tags.some((t) => typeof t !== "string" || t.length > MAX_TAG_LEN)
   );
 }
+
+export class ImportNoteTooLarge extends Error {
+  constructor() {
+    super(`Import canceled: a note exceeds ${MAX_NOTE_BODY.toLocaleString("en-US")} characters. Split it into smaller notes and try again. No notes were imported.`);
+  }
+}
+
+export function validateImportedBodies(bodies: string[]) {
+  if (bodies.some((body) => body.length > MAX_NOTE_BODY)) throw new ImportNoteTooLarge();
+}
