@@ -62,6 +62,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid note." }, { status: 400 });
     }
     const body = parsed as Record<string, unknown>;
+    if (body.ownerId !== undefined && body.ownerId !== session.user.id) {
+      return NextResponse.json({ error: "The signed-in account changed. Sign in to the draft's account to save it." }, { status: 403 });
+    }
     const noteBody = String(body.body ?? "");
     if (noteBody.length > MAX_NOTE_BODY) {
       return NextResponse.json({ error: "Note is too large." }, { status: 413 });

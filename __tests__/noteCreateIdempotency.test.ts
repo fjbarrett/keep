@@ -38,6 +38,14 @@ beforeEach(() => {
 });
 
 describe("POST /api/notes idempotency", () => {
+  it("rejects a draft queued under a different signed-in account", async () => {
+    const response = await POST(new Request("https://keeptxt.com/api/notes", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, body: "Private previous-account text", ownerId: "previous-owner" }),
+    }));
+    expect(response.status).toBe(403);
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
   it("returns an existing owned note when an offline create is replayed", async () => {
     mocks.query
       .mockResolvedValueOnce({ rows: [{ count: "0" }] })
