@@ -26,6 +26,7 @@ final class NotesStore {
             guard let draft = unsent[saved.id] else { return saved }
             var visible = saved
             visible.body = draft.body
+            if draft.title != nil { visible.title = draft.resolvedTitle }
             visible.updatedAt = draft.editedAt
             return visible
         }

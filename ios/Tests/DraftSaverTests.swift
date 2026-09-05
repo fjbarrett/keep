@@ -148,6 +148,82 @@ final class DraftSaverTests: XCTestCase {
         XCTAssertTrue(sut.items.isEmpty)
     }
 
+    func testTitleChangesDuringCreateKeepLatestTitleAndEmptyBody() async throws {
+        let started = expectation(description: "create starts")
+        var first: FixtureProtocol?
+        var methods: [String] = []
+        FixtureProtocol.respond = { request in
+            methods.append(request.request.httpMethod!)
+            if methods.count == 1 {
+                XCTAssertEqual(request.payload["title"] as? String, "First title")
+                first = request; started.fulfill()
+            } else {
+                XCTAssertEqual(request.payload["title"] as? String, "Chosen title")
+                XCTAssertEqual(request.payload["body"] as? String, "")
+                var row = NotesStoreTests.row("")
+                row["title"] = "Chosen title"
+                request.reply(["note": row])
+            }
+        }
+        let sut = try saver()
+        sut.stage(id: id, body: "", base: nil, title: "First title")
+        sut.start(id)
+        await fulfillment(of: [started], timeout: 2)
+        sut.stage(id: id, body: "", base: nil, title: "Chosen title")
+        var row = NotesStoreTests.row("")
+        row["title"] = "First title"
+        first?.reply(["note": row])
+        await sut.waitForSave(id)
+        XCTAssertEqual(methods, ["POST", "PATCH"])
+        XCTAssertTrue(sut.items.isEmpty)
+    }
+
+    func testExplicitTitleSurvivesRestartAndChangedBodyHeading() async throws {
+        FixtureProtocol.respond = { $0.reply(["error": "Unavailable"], status: 503) }
+        let sut = try saver()
+        sut.stage(id: id, body: "New heading", base: note("Original"), title: "My title")
+        sut.start(id)
+        await sut.waitForSave(id)
+        try sut.activate(owner: nil)
+        let restored = try saver()
+        XCTAssertEqual(restored.items[id]?.snapshot.title, "My title")
+        FixtureProtocol.respond = { request in
+            XCTAssertEqual(request.payload["title"] as? String, "My title")
+            XCTAssertEqual(request.payload["body"] as? String, "New heading")
+            var row = NotesStoreTests.row("New heading")
+            row["title"] = "My title"
+            request.reply(["note": row])
+        }
+        restored.retryAll()
+        await restored.waitForSave(id)
+        XCTAssertTrue(restored.items.isEmpty)
+    }
+
+    func testRemoteTitleConflictKeepsLocalTitleAndCopiesIt() async throws {
+        FixtureProtocol.respond = { request in
+            var row = NotesStoreTests.row("Same body")
+            row["title"] = "Other device title"
+            row["updatedAt"] = 2
+            request.reply(["note": row], status: 409)
+        }
+        let sut = try saver()
+        sut.stage(id: id, body: "Same body", base: note("Same body"), title: "My title")
+        sut.start(id)
+        await sut.waitForSave(id)
+        XCTAssertEqual(sut.items[id]?.title, "My title")
+        XCTAssertNotNil(sut.errors[id])
+        FixtureProtocol.respond = { request in
+            XCTAssertEqual(request.payload["title"] as? String, "My title")
+            var row = NotesStoreTests.row("Same body")
+            row["id"] = request.payload["id"]
+            row["title"] = "My title"
+            request.reply(["note": row])
+        }
+        let copy = try XCTUnwrap(sut.saveCopy(id))
+        await sut.waitForSave(copy)
+        XCTAssertTrue(sut.items.isEmpty)
+    }
+
     func testLateAcknowledgementCannotPublishIntoAnotherAccount() async throws {
         let started = expectation(description: "save starts")
         var first: FixtureProtocol?

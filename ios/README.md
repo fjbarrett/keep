@@ -116,8 +116,14 @@ remote edit is preserved and the local draft offers retry or save-as-copy.
 Permanent deletion waits for pending saves and retires the draft.
 
 The interface uses SwiftUI controls, including `ShareLink`. Reading settings
-provide text size, line spacing, and line width. Markdown headings expose
-heading semantics; images render with alt text and loading/retry states.
+provide text size, line spacing, and line width. iPhone and iPad always edit raw
+Markdown as plain text. After the first save, the editor's Note color menu offers
+eight named color swatches and None, with a checkmark for the current selection.
+Both fields are directly editable. New notes focus the title first, and Return
+moves into the framed body with a Start writing prompt. The keyboard toolbar
+has Done to dismiss it. Explicit titles are included in durable drafts and recovery.
+The Mac Markdown preview retains heading semantics and image alt text with
+loading/retry states.
 The editor has a Note body label, notes expose state and accessibility actions,
 and save errors are announced. Platform services still use Apple frameworks
 for authentication, clipboard, Spotlight, networking, and persistence.

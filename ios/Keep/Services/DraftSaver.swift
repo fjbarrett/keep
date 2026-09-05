@@ -40,11 +40,11 @@ final class DraftSaver {
         self.owner = owner
     }
 
-    func stage(id: String, body: String, base: Note?) {
+    func stage(id: String, body: String, base: Note?, title: String? = nil) {
         guard let owner else { return }
         let previous = items[id]
         let draft = NoteDraft(id: id, body: body, base: previous == nil ? base : previous!.base,
-                              revision: (previous?.revision ?? 0) + 1)
+                              revision: (previous?.revision ?? 0) + 1, title: title ?? previous?.title)
         items[id] = draft
         do {
             try storage.save(draft, owner: owner)
@@ -79,22 +79,27 @@ final class DraftSaver {
                     do {
                         if let base = draft.base {
                             var patch: [String: Any] = ["body": draft.body, "expectedUpdatedAt": base.updatedAt]
-                            if draft.body.components(separatedBy: "\n").first != base.body.components(separatedBy: "\n").first
+                            if draft.title != nil {
+                                patch["title"] = draft.resolvedTitle
+                                if draft.body.components(separatedBy: "\n").first != base.body.components(separatedBy: "\n").first {
+                                    patch["summary"] = NSNull()
+                                }
+                            } else if draft.body.components(separatedBy: "\n").first != base.body.components(separatedBy: "\n").first
                                 || base.title.trimmingCharacters(in: .whitespaces).isEmpty {
                                 patch["title"] = NoteTitle.infer(draft.body)
                                 patch["summary"] = NSNull()
                             }
                             saved = try await api.update(id: id, patch: patch)
                         } else {
-                            saved = try await api.create(body: draft.body, title: NoteTitle.infer(draft.body),
+                            saved = try await api.create(body: draft.body, title: draft.resolvedTitle,
                                                          id: id, ownerID: owner)
                         }
-                    } catch APIError.conflict(let remote) where remote.body == draft.body {
+                    } catch APIError.conflict(let remote) where draft.matches(remote) {
                         // The previous request committed but its acknowledgement was lost.
                         saved = remote
                     }
                     guard session == generation, var current = items[id] else { return }
-                    if current.revision == draft.revision, current.body == saved.body {
+                    if current.revision == draft.revision, current.matches(saved) {
                         try storage.remove(id, owner: owner)
                         items[id] = nil
                     } else {
@@ -107,7 +112,9 @@ final class DraftSaver {
                     guard session == generation else { return }
                     if case APIError.conflict(let remote) = error {
                         onSaved(remote)
-                        if remote.body == draft.base?.body, remote.updatedAt != draft.base?.updatedAt,
+                        if remote.body == draft.base?.body,
+                           draft.title == nil || remote.title == draft.base?.title || remote.title == draft.resolvedTitle,
+                           remote.updatedAt != draft.base?.updatedAt,
                            var current = items[id] {
                             // A flag/title change does not conflict with our body edit.
                             current.base = remote
@@ -155,7 +162,7 @@ final class DraftSaver {
     func saveCopy(_ id: String) -> String? {
         guard workers[id] == nil, let owner, let draft = items[id] else { return nil }
         let copy = NoteDraft(id: UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased(),
-                             body: draft.body)
+                             body: draft.body, title: draft.title)
         do {
             try storage.save(copy, owner: owner)
             try storage.remove(id, owner: owner)
