@@ -1,8 +1,9 @@
 # Keep — iOS (SwiftUI)
 
 A native SwiftUI client for the Keep web app, talking to the existing
-Next.js API (`/api/notes`). This is an early **scaffold**: models, an API
-client, an observable store, and list/editor views.
+Next.js API (`/api/notes`), with universal iPhone/iPad support and a separate
+macOS app. Both clients share account-scoped durable drafts, conditional saves,
+and recovery actions.
 
 ![Keep on iOS](docs/screenshot.png)
 
@@ -106,16 +107,43 @@ minutes until you opt in:
 gh variable set IOS_SCREENSHOT --body true
 ```
 
-## Not done yet (intentionally)
+## Saving and accessibility
 
-- Offline cache / sync, search, markdown rendering, color picker, and version
-  history.
-- Launch assets.
+Edits are journaled to per-account, per-backend files before network work.
+A new note keeps the same ID across retries. Opening a note does not write it
+back; body updates name the server version they were based on. A conflicting
+remote edit is preserved and the local draft offers retry or save-as-copy.
+Permanent deletion waits for pending saves and retires the draft.
 
-## Roadmap (suggested)
+The interface uses SwiftUI controls, including `ShareLink`. Reading settings
+provide text size, line spacing, and line width. Markdown headings expose
+heading semantics; images render with alt text and loading/retry states.
+The editor has a Note body label, notes expose state and accessibility actions,
+and save errors are announced. Platform services still use Apple frameworks
+for authentication, clipboard, Spotlight, networking, and persistence.
 
-1. ~~Auth (sign-in → session cookie)~~ — done for email/password + Google
-2. Offline cache (SwiftData) + optimistic updates
-3. Markdown preview + syntax highlighting
-4. Pin/color/archive parity with web context menus
-5. Share extension ("Save to Keep")
+## Verification
+
+```bash
+cd ios
+xcodegen generate
+xcodebuild -project Keep.xcodeproj -scheme KeepCoreTests \
+  -destination 'platform=macOS' test
+xcodebuild -project Keep.xcodeproj -scheme KeepMac \
+  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Keep.xcodeproj -scheme Keep \
+  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+The native CI workflow runs the shared model/service tests and builds both app
+schemes. Simulator and Mac fixture checks cover save failure/recovery, stable
+creation, reading settings, and Markdown images. Physical-device performance,
+VoiceOver rotor interaction, Voice Control, and Switch Control still need hands-on
+verification; accessibility metadata and simulator screenshots do not establish
+complete assistive-technology coverage.
+
+## Future work
+
+- A full offline catalogue and broader synchronization beyond the draft journal.
+- Native bulk import/export, image paste/upload, version history, and share extension.
+- Optional read-aloud and richer accessibility preferences, with user testing.
