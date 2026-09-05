@@ -52,10 +52,10 @@ struct NotesListView: View {
     @State private var filter: NoteFilter = .all
     @State private var query = ""
     @State private var showReadingSettings = false
-    @State private var composing = false
     @State private var pendingDelete: Note?
     @State private var shareTarget: ShareTarget?
     @State private var export: NoteExport?
+    let openNote: (Note?) -> Void
 
     private var notes: [Note] {
         NotesStore.matching(
@@ -67,9 +67,11 @@ struct NotesListView: View {
     var body: some View {
         List {
             ForEach(notes) { note in
-                NavigationLink(value: note.id) {
+                Button { openNote(note) } label: {
                     NoteRow(note: note)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityValue(note.accessibilityState)
                 .accessibilityActions { menu(for: note) }
                 .contextMenu { menu(for: note) }
@@ -97,14 +99,11 @@ struct NotesListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { viewMenu }
             ToolbarItem(placement: .primaryAction) {
-                Button { composing = true } label: {
+                Button { openNote(nil) } label: {
                     Label("New note", systemImage: "square.and.pencil")
                 }
                 .disabled(!store.canEdit)
             }
-        }
-        .sheet(isPresented: $composing) {
-            NavigationStack { NoteEditorView(note: nil) }
         }
         .sheet(isPresented: $showReadingSettings) {
             NavigationStack {

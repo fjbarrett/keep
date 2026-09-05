@@ -4,7 +4,7 @@ struct NoteExportMenu: View {
     let export: (NoteExport.Format) -> Void
 
     var body: some View {
-        Menu("Export file", systemImage: "square.and.arrow.up") {
+        Menu("Export file", systemImage: "arrow.down.to.line") {
             ForEach(NoteExport.Format.allCases, id: \.self) { format in
                 Button(format.label) { export(format) }
             }

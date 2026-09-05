@@ -7,6 +7,8 @@ struct NoteDraft: Codable, Equatable, Identifiable {
     var body: String
     /// Nil preserves legacy automatic titles; non-nil is an explicitly edited title.
     var title: String?
+    /// Nil leaves color unchanged; an empty string explicitly removes it.
+    var color: String?
     var base: Note?
     var revision: Int
     var editedAt = Date().timeIntervalSince1970 * 1000
@@ -17,6 +19,7 @@ struct NoteDraft: Codable, Equatable, Identifiable {
             highlight: false, tags: [], createdAt: editedAt, updatedAt: editedAt)
         note.body = body
         if title != nil { note.title = resolvedTitle }
+        note.color = resolvedColor
         note.updatedAt = editedAt
         return note
     }
@@ -30,12 +33,19 @@ struct NoteDraft: Codable, Equatable, Identifiable {
 
     func matches(_ note: Note) -> Bool {
         body == note.body && (title == nil || resolvedTitle == note.title)
+            && (color == nil || resolvedColor == note.color)
     }
 
-    init(id: String, body: String, base: Note? = nil, revision: Int = 1, title: String? = nil) {
+    var resolvedColor: String? {
+        guard let color else { return base?.color }
+        return color.isEmpty ? nil : color
+    }
+
+    init(id: String, body: String, base: Note? = nil, revision: Int = 1, title: String? = nil, color: String? = nil) {
         self.id = id
         self.body = body
         self.title = title
+        self.color = color
         self.base = base
         self.revision = revision
     }

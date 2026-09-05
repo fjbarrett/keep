@@ -40,11 +40,12 @@ actor KeepAPI {
     }
 
     func create(body: String, title: String? = nil, summary: String? = nil,
-                id: String? = nil, ownerID: String? = nil) async throws -> Note {
+                id: String? = nil, ownerID: String? = nil, color: String? = nil) async throws -> Note {
         var json: [String: Any] = ["body": body]
         if let id { json["id"] = id }
         if let ownerID { json["ownerId"] = ownerID }
         if let title { json["title"] = title }
+        if let color { json["color"] = color }
         if let summary, !summary.isEmpty { json["summary"] = summary }
         return try await request(
             "/api/notes", method: "POST",

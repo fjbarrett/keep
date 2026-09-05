@@ -224,6 +224,80 @@ final class DraftSaverTests: XCTestCase {
         XCTAssertTrue(sut.items.isEmpty)
     }
 
+    func testNewColorSurvivesRestartAndIsIncludedInCreate() async throws {
+        FixtureProtocol.respond = { $0.reply(["error": "Unavailable"], status: 503) }
+        let sut = try saver()
+        sut.stage(id: id, body: "", base: nil, color: "yellow")
+        sut.start(id)
+        await sut.waitForSave(id)
+        try sut.activate(owner: nil)
+        let restored = try saver()
+        XCTAssertEqual(restored.items[id]?.snapshot.color, "yellow")
+        restored.stage(id: id, body: "Now with text", base: nil)
+        FixtureProtocol.respond = { request in
+            XCTAssertEqual(request.request.httpMethod, "POST")
+            XCTAssertEqual(request.payload["color"] as? String, "yellow")
+            var row = NotesStoreTests.row("Now with text")
+            row["color"] = "yellow"
+            request.reply(["note": row])
+        }
+        restored.start(id)
+        await restored.waitForSave(id)
+        XCTAssertTrue(restored.items.isEmpty)
+    }
+
+    func testClearingColorDuringCreateSavesLatestSelection() async throws {
+        let started = expectation(description: "color create starts")
+        var first: FixtureProtocol?
+        var methods: [String] = []
+        FixtureProtocol.respond = { request in
+            methods.append(request.request.httpMethod!)
+            if methods.count == 1 {
+                XCTAssertEqual(request.payload["color"] as? String, "yellow")
+                first = request; started.fulfill()
+            } else {
+                XCTAssertTrue(request.payload["color"] is NSNull)
+                request.reply(["note": NotesStoreTests.row("Text")])
+            }
+        }
+        let sut = try saver()
+        sut.stage(id: id, body: "Text", base: nil, color: "yellow")
+        sut.start(id)
+        await fulfillment(of: [started], timeout: 2)
+        sut.stage(id: id, body: "Text", base: nil, color: "")
+        var row = NotesStoreTests.row("Text")
+        row["color"] = "yellow"
+        first?.reply(["note": row])
+        await sut.waitForSave(id)
+        XCTAssertEqual(methods, ["POST", "PATCH"])
+        XCTAssertTrue(sut.items.isEmpty)
+    }
+
+    func testConflictingColorIsKeptInRecoveryCopy() async throws {
+        FixtureProtocol.respond = { request in
+            var row = NotesStoreTests.row("Text")
+            row["color"] = "green"
+            row["updatedAt"] = 2
+            request.reply(["note": row], status: 409)
+        }
+        let sut = try saver()
+        sut.stage(id: id, body: "Text", base: note("Text"), color: "yellow")
+        sut.start(id)
+        await sut.waitForSave(id)
+        XCTAssertNotNil(sut.errors[id])
+        XCTAssertEqual(sut.items[id]?.snapshot.color, "yellow")
+        FixtureProtocol.respond = { request in
+            XCTAssertEqual(request.payload["color"] as? String, "yellow")
+            var row = NotesStoreTests.row("Text")
+            row["id"] = request.payload["id"]
+            row["color"] = "yellow"
+            request.reply(["note": row])
+        }
+        let copy = try XCTUnwrap(sut.saveCopy(id))
+        await sut.waitForSave(copy)
+        XCTAssertTrue(sut.items.isEmpty)
+    }
+
     func testLateAcknowledgementCannotPublishIntoAnotherAccount() async throws {
         let started = expectation(description: "save starts")
         var first: FixtureProtocol?
