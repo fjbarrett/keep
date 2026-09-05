@@ -64,6 +64,7 @@ export function useNotes(ownerId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [replayTick, setReplayTick] = useState(0);
+  const guestWriteFailedRef = useRef(false);
   const inflightRef = useRef(0);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,6 +77,28 @@ export function useNotes(ownerId: string | null) {
   const cacheLoadGenerationRef = useRef(0);
   const ownerRef = useRef(ownerId);
   ownerRef.current = ownerId;
+
+  const persistGuest = useCallback((snapshot: Note[]) => {
+    try {
+      writeGuestNotes(snapshot);
+      if (guestWriteFailedRef.current) { setError(null); setSyncStatus("idle"); }
+      guestWriteFailedRef.current = false;
+    } catch {
+      guestWriteFailedRef.current = true;
+      setError("This browser could not save your local notes. Keep this page open and copy or download your text, then retry.");
+      setSyncStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!guestWriteFailedRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
 
   useEffect(() => {
     notesRef.current = notes;
@@ -169,7 +192,7 @@ export function useNotes(ownerId: string | null) {
 
   const refresh = useCallback(async () => {
     if (!ownerId) {
-      const guestNotes = readGuestNotes();
+      const guestNotes = guestWriteFailedRef.current ? notesRef.current : readGuestNotes();
       setLocalNoteIds(new Set(guestNotes.map((note) => note.id)));
       notesRef.current = guestNotes;
       setNotes(guestNotes);
@@ -264,9 +287,9 @@ export function useNotes(ownerId: string | null) {
   useEffect(() => {
     if (!hydrated) return;
     if (isGuest || localNoteIds.size > 0) {
-      writeGuestNotes(notes.filter((note) => isGuest || localNoteIds.has(note.id)));
+      persistGuest(notes.filter((note) => isGuest || localNoteIds.has(note.id)));
     }
-  }, [hydrated, isGuest, localNoteIds, notes]);
+  }, [hydrated, isGuest, localNoteIds, notes, persistGuest]);
 
   const syncingRef = useRef(false);
   useEffect(() => {
@@ -408,6 +431,7 @@ export function useNotes(ownerId: string | null) {
       const next = [note, ...notesRef.current.filter((item) => item.id !== note.id)];
       notesRef.current = next;
       setNotes(next);
+      persistGuest(next);
       return note;
     }
 
@@ -464,7 +488,7 @@ export function useNotes(ownerId: string | null) {
       if (ownerRef.current === ownerId) setError(e instanceof Error ? e.message : "Failed to create");
       return note;
     }
-  }, [isGuest, ownerId, rememberSaved, requestReplay, submitDraft, trackSync]);
+  }, [isGuest, ownerId, persistGuest, rememberSaved, requestReplay, submitDraft, trackSync]);
 
   const update = useCallback((
     id: string,
@@ -516,6 +540,7 @@ export function useNotes(ownerId: string | null) {
     };
 
     if (isGuest || localNoteIds.has(id)) {
+      persistGuest(optimisticNotes.filter((note) => isGuest || localNoteIds.has(note.id)));
       if (!needsMeta || patch.body === undefined || options.keepalive) return Promise.resolve();
       return metadataForBody(patch.body).then(applyGeneratedMeta);
     }
@@ -611,10 +636,13 @@ export function useNotes(ownerId: string | null) {
     // Exit saves must start their keepalive fetch before the page is discarded;
     // waiting behind an older promise would prevent the request from launching.
     return options.keepalive ? save() : enqueueSave(id, save);
-  }, [enqueueSave, isGuest, localNoteIds, ownerId, rememberSaved, requestReplay, submitDraft, trackSync]);
+  }, [enqueueSave, isGuest, localNoteIds, ownerId, persistGuest, rememberSaved, requestReplay, submitDraft, trackSync]);
 
   const retryDrafts = useCallback(async (copyId?: string) => {
-    if (!ownerId) return;
+    if (!ownerId || guestWriteFailedRef.current) {
+      persistGuest(notesRef.current.filter((note) => !ownerId || localNoteIds.has(note.id)));
+      if (!ownerId) return;
+    }
     try {
       for (const draft of readNoteDrafts(ownerId)) {
         if (copyId && draft.note.id !== copyId) continue;
@@ -640,7 +668,7 @@ export function useNotes(ownerId: string | null) {
         setError(error instanceof Error ? error.message : "Failed to sync draft");
       }
     }
-  }, [enqueueSave, ownerId, refresh, rememberSaved, requestReplay, submitDraft]);
+  }, [enqueueSave, localNoteIds, ownerId, persistGuest, refresh, rememberSaved, requestReplay, submitDraft]);
 
   const trash = useCallback(async (id: string) => {
     const n = notesRef.current.find((note) => note.id === id);
