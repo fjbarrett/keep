@@ -72,19 +72,11 @@ struct NotesListView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(notes) { note in
-                    Button { openNote(note) } label: {
-                        NoteCard(note: note)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityValue(note.accessibilityState)
-                    .accessibilityHint("Opens note. Touch and hold for note actions.")
-                    .accessibilityActions { menu(for: note) }
-                    .contextMenu { menu(for: note) }
-                }
+            if #available(iOS 26, *) {
+                GlassEffectContainer(spacing: 8) { noteGrid }
+            } else {
+                noteGrid
             }
-            .padding(12)
         }
         .scrollBounceBehavior(.always)
         .scrollDismissesKeyboard(.interactively)
@@ -139,6 +131,22 @@ struct NotesListView: View {
         } message: {
             Text("“\(pendingDelete?.displayTitle ?? "")” will be deleted from all your devices. You can’t undo this.")
         }
+    }
+
+    private var noteGrid: some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(notes) { note in
+                Button { openNote(note) } label: {
+                    NoteCard(note: note)
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(note.accessibilityState)
+                .accessibilityHint("Opens note. Touch and hold for note actions.")
+                .accessibilityActions { menu(for: note) }
+                .contextMenu { menu(for: note) }
+            }
+        }
+        .padding(12)
     }
 
     private var viewMenu: some View {
@@ -220,7 +228,6 @@ struct NotesListView: View {
 
 private struct NoteCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .body) private var cardHeight = 168
     let note: Note
 
@@ -243,42 +250,57 @@ private struct NoteCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
-            if note.pinned || note.shareToken != nil {
-                HStack(spacing: 8) {
-                    if note.pinned { Image(systemName: "pin.fill") }
-                    if note.shareToken != nil { Image(systemName: "link") }
+            HStack(spacing: 8) {
+                if let color = NotePalette.color(for: note.color) {
+                    Circle().fill(color).frame(width: 8, height: 8)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+                Spacer(minLength: 0)
+                if note.pinned { Image(systemName: "pin.fill") }
+                if note.shareToken != nil { Image(systemName: "link") }
             }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(minHeight: 14)
+            .accessibilityHidden(true)
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 0 : cardHeight,
                maxHeight: dynamicTypeSize.isAccessibilitySize ? nil : cardHeight,
                alignment: .topLeading)
-        .background {
-            let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-            shape.fill(Color(.secondarySystemGroupedBackground))
-            if let color = NotePalette.color(for: note.color) {
-                shape.fill(color.opacity(colorScheme == .dark ? 0.26 : 0.22))
-            }
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .modifier(NoteCardSurface())
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
 
-#Preview("Colored note cards") {
+private struct NoteCardSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+        } else {
+            content.background(.regularMaterial,
+                               in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+}
+
+#Preview("Glass note cards") {
     let note = Note(id: "preview", title: "Weekend plans", color: "yellow",
                     body: "Train tickets\nPlaces to visit\nBring a notebook", pinned: true,
                     archived: false, trashed: false, markdown: false, highlight: false,
                     tags: [], createdAt: 0, updatedAt: 0)
-    HStack(alignment: .top, spacing: 12) {
+    let cards = HStack(alignment: .top, spacing: 12) {
         NoteCard(note: note)
         NoteCard(note: Note(id: "empty", title: "A new idea", body: "", pinned: false,
                            archived: false, trashed: false, markdown: false, highlight: false,
                            tags: [], createdAt: 0, updatedAt: 0))
+    }
+    Group {
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: 8) { cards }
+        } else {
+            cards
+        }
     }
     .padding(12)
     .background(Color(.systemGroupedBackground))
