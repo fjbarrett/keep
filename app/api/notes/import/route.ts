@@ -6,7 +6,7 @@ import { pool, ready } from "@/lib/db";
 import { heuristicNoteMeta } from "@/lib/titleModel";
 import { internalError } from "@/lib/apiError";
 import { readFormDataBody, requestBodyError } from "@/lib/requestBody";
-import { MAX_NOTES_PER_USER } from "@/lib/noteLimits";
+import { MAX_NOTES_PER_USER, ImportNoteTooLarge, validateImportedBodies } from "@/lib/noteLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       await file.arrayBuffer(),
     );
     const importable = notes.filter((note) => !note.trashed);
+    validateImportedBodies(importable.map((note) => note.body));
 
     await ready();
     const usage = await pool().query<{ count: string }>(
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
       truncated: truncated || withinQuota.length < importable.length,
     });
   } catch (err) {
+    if (err instanceof ImportNoteTooLarge) return NextResponse.json({ error: err.message }, { status: 413 });
     const tooLarge = requestBodyError(err, "That file is too large to import (max 20 MB).");
     if (tooLarge) return tooLarge;
     return internalError("notes:import", err);

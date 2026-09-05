@@ -1,3 +1,4 @@
+import { downloadDisposition } from "@/lib/downloadDisposition";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
@@ -35,7 +36,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Content-Disposition": `inline; filename="${safeFilename(title)}.${ext}"`,
+      "Content-Disposition": downloadDisposition("inline", `${safeFilename(title)}.${ext}`),
       "Cache-Control": "no-store",
     },
   });

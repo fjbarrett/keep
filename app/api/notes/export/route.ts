@@ -1,3 +1,4 @@
+import { downloadDisposition } from "@/lib/downloadDisposition";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { noteFileContent, noteFileName, notesZip } from "@/lib/noteExport";
@@ -31,7 +32,7 @@ export async function GET() {
       const note = notes[0];
       return new NextResponse(noteFileContent(note), {
         headers: {
-          "Content-Disposition": `attachment; filename="${noteFileName(note)}"`,
+          "Content-Disposition": downloadDisposition("attachment", noteFileName(note)),
           "Content-Type": "text/plain; charset=utf-8",
         },
       });

@@ -1,3 +1,4 @@
+import { validateImportedBodies } from "@/lib/noteLimits";
 import { Note } from "@/lib/types";
 import { localNoteId, metadataForBody } from "@/lib/notesClient";
 
@@ -9,6 +10,7 @@ export async function importGuestKeepFile(file: File) {
   );
   const now = Date.now();
   const importable = imported.filter((note) => !note.trashed);
+  validateImportedBodies(importable.map((note) => note.body));
   const notes: Note[] = [];
 
   for (const note of importable) {
@@ -46,13 +48,18 @@ export async function readImportedTextBodies(file: File): Promise<string[]> {
         bodies.push(await entry.async("string"));
       }
     }
+    validateImportedBodies(bodies);
     return bodies;
   }
 
   if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
     const { extractPdfText } = await import("@/lib/pdfText");
-    return [await extractPdfText(file)];
+    const bodies = [await extractPdfText(file)];
+    validateImportedBodies(bodies);
+    return bodies;
   }
 
-  return [await file.text()];
+  const bodies = [await file.text()];
+  validateImportedBodies(bodies);
+  return bodies;
 }
