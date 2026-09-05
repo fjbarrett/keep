@@ -25,6 +25,7 @@ struct NoteEditorView: View {
     var body: some View {
         VStack(alignment: .leading) {
             TextField("Title", text: Binding(get: { title }, set: { value in
+                guard value != title else { return }
                 title = value
                 stageDraft()
             }))
@@ -44,6 +45,7 @@ struct NoteEditorView: View {
             }
             .padding(.vertical, 4)
             TextEditor(text: Binding(get: { body_ }, set: { value in
+                guard value != body_ else { return }
                 body_ = value
                 stageDraft()
             }))
