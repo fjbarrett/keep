@@ -1,5 +1,6 @@
 import AuthenticationServices
 import Foundation
+import CoreGraphics
 import Observation
 
 /// Observable view-model backing the notes UI.
@@ -46,6 +47,13 @@ final class NotesStore {
             else { notes.insert(note, at: 0) }
         }
         drafts.onUnauthorized = { [weak self] in self?.handle(APIError.unauthorized) }
+    }
+
+    func image(_ url: URL) async throws -> CGImage {
+        let session = sessionGeneration
+        let image = try await api.image(url)
+        guard session == sessionGeneration else { throw CancellationError() }
+        return image
     }
 
     /// Pinned first, then most-recently-updated — matches the web ordering.
