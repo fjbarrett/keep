@@ -253,7 +253,7 @@ private struct NoteCard: View {
             }
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: cardHeight,
+        .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 0 : cardHeight,
                maxHeight: dynamicTypeSize.isAccessibilitySize ? nil : cardHeight,
                alignment: .topLeading)
         .background {
