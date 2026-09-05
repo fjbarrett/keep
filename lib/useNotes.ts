@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { overlayPendingNotes } from "./pendingNotes";
-import { readNoteDrafts, writeNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
+import { saveNoteDraft } from "./saveNoteDraft";
+import { readNoteDrafts, writeNoteDraft, replaceNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
 import { Note } from "./types";
 import {
   cacheNotes,
@@ -67,6 +68,8 @@ export function useNotes(ownerId: string | null) {
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notesRef = useRef<Note[]>([]);
+  const serverNotesRef = useRef(new Map<string, Note>());
+  const submittedBodiesRef = useRef(new Map<string, Set<string>>());
   const mutationRevisionRef = useRef(new Map<string, number>());
   const saveChainsRef = useRef(new Map<string, Promise<void>>());
   const queuedNoteIdsRef = useRef(new Set<string>());
@@ -153,6 +156,17 @@ export function useNotes(ownerId: string | null) {
     return next;
   }, []);
 
+  const rememberSaved = useCallback((note: Note) => {
+    if (note.updatedAt >= (serverNotesRef.current.get(note.id)?.updatedAt ?? 0)) serverNotesRef.current.set(note.id, note);
+  }, []);
+  const submitDraft = useCallback(async (owner: string, draft: NoteDraft, options = {}) => {
+    const bodies = submittedBodiesRef.current.get(draft.note.id) ?? new Set<string>();
+    bodies.add(draft.note.body);
+    submittedBodiesRef.current.set(draft.note.id, bodies);
+    try { return await saveNoteDraft(owner, draft, options); }
+    finally { bodies.delete(draft.note.body); }
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!ownerId) {
       const guestNotes = readGuestNotes();
@@ -167,6 +181,7 @@ export function useNotes(ownerId: string | null) {
     try {
       const data = await notesApi<{ notes: Note[] }>("/api/notes");
       if (ownerRef.current !== ownerId) return;
+      data.notes.forEach(rememberSaved);
       const pending = await getPendingOps(ownerId);
       const cached = pending.length ? await getCachedNotes(ownerId) : [];
       if (ownerRef.current !== ownerId) return;
@@ -216,9 +231,11 @@ export function useNotes(ownerId: string | null) {
     } finally {
       if (ownerRef.current === ownerId) setHydrated(true);
     }
-  }, [ownerId]);
+  }, [ownerId, rememberSaved]);
 
   useEffect(() => {
+    serverNotesRef.current.clear();
+    submittedBodiesRef.current.clear();
     setHydrated(false);
     notesRef.current = [];
     setNotes([]);
@@ -266,15 +283,26 @@ export function useNotes(ownerId: string | null) {
           if (ops.length === 0) break;
 
           let blocked = false;
+          const processed = new Set<string>();
           for (const op of ops) {
+            if (processed.has(op.noteId) && op.type !== "delete") continue;
             try {
               await enqueueSave(op.noteId, async () => {
                 if (ownerRef.current !== ownerId) throw new NotesApiError("Account changed", 401);
-                if (op.type === "create" && op.payload) {
+                const draft = readNoteDrafts(ownerId).find((entry) => entry.note.id === op.noteId);
+                if (draft && op.type !== "delete") {
+                  const saved = await submitDraft(ownerId, draft);
+                  if (ownerRef.current === ownerId) rememberSaved(saved);
+                  for (const queued of ops.filter((entry) => entry.noteId === op.noteId && entry.type !== "delete")) {
+                    await removePendingOp(ownerId, queued.id);
+                  }
+                  processed.add(op.noteId);
+                } else if (op.type === "create" && op.payload) {
                   await notesApi("/api/notes", { method: "POST", json: { ...op.payload, id: op.noteId, ownerId } });
                   const draft = readNoteDrafts(ownerId).find((entry) => entry.note.id === op.noteId);
                   if (draft) writeNoteDraft(ownerId, { ...draft, type: "update" });
                 } else if (op.type === "update" && op.payload) {
+                  if (op.payload.body !== undefined) throw new NotesApiError("This older offline draft needs a recovery copy.", 409);
                   const failedCreate = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId && draft.type === "create");
                   if (failedCreate) throw new NotesApiError("The new note needs recovery before updates can sync.", 409);
                   await notesApi(`/api/notes/${op.noteId}`, { method: "PATCH", json: op.payload });
@@ -347,7 +375,7 @@ export function useNotes(ownerId: string | null) {
     window.addEventListener("online", onOnline);
     if (hydrated && navigator.onLine) replayPending();
     return () => window.removeEventListener("online", onOnline);
-  }, [enqueueSave, hydrated, ownerId, refresh, replayTick, requestReplay]);
+  }, [enqueueSave, hydrated, ownerId, refresh, rememberSaved, replayTick, requestReplay, submitDraft]);
 
   const create = useCallback(async (
     partial: Partial<Note>,
@@ -395,26 +423,11 @@ export function useNotes(ownerId: string | null) {
     try {
       if (!options.keepalive && !partial.title) meta = await metadataForBody(body);
       if (ownerRef.current !== ownerId) return note;
-      const data = await trackSync(notesApi<{ note: Note }>("/api/notes", {
-        method: "POST",
-        keepalive: options.keepalive,
-        json: {
-          id: note.id,
-          ownerId,
-          title: meta.title,
-          summary: meta.summary,
-          color: note.color,
-          body,
-          pinned: note.pinned,
-          archived: note.archived,
-          trashed: false,
-          markdown: note.markdown,
-          highlight: note.highlight,
-          tags: note.tags,
-        },
-      }));
-      removeNoteDraft(ownerId, draft);
+      draft = { ...draft, note: { ...draft.note, title: meta.title, summary: meta.summary || null } };
+      replaceNoteDraft(ownerId, draft);
+      const data = { note: await trackSync(submitDraft(ownerId, draft, options)) };
       if (ownerRef.current !== ownerId) return data.note;
+      rememberSaved(data.note);
       // Upsert, don't map: a refresh() fired by replay/reconnect can overwrite
       // notesRef with a server list that predates this POST, and a plain map
       // would then find no match and silently drop the note the user just made.
@@ -446,7 +459,7 @@ export function useNotes(ownerId: string | null) {
       if (ownerRef.current === ownerId) setError(e instanceof Error ? e.message : "Failed to create");
       return note;
     }
-  }, [isGuest, ownerId, requestReplay, trackSync]);
+  }, [isGuest, ownerId, rememberSaved, requestReplay, submitDraft, trackSync]);
 
   const update = useCallback((
     id: string,
@@ -455,6 +468,9 @@ export function useNotes(ownerId: string | null) {
   ): Promise<void> => {
     const current = notesRef.current.find((note) => note.id === id);
     if (!current) return Promise.resolve();
+    patch = Object.fromEntries(Object.entries(patch).filter(([key, value]) =>
+      JSON.stringify(value) !== JSON.stringify(current[key as keyof Note])));
+    if (!Object.keys(patch).length) return Promise.resolve();
 
     const bodyChanged =
       patch.body !== undefined && patch.body !== current.body;
@@ -506,6 +522,8 @@ export function useNotes(ownerId: string | null) {
       draft = writeNoteDraft(ownerId, {
         note: optimistic, patch: { ...previousDraft?.patch, ...initialPatch },
         type: previousDraft?.type ?? "update",
+        base: previousDraft ? previousDraft.base : serverNotesRef.current.get(id) ?? current,
+        predecessors: [...new Set([...(previousDraft?.predecessors ?? []), ...(submittedBodiesRef.current.get(id) ?? [])])],
       });
     } catch {
       setError("This browser could not keep the draft. Keep this page open and copy your text.");
@@ -514,21 +532,23 @@ export function useNotes(ownerId: string | null) {
     cacheNote(ownerId, optimistic).catch(() => {});
 
     const save = async () => {
-      let nextPatch = initialPatch;
+      if (ownerRef.current !== ownerId || mutationRevisionRef.current.get(id) !== revision) return;
+      let nextPatch = draft.patch;
       if (needsMeta && patch.body !== undefined && !options.keepalive) {
         const meta = await metadataForBody(patch.body);
         nextPatch = {
-          ...patch,
+          ...draft.patch,
           title: meta.title,
           ...(meta.summary ? { summary: meta.summary } : {}),
         };
         applyGeneratedMeta(meta);
       }
 
-      if (draft.type === "create") {
-        setError("This new note is saved on this device. Retry to sync it.");
-        return;
-      }
+      if (ownerRef.current !== ownerId || mutationRevisionRef.current.get(id) !== revision) return;
+      // Keep the acknowledged base written by an earlier serialized save.
+      const staged = readNoteDrafts(ownerId).find((entry) => entry.revision === draft.revision);
+      draft = { ...(staged ?? draft), patch: nextPatch };
+      replaceNoteDraft(ownerId, draft);
       const alreadyQueued =
         !options.keepalive &&
         (queuedNoteIdsRef.current.has(id) ||
@@ -547,13 +567,9 @@ export function useNotes(ownerId: string | null) {
       }
 
       try {
-        const data = await trackSync(notesApi<{ note: Note }>(`/api/notes/${id}`, {
-          method: "PATCH",
-          keepalive: options.keepalive,
-          json: nextPatch,
-        }));
-        removeNoteDraft(ownerId, draft);
+        const data = { note: await trackSync(submitDraft(ownerId, draft, options)) };
         if (ownerRef.current !== ownerId) return;
+        rememberSaved(data.note);
         if (mutationRevisionRef.current.get(id) === revision) {
           const next = notesRef.current.map((note) =>
             note.id === id ? data.note : note,
@@ -564,6 +580,11 @@ export function useNotes(ownerId: string | null) {
         }
         setError(null);
       } catch (error) {
+        if (ownerRef.current !== ownerId) return;
+        if (mutationRevisionRef.current.get(id) !== revision) {
+          if (!readNoteDrafts(ownerId).length) setSyncStatus("idle");
+          return;
+        }
         if (isRetryableNoteError(error)) {
           await addPendingOp(ownerId, {
             type: "update",
@@ -585,7 +606,7 @@ export function useNotes(ownerId: string | null) {
     // Exit saves must start their keepalive fetch before the page is discarded;
     // waiting behind an older promise would prevent the request from launching.
     return options.keepalive ? save() : enqueueSave(id, save);
-  }, [enqueueSave, isGuest, localNoteIds, ownerId, refresh, requestReplay, trackSync]);
+  }, [enqueueSave, isGuest, localNoteIds, ownerId, rememberSaved, requestReplay, submitDraft, trackSync]);
 
   const retryDrafts = useCallback(async (copyId?: string) => {
     if (!ownerId) return;
@@ -594,27 +615,27 @@ export function useNotes(ownerId: string | null) {
         if (copyId && draft.note.id !== copyId) continue;
         await enqueueSave(draft.note.id, async () => {
           if (ownerRef.current !== ownerId) return;
-          const copy = copyId === draft.note.id;
-          const creating = copy || draft.type === "create";
-          const payload = creating ? { ...draft.note, id: copy ? localNoteId() : draft.note.id, ownerId,
-            shareToken: null } : draft.patch;
           const queued = await getPendingOps(ownerId);
-          const data = await notesApi<{ note: Note }>(creating ? "/api/notes" : `/api/notes/${draft.note.id}`, {
-            method: creating ? "POST" : "PATCH", json: payload,
-          });
-          if (creating && data.note.body !== draft.note.body) {
-            await notesApi(`/api/notes/${data.note.id}`, { method: "PATCH",
-              json: { ...draft.patch, body: draft.note.body, expectedUpdatedAt: data.note.updatedAt } });
+          let pending = draft;
+          if (copyId === draft.note.id) {
+            const note = { ...draft.note, id: localNoteId(), shareToken: null };
+            pending = writeNoteDraft(ownerId, { note, patch: note, type: "create" });
+            removeNoteDraft(ownerId, draft);
+            for (const op of queued.filter((op) => op.noteId === draft.note.id)) await removePendingOp(ownerId, op.id);
           }
-          removeNoteDraft(ownerId, draft);
+          const saved = await submitDraft(ownerId, pending);
+          if (ownerRef.current === ownerId) rememberSaved(saved);
           for (const op of queued.filter((op) => op.noteId === draft.note.id)) await removePendingOp(ownerId, op.id);
         });
       }
       if (ownerRef.current === ownerId) { requestReplay(); await refresh(); }
     } catch (error) {
-      if (ownerRef.current === ownerId) setError(error instanceof Error ? error.message : "Failed to sync draft");
+      if (ownerRef.current === ownerId) {
+        setNotes((notes) => overlayNoteDrafts(notes, readNoteDrafts(ownerId)));
+        setError(error instanceof Error ? error.message : "Failed to sync draft");
+      }
     }
-  }, [enqueueSave, ownerId, refresh, requestReplay]);
+  }, [enqueueSave, ownerId, refresh, rememberSaved, requestReplay, submitDraft]);
 
   const trash = useCallback(async (id: string) => {
     const n = notesRef.current.find((note) => note.id === id);

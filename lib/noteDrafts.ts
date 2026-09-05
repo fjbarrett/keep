@@ -50,6 +50,9 @@ export function clearNoteDrafts(owner: string) {
 
 export function overlayNoteDrafts(notes: Note[], drafts: NoteDraft[]) {
   const merged = new Map(notes.map((note) => [note.id, note]));
-  for (const draft of drafts) merged.set(draft.note.id, { ...merged.get(draft.note.id), ...draft.note });
+  for (const draft of drafts) merged.set(draft.note.id, {
+    ...(merged.get(draft.note.id) ?? draft.note), ...draft.patch,
+    id: draft.note.id, updatedAt: draft.note.updatedAt,
+  });
   return [...merged.values()];
 }
