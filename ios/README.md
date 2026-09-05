@@ -46,7 +46,7 @@ Keep/
   Assets.xcassets          App icon (the web's blue note mark, full-bleed)
   Views/RootView.swift     NavigationStack + initial load
   Views/SignInView.swift   Native email/password sign-in sheet
-  Views/NotesListView.swift List, swipe pin/trash, compose
+  Views/NotesListView.swift Colored note grid, context actions, compose
   Views/NoteEditorView.swift Debounced autosave editor (new→edit bridge)
 ```
 
@@ -121,8 +121,13 @@ Markdown as plain text. From the moment a note opens, its Note color button open
 a compact grid of eight swatches and a no-color icon, with a ring around the
 current selection. Options have 44-point touch targets and VoiceOver color names.
 Color choices are stored with the draft and included in creation, retry, and recovery.
-Opening a note presents an editor modal over the notes list. Close or swipe down
-returns to the same list, filter, and search; dismissing flushes pending edits.
+Notes appear in a two-column grid of rounded cards tinted with their chosen color.
+Each card shows its title and a short summary or body preview, with pin/share indicators.
+Accessibility text sizes use one column and allow longer titles. Touch and hold a
+card for note actions; VoiceOver exposes the same actions. Search, view filters,
+pull-to-refresh, and pinned-first ordering apply to the grid.
+Opening a note presents an editor modal over the grid. Close or swipe down
+returns to the same grid, filter, and search; dismissing flushes pending edits.
 New notes and Spotlight results use the same modal. Both fields are directly
 editable. New notes focus the title first, and Return
 moves into the blank body, without a placeholder. Both inputs have no outlines;
