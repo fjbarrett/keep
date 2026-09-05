@@ -2,6 +2,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { marked } from "marked";
+import { localNoteId } from "@/lib/notesClient";
+import { mapTextOffset } from "@/lib/mapTextOffset";
 import { Note } from "@/lib/types";
 import { HighlightedEditor, HighlightedEditorHandle } from "./HighlightedEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
@@ -17,7 +19,7 @@ export type EditorTarget =
   | { mode: "edit"; note: Note; highlightQuery?: string; autoFocus?: boolean }
   | null;
 
-type SaveOptions = { keepalive?: boolean };
+type SaveOptions = { keepalive?: boolean; base?: Note };
 
 // Text metrics for the plain editor. The search backdrop mirrors the textarea
 // pixel-for-pixel, so both must share these classes or match boxes drift.
@@ -78,6 +80,11 @@ export function NoteEditor({
   useAutohideScrollbar(scrollRef);
   const createdIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
+  const editorGenerationRef = useRef(0);
+  const editingBaseRef = useRef<Note | undefined>(undefined);
+  const liveNoteRef = useRef<Note | null>(null);
+  liveNoteRef.current = target?.mode === "edit" ? target.note : null;
+  const newDraftId = useMemo(() => localNoteId(), [target?.mode === "new" ? target : null]);
   const revisionRef = useRef(0);
   const mountedRef = useRef(true);
   const dirtyRef = useRef(dirty);
@@ -87,6 +94,13 @@ export function NoteEditor({
   const flushedRevisionRef = useRef(-1);
   const draftRef = useRef({ body, pinned, archived, markdown: previewOpen, highlight });
   draftRef.current = { body, pinned, archived, markdown: previewOpen, highlight };
+
+  const submitUpdate = useCallback((id: string, patch: Partial<Note>, options?: SaveOptions) => {
+    const base = editingBaseRef.current;
+    const changedRemotely = base?.id === id && (liveNoteRef.current?.id !== id || base.updatedAt !== liveNoteRef.current?.updatedAt);
+    const saveOptions = changedRemotely ? { ...options, base } : options;
+    return saveOptions ? onUpdate(id, patch, saveOptions) : onUpdate(id, patch);
+  }, [onUpdate]);
 
   const startCreate = useCallback(
     async (
@@ -102,25 +116,29 @@ export function NoteEditor({
     ) => {
       if (creatingRef.current) return;
       creatingRef.current = true;
+      const generation = editorGenerationRef.current;
+      createdIdRef.current = newDraftId;
+      const initial = { ...draft, id: newDraftId };
       try {
-        const note = await (options.keepalive ? onCreate(draft, options) : onCreate(draft));
-        if (!note) return;
+        const note = await (options.keepalive ? onCreate(initial, options) : onCreate(initial));
+        if (!mountedRef.current || generation !== editorGenerationRef.current) return;
+        if (!note) { createdIdRef.current = null; return; }
         createdIdRef.current = note.id;
 
         const latestRevision = revisionRef.current;
         if (latestRevision !== submittedRevision) {
-          await onUpdate(note.id, draftRef.current);
-          if (mountedRef.current && revisionRef.current === latestRevision) {
+          await submitUpdate(note.id, draftRef.current);
+          if (mountedRef.current && generation === editorGenerationRef.current && revisionRef.current === latestRevision) {
             setDirty(false);
           }
         } else if (mountedRef.current) {
           setDirty(false);
         }
       } finally {
-        creatingRef.current = false;
+        if (generation === editorGenerationRef.current) creatingRef.current = false;
       }
     },
-    [onCreate, onUpdate],
+    [onCreate, submitUpdate, newDraftId],
   );
   // Search highlighting: when a note is opened from search, paint a yellow box
   // on every match and let Tab cycle through them (see the plain-editor overlay).
@@ -139,7 +157,7 @@ export function NoteEditor({
   const targetKey =
     target?.mode === "edit"
       ? `${target.note.id}${target.highlightQuery ? `:q:${target.highlightQuery}` : ""}`
-      : target?.mode ?? "closed";
+      : target?.mode === "new" ? `new:${newDraftId}` : "closed";
   const isPanel = presentation === "panel";
   const modalRef = useModalDialog(close, !isPanel && Boolean(target));
   const editNote = target?.mode === "edit" ? target.note : null;
@@ -153,12 +171,7 @@ export function NoteEditor({
       dirtyRef.current = false;
       setDirty(false);
 
-      const pendingKey =
-        pendingTarget.mode === "edit"
-          ? `${pendingTarget.note.id}${
-              pendingTarget.highlightQuery ? `:q:${pendingTarget.highlightQuery}` : ""
-            }`
-          : pendingTarget.mode;
+      const pendingKey = activeTargetKeyRef.current;
       const restoreDirty = () => {
         if (
           !mountedRef.current ||
@@ -171,21 +184,21 @@ export function NoteEditor({
       };
       if (pendingTarget.mode === "edit") {
         const result = options.keepalive
-          ? onUpdate(pendingTarget.note.id, draftRef.current, options)
-          : onUpdate(pendingTarget.note.id, draftRef.current);
+          ? submitUpdate(pendingTarget.note.id, draftRef.current, options)
+          : submitUpdate(pendingTarget.note.id, draftRef.current);
         void Promise.resolve(result).catch(restoreDirty);
         return;
       }
       if (createdIdRef.current) {
         const result = options.keepalive
-          ? onUpdate(createdIdRef.current, draftRef.current, options)
-          : onUpdate(createdIdRef.current, draftRef.current);
+          ? submitUpdate(createdIdRef.current, draftRef.current, options)
+          : submitUpdate(createdIdRef.current, draftRef.current);
         void Promise.resolve(result).catch(restoreDirty);
       } else if (draftRef.current.body.trim() && !creatingRef.current) {
         void startCreate(draftRef.current, revision, options).catch(restoreDirty);
       }
     },
-    [onUpdate, startCreate],
+    [submitUpdate, startCreate],
   );
   const flushPendingRef = useRef(flushPending);
   flushPendingRef.current = flushPending;
@@ -203,6 +216,7 @@ export function NoteEditor({
     return () => {
       flushForExit();
       mountedRef.current = false;
+      editorGenerationRef.current += 1;
       window.removeEventListener("beforeunload", flushForExit);
       window.removeEventListener("pagehide", flushForExit);
       document.removeEventListener("visibilitychange", flushWhenHidden);
@@ -221,7 +235,13 @@ export function NoteEditor({
   }, [editNote?.archived]);
 
   useEffect(() => {
-    if (!target) return;
+    if (!target) {
+      flushPendingRef.current(activeTargetRef.current);
+      editorGenerationRef.current += 1;
+      activeTargetRef.current = null;
+      activeTargetKeyRef.current = null;
+      return;
+    }
     const bridgingCreatedNote =
       target.mode === "edit" && createdIdRef.current === target.note.id;
     if (
@@ -230,6 +250,11 @@ export function NoteEditor({
       !bridgingCreatedNote
     ) {
       flushPendingRef.current(activeTargetRef.current);
+    }
+    if (!bridgingCreatedNote) {
+      editorGenerationRef.current += 1;
+      editingBaseRef.current = undefined;
+      setUploading(false);
     }
     activeTargetRef.current = target;
     activeTargetKeyRef.current = targetKey;
@@ -301,6 +326,14 @@ export function NoteEditor({
       }
     }, 30);
   }, [targetKey]);
+
+  useEffect(() => {
+    if (editNote && !dirtyRef.current) {
+      setBody(editNote.body);
+      draftRef.current = { ...draftRef.current, body: editNote.body };
+      editingBaseRef.current = undefined;
+    }
+  }, [editNote?.id, editNote?.body]);
 
   // Grow the plain editor to fit its content so short notes hug the text and
   // the box expands as lines are added (the highlight editor self-sizes).
@@ -427,9 +460,10 @@ export function NoteEditor({
     if (!target || !dirty) return;
     if (target.mode === "edit") {
       const submittedRevision = revisionRef.current;
+      const generation = editorGenerationRef.current;
       const timer = window.setTimeout(() => {
-        void Promise.resolve(onUpdate(target.note.id, draftRef.current)).then(() => {
-          if (mountedRef.current && revisionRef.current === submittedRevision) {
+        void Promise.resolve(submitUpdate(target.note.id, draftRef.current)).then(() => {
+          if (mountedRef.current && generation === editorGenerationRef.current && revisionRef.current === submittedRevision) {
             setDirty(false);
           }
         }).catch(() => { /* The save error remains visible; retain the dirty draft. */ });
@@ -440,9 +474,10 @@ export function NoteEditor({
       if (createdIdRef.current) {
         const id = createdIdRef.current;
         const submittedRevision = revisionRef.current;
+        const generation = editorGenerationRef.current;
         const timer = window.setTimeout(() => {
-          void Promise.resolve(onUpdate(id, draftRef.current)).then(() => {
-            if (mountedRef.current && revisionRef.current === submittedRevision) {
+          void Promise.resolve(submitUpdate(id, draftRef.current)).then(() => {
+            if (mountedRef.current && generation === editorGenerationRef.current && revisionRef.current === submittedRevision) {
               setDirty(false);
             }
           }).catch(() => { /* Retain the draft on storage failure. */ });
@@ -451,15 +486,19 @@ export function NoteEditor({
       }
       if (!body.trim() || creatingRef.current) return;
       const submittedRevision = revisionRef.current;
+      const generation = editorGenerationRef.current;
       const timer = window.setTimeout(() => {
         if (createdIdRef.current || creatingRef.current) return;
         void startCreate(draftRef.current, submittedRevision).catch(() => {});
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, highlight, onUpdate, pinned, previewOpen, startCreate, target]);
+  }, [archived, body, dirty, highlight, submitUpdate, pinned, previewOpen, startCreate, target]);
 
   function markBody(value: string) {
+    if (!dirtyRef.current) editingBaseRef.current = liveNoteRef.current ?? undefined;
+    draftRef.current = { ...draftRef.current, body: value };
+    dirtyRef.current = true;
     revisionRef.current += 1;
     setBody(value);
     setDirty(true);
@@ -494,6 +533,9 @@ export function NoteEditor({
   }
 
   async function uploadImage(file: File) {
+    const generation = editorGenerationRef.current;
+    const original = draftRef.current.body;
+    const anchor = bodyRef.current?.getCursor() ?? plainRef.current?.selectionStart ?? original.length;
     setUploading(true);
     try {
       const form = new FormData();
@@ -504,16 +546,18 @@ export function NoteEditor({
         throw new Error(data?.error ?? "Upload failed");
       }
       const { url } = await res.json();
+      if (!mountedRef.current || generation !== editorGenerationRef.current) return;
+      const latest = draftRef.current.body;
       const tag = `![${file.name}](${url})`;
-      const cursor = bodyRef.current?.getCursor() ?? plainRef.current?.selectionStart ?? body.length;
-      const before = body.slice(0, cursor);
-      const after = body.slice(cursor);
+      const cursor = mapTextOffset(original, latest, anchor);
+      const before = latest.slice(0, cursor);
+      const after = latest.slice(cursor);
       const sep = before && !before.endsWith("\n") ? "\n" : "";
       markBody(before + sep + tag + "\n" + after);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Upload failed");
+      if (mountedRef.current && generation === editorGenerationRef.current) alert(e instanceof Error ? e.message : "Upload failed");
     } finally {
-      setUploading(false);
+      if (generation === editorGenerationRef.current) setUploading(false);
     }
   }
 

@@ -70,6 +70,8 @@ export function NotesView({
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [target, setTarget] = useState<EditorTarget>(null);
+  const targetRef = useRef(target);
+  targetRef.current = target;
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"active" | "archive" | "trash">(
     "active",
@@ -174,8 +176,9 @@ export function NotesView({
   }
 
   async function handleCreate(partial: Partial<Note>, options?: { keepalive?: boolean }) {
+    const requestedTarget = targetRef.current;
     const note = await create(partial, options);
-    if (note) {
+    if (note && targetRef.current === requestedTarget) {
       composedIdRef.current = note.id;
       setActiveNoteId(note.id);
       setTarget((current) =>

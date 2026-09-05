@@ -69,6 +69,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -185,6 +186,7 @@ describe("NoteEditor autosave", () => {
     expect(props.onUpdate).toHaveBeenCalledWith(
       "N1",
       expect.objectContaining({ body: "first changed less than 550ms ago" }),
+      { base: makeNote({ id: "N1", body: "first" }) },
     );
     expect(body().value).toBe("second");
   });
@@ -276,5 +278,79 @@ describe("NoteEditor autosave", () => {
       "N42",
       expect.objectContaining({ markdown: true, highlight: false }),
     );
+  });
+});
+
+describe("editor asynchronous work", () => {
+  it("keeps intervening typing when an image finishes uploading", async () => {
+    let finish!: (value: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; })));
+    renderEditor({ mode: "edit", note: makeNote({ body: "original" }) });
+    body().setSelectionRange(8, 8);
+    fireEvent.paste(body(), { clipboardData: { items: [{ type: "image/png",
+      getAsFile: () => new File(["image"], "example.png", { type: "image/png" }) }] } });
+    await typeBody("original important new text");
+    await act(async () => finish(Response.json({ url: "/api/uploads/image" })));
+    expect(body().value).toContain("important new text");
+    expect(body().value).toContain("![example.png](/api/uploads/image)");
+  });
+
+  it("ignores an upload belonging to a previously open note", async () => {
+    let finish!: (value: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; })));
+    const props = renderEditor({ mode: "edit", note: makeNote({ body: "original" }) });
+    fireEvent.paste(body(), { clipboardData: { items: [{ type: "image/png",
+      getAsFile: () => new File(["image"], "example.png", { type: "image/png" }) }] } });
+    props.rerenderTarget({ mode: "edit", note: makeNote({ id: "N2", body: "second" }) });
+    await act(async () => finish(Response.json({ url: "/api/uploads/image" })));
+    expect(body().value).toBe("second");
+    expect(props.onUpdate).not.toHaveBeenCalled();
+  });
+
+  it("flushes the latest new-note text before its create response arrives", async () => {
+    const props = renderEditor({ mode: "new" });
+    props.onCreate.mockImplementation(() => new Promise<Note>(() => {}));
+    await typeBody("first");
+    await advance(600);
+    const id = props.onCreate.mock.calls[0][0].id;
+    expect(id).toBeTruthy();
+    await typeBody("first plus latest");
+    fireEvent(window, new Event("pagehide"));
+    expect(props.onUpdate).toHaveBeenCalledWith(id,
+      expect.objectContaining({ body: "first plus latest" }), { keepalive: true });
+  });
+
+  it("does not apply a late create response to the next note", async () => {
+    let finish!: (note: Note) => void;
+    const props = renderEditor({ mode: "new" });
+    props.onCreate.mockImplementation(() => new Promise<Note>((resolve) => { finish = resolve; }));
+    await typeBody("new note");
+    await advance(600);
+    props.rerenderTarget({ mode: "edit", note: makeNote({ id: "N2", body: "second" }) });
+    await typeBody("second edited");
+    await act(async () => finish(makeNote({ id: "CREATED", body: "new note" })));
+    expect(body().value).toBe("second edited");
+    expect(props.onUpdate).not.toHaveBeenCalledWith("CREATED", expect.anything());
+    await advance(600);
+    expect(props.onUpdate).toHaveBeenCalledWith("N2", expect.objectContaining({ body: "second edited" }));
+  });
+
+  it("shows a remote refresh in a clean editor without saving it back", async () => {
+    const props = renderEditor({ mode: "edit", note: makeNote({ body: "old" }) });
+    props.rerenderTarget({ mode: "edit", note: makeNote({ body: "remote", updatedAt: 2 }) });
+    expect(body().value).toBe("remote");
+    await advance(600);
+    expect(props.onUpdate).not.toHaveBeenCalled();
+  });
+
+  it("keeps dirty text and its original version when a remote refresh arrives", async () => {
+    const original = makeNote({ body: "old" });
+    const props = renderEditor({ mode: "edit", note: original });
+    await typeBody("local edit");
+    props.rerenderTarget({ mode: "edit", note: makeNote({ body: "remote", updatedAt: 2 }) });
+    expect(body().value).toBe("local edit");
+    await advance(600);
+    expect(props.onUpdate).toHaveBeenCalledWith("N1", expect.objectContaining({ body: "local edit" }),
+      { base: original });
   });
 });
