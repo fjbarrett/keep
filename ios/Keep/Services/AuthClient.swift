@@ -42,12 +42,16 @@ actor AuthClient {
 
     /// True when a NextAuth session is currently established.
     func isSignedIn() async throws -> Bool {
+        try await userID() != nil
+    }
+
+    func userID() async throws -> String? {
         let (data, _) = try await session.data(from: url("api/auth/session"))
         // Authenticated → {"user": {...}, ...}; otherwise `null` or {}.
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return false
+            return nil
         }
-        return obj["user"] != nil
+        return (obj["user"] as? [String: Any])?["id"] as? String
     }
 
     /// Ends only this device's session — server-side (best effort) and locally.

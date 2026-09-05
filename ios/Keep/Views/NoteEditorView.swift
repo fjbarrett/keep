@@ -8,31 +8,38 @@ struct NoteEditorView: View {
 
     let note: Note?
     @State private var body_ = ""
-    @State private var createdId: String?
-    @State private var saveTask: Task<Void, Never>?
+    @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+    private var id: String { note?.id ?? draftID }
 
     /// The live note (the one passed in, or the one just created), read back
     /// from the store so the toolbar reflects the latest flags.
     private var current: Note? {
-        if let note { return store.notes.first { $0.id == note.id } ?? note }
-        if let createdId { return store.notes.first { $0.id == createdId } }
-        return nil
+        store.visibleNotes.first { $0.id == id } ?? note
     }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading) {
+            DraftSaveStatus(id: id) { _ in dismiss() }
             if current?.markdown == true {
                 MarkdownView(source: body_)
             } else {
-                TextEditor(text: $body_)
+                TextEditor(text: Binding(get: { body_ }, set: { value in
+                    body_ = value
+                    store.drafts.stage(id: id, body: value, base: store.notes.first { $0.id == id })
+                }))
                     .font(.body)
+                    .accessibilityLabel("Note body")
+                    .disabled(!store.canEdit)
             }
         }
         .padding(.horizontal)
         .navigationTitle(current?.displayTitle ?? "New note")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { body_ = note?.body ?? "" }
-        .onChange(of: body_) { _, newValue in scheduleSave(newValue) }
+        .onAppear { body_ = store.drafts.items[id]?.body ?? note?.body ?? "" }
+        .onDisappear { store.drafts.start(id) }
+        .onChange(of: store.notes.first { $0.id == id }?.body) { _, body in
+            if store.drafts.items[id] == nil, let body { body_ = body }
+        }
         .toolbar {
             if let note = current {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -63,23 +70,4 @@ struct NoteEditorView: View {
         }
     }
 
-    /// Debounced autosave (~0.6s), matching the web debounce feel.
-    private func scheduleSave(_ value: String) {
-        saveTask?.cancel()
-        saveTask = Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            if Task.isCancelled { return }
-            await save(value)
-        }
-    }
-
-    private func save(_ value: String) async {
-        if let id = note?.id ?? createdId {
-            await store.update(id, patch: ["body": value])
-        } else if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if let created = await store.create(body: value) {
-                createdId = created.id
-            }
-        }
-    }
 }

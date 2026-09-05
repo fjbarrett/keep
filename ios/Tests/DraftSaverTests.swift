@@ -89,6 +89,25 @@ final class DraftSaverTests: XCTestCase {
         XCTAssertTrue(sut.items.isEmpty)
     }
 
+    func testMetadataChangeRetriesBodyAgainstNewVersion() async throws {
+        var requests = 0
+        FixtureProtocol.respond = { request in
+            requests += 1
+            var row = NotesStoreTests.row(requests == 1 ? "Original" : "My text")
+            row["updatedAt"] = 2
+            row["pinned"] = true
+            if requests == 2 { XCTAssertEqual(request.payload["expectedUpdatedAt"] as? Double, 2) }
+            request.reply(["note": row], status: requests == 1 ? 409 : 200)
+        }
+        let sut = try saver()
+        sut.stage(id: id, body: "My text", base: note("Original"))
+        sut.start(id)
+        await sut.waitForSave(id)
+        XCTAssertEqual(requests, 2)
+        XCTAssertTrue(sut.items.isEmpty)
+        XCTAssertTrue(sut.errors.isEmpty)
+    }
+
     func testLateAcknowledgementCannotPublishIntoAnotherAccount() async throws {
         let started = expectation(description: "save starts")
         var first: FixtureProtocol?
