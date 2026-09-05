@@ -122,6 +122,7 @@ a compact grid of eight swatches and a no-color icon, with a ring around the
 current selection. Options have 44-point touch targets and VoiceOver color names.
 Color choices are stored with the draft and included in creation, retry, and recovery.
 Notes appear in a two-column grid of rounded cards tinted with their chosen color.
+The default view omits the All Notes heading to leave more room for cards.
 Each card shows its title and a short summary or body preview, with pin/share indicators.
 Accessibility text sizes use one column and allow longer titles. Touch and hold a
 card for note actions; VoiceOver exposes the same actions. Search, view filters,

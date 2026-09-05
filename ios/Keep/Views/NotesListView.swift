@@ -105,7 +105,8 @@ struct NotesListView: View {
         .refreshable { await store.load() }
         .modifier(NoteFileExporter(export: $export))
         .searchable(text: $query, prompt: "Search \(filter.rawValue.lowercased())")
-        .navigationTitle(filter.rawValue)
+        .navigationTitle(filter == .all ? "" : filter.rawValue)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { viewMenu }
             ToolbarItem(placement: .primaryAction) {
