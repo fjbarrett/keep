@@ -130,7 +130,7 @@ Each card shows its title and a short summary or body preview, with pin/share in
 Accessibility text sizes use one column and allow longer titles. Touch and hold a
 card for note actions; VoiceOver exposes the same actions. Search, view filters,
 pull-to-refresh, and pinned-first ordering apply to the grid.
-Opening a note presents a fixed editor cover over the grid. The close button returns
+Opening a note fills the entire screen with a fixed editor. The close button returns
 to the same grid, filter, and search; dismissing flushes pending edits.
 The cover stays stationary during drags; swipe-to-dismiss is disabled for both
 existing and new notes. Body text still scrolls normally. Sign-in retains its sheet
@@ -142,20 +142,21 @@ The editor initializes its title and body from the current draft or saved note
 before presentation so text layout is ready for the first frame of the expansion.
 The editor uses a compact header with the editable title and close icon in one row.
 iOS 26 uses SwiftUI's standard close-role button with a circular glass style.
-The color swatch sits at the modal's bottom-right, above the keyboard when editing.
-The writing area reserves space for this action; the modal has no export button.
+The color swatch sits at the editor's bottom-right, above the keyboard when editing.
+The writing area reserves space for this action; the editor has no export button.
 The title uses 22-point semibold at the default text size; the body retains its
 reading-size preference. Title and body text have approximately 30-point side insets.
 Each action has a 44-point touch target.
 Accessibility text sizes move the title below the close button to keep it readable.
-New notes and Spotlight results use the same modal. Both fields are directly
+New notes and Spotlight results use the same editor. Both fields are directly
 editable. New notes focus the title first, and Return
 moves into the blank body, without a placeholder. Both fields disable keyboard
 autocorrection and suggestions. The ASCII-capable keyboard removes the empty
 prediction strip; pasted Unicode text is preserved. Both inputs have no outlines;
 the title and body share one neutral, translucent material surface inspired by
-the grid cards. Its rounded surface fills the presentation without an inset rim;
-the text and controls retain their positions. Dark mode matches the near-black
+the grid cards. The surface extends behind the status bar and home indicator with
+no rounded panel, outer gap, or rim. Text and controls respect safe areas and retain
+their side insets. Dark mode matches the near-black
 charcoal tone of the grid cards. The text keeps its comfortable side insets.
 The writing area spans the available width. Edits autosave while typing, with no
 Save or Done button; closing also flushes pending edits. Titles wrap, and the
