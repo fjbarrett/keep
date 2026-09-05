@@ -98,6 +98,41 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(sut.notes.first?.body, "Heading\nSaved edit")
     }
 
+    func testPermanentDeleteWaitsForCreateAndRemovesItsDurableDraft() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FixtureProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let sut = NotesStore(api: KeepAPI(session: session), auth: AuthClient(session: session),
+                             draftStorage: DraftStorage(root: folder))
+        let started = expectation(description: "create starts")
+        var pending: FixtureProtocol?
+        var replied = false
+        FixtureProtocol.respond = { request in
+            if request.request.url?.path == "/api/auth/session" {
+                request.reply(["user": ["id": "A"]])
+            } else if request.request.httpMethod == "POST" {
+                pending = request; started.fulfill()
+            } else if request.request.httpMethod == "DELETE" {
+                XCTAssertTrue(replied, "Delete must follow the create acknowledgement")
+                request.reply(["ok": true])
+            } else { request.reply(["notes": []]) }
+        }
+        await sut.load()
+        sut.drafts.stage(id: Self.id, body: "New note", base: nil)
+        let draft = try XCTUnwrap(sut.visibleNotes.first)
+        sut.drafts.start(Self.id)
+        await fulfillment(of: [started], timeout: 2)
+        let deleting = Task { await sut.deleteForever(draft) }
+        await Task.yield()
+        replied = true
+        pending?.reply(["note": Self.row("New note")])
+        await deleting.value
+        XCTAssertTrue(sut.visibleNotes.isEmpty)
+        XCTAssertTrue(try DraftStorage(root: folder).load(owner: "A").isEmpty)
+    }
+
     func testSignOutClearsImmediatelyAndNewSignInWaitsForCookieCleanup() async {
         let started = expectation(description: "sign-out starts")
         var signOut: FixtureProtocol?

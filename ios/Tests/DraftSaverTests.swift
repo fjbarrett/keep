@@ -108,6 +108,46 @@ final class DraftSaverTests: XCTestCase {
         XCTAssertTrue(sut.errors.isEmpty)
     }
 
+    func testPauseWaitsForCreateAndDiscardStopsLaterDraftSaves() async throws {
+        let started = expectation(description: "create starts")
+        var pending: FixtureProtocol?
+        var methods: [String] = []
+        FixtureProtocol.respond = { request in
+            methods.append(request.request.httpMethod!)
+            pending = request; started.fulfill()
+        }
+        let sut = try saver()
+        sut.stage(id: id, body: "First text", base: nil)
+        sut.start(id)
+        await fulfillment(of: [started], timeout: 2)
+        let paused = Task { await sut.pause(id) }
+        await Task.yield()
+        sut.stage(id: id, body: "Typed during delete", base: nil)
+        pending?.reply(["note": NotesStoreTests.row("First text")])
+        await paused.value
+        try sut.discard(id)
+        sut.resume(id)
+        sut.retryAll()
+        await sut.waitForSave(id)
+        XCTAssertEqual(methods, ["POST"])
+        XCTAssertTrue(sut.items.isEmpty)
+        XCTAssertTrue(try storage.load(owner: "A").isEmpty)
+    }
+
+    func testChangedLeadLineUpdatesTitleWithoutWaitingForMetadata() async throws {
+        FixtureProtocol.respond = { request in
+            XCTAssertEqual(request.request.httpMethod, "PATCH")
+            XCTAssertEqual(request.payload["title"] as? String, "New heading")
+            XCTAssertTrue(request.payload["summary"] is NSNull)
+            request.reply(["note": NotesStoreTests.row("New heading\nBody")])
+        }
+        let sut = try saver()
+        sut.stage(id: id, body: "New heading\nBody", base: note("Original\nBody"))
+        sut.start(id)
+        await sut.waitForSave(id)
+        XCTAssertTrue(sut.items.isEmpty)
+    }
+
     func testLateAcknowledgementCannotPublishIntoAnotherAccount() async throws {
         let started = expectation(description: "save starts")
         var first: FixtureProtocol?
