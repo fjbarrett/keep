@@ -122,8 +122,9 @@ a compact grid of eight swatches and a no-color icon, with a ring around the
 current selection. Options have 44-point touch targets and VoiceOver color names.
 Color choices are stored with the draft and included in creation, retry, and recovery.
 Notes appear in a two-column grid of neutral, translucent rounded cards. iOS 26
-uses native interactive Liquid Glass grouped in a GlassEffectContainer; earlier
-iOS versions use regular material. A small swatch carries each note's color.
+uses native interactive Liquid Glass on each card; earlier iOS versions use
+regular material. Independent surfaces allow each card to be a visible zoom
+transition source. A small swatch carries each note's color.
 The default view omits the All Notes heading to leave more room for cards.
 Each card shows its title and a short summary or body preview, with pin/share indicators.
 Accessibility text sizes use one column and allow longer titles. Touch and hold a
@@ -131,27 +132,37 @@ card for note actions; VoiceOver exposes the same actions. Search, view filters,
 pull-to-refresh, and pinned-first ordering apply to the grid.
 Opening a note presents an editor modal over the grid. Close or swipe down
 returns to the same grid, filter, and search; dismissing flushes pending edits.
-The editor uses a compact header with the editable title, color swatch, floppy-disk export
-icon, and close icon in one row. The title uses 17-point semibold at the default
+On iOS 18 and later, a tapped card expands into the editor with SwiftUI's native
+zoom transition and returns to its source on dismissal. Reduce Motion, new notes,
+Spotlight results, and earlier iOS versions use the standard sheet presentation.
+The editor uses a compact header with the editable title and close icon in one row.
+iOS 26 uses SwiftUI's standard close-role button with a circular glass style.
+The color swatch sits at the modal's bottom-right, above the keyboard when editing.
+The writing area reserves space for this action; the modal has no export button.
+The title uses 17-point semibold at the default
 text size; title and body text have approximately 20-point side insets.
 Each action has a 44-point touch target.
-Accessibility text sizes move the title below the actions to keep it readable.
+Accessibility text sizes move the title below the close button to keep it readable.
 New notes and Spotlight results use the same modal. Both fields are directly
 editable. New notes focus the title first, and Return
-moves into the blank body, without a placeholder. Both inputs have no outlines;
-the title and body share one neutral Liquid Glass surface matching the grid
-cards, with a regular-material fallback before iOS 26. A four-point outer inset
-reveals the rounded reflective edge; the text keeps its comfortable side insets.
-The writing area spans the available width. The keyboard toolbar has Done to dismiss it. Titles wrap, and the
+moves into the blank body, without a placeholder. Both fields disable keyboard
+autocorrection and suggestions. The ASCII-capable keyboard removes the empty
+prediction strip; pasted Unicode text is preserved. Both inputs have no outlines;
+the title and body share one neutral, translucent material surface inspired by
+the grid cards. The modal has rounded corners without a reflective outline and a
+four-point outer inset; dark mode retains the deeper charcoal tone of the grid
+cards. The text keeps its comfortable side insets.
+The writing area spans the available width. Edits autosave while typing, with no
+Save or Done button; close or swipe dismissal also flushes pending edits. Titles wrap, and the
 editor uses the available width by default; the comfortable line-width setting
 keeps text in a centered column on iPad. In landscape or
-at accessibility text sizes, focusing the body temporarily hides the title and
-navigation bar to leave room above the keyboard; Done restores them. Routine save
+at accessibility text sizes, focusing the body temporarily hides the title to
+leave room above the keyboard; the close button remains available. Routine save
 status is hidden; save errors show recovery below the writing area, including in
 compact mode. Explicit titles are included in durable drafts and recovery and
 remain intact in the notes list. The color control shows only the current swatch
-(a palette icon when unset); VoiceOver still announces its name and selected color.
-The floppy-disk icon in the editor header or Export file in a note's context menu saves its current body
+(a hollow circle when unset); VoiceOver still announces its name and selected color.
+Export file in a note's context menu saves its current body
 as UTF-8 text (`.txt`) or Markdown (`.md`) through the system file picker. The title
 provides the filename; body text, whitespace, and Markdown syntax are preserved.
 Export includes unsaved drafts and works without a network save. It is also
