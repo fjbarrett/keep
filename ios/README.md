@@ -121,7 +121,12 @@ Markdown as plain text. After the first save, the editor's Note color menu offer
 eight named color swatches and None, with a checkmark for the current selection.
 Both fields are directly editable. New notes focus the title first, and Return
 moves into the framed body with a Start writing prompt. The keyboard toolbar
-has Done to dismiss it. Explicit titles are included in durable drafts and recovery.
+has Done to dismiss it. Titles wrap, and the title and body share a centered
+column on iPad that respects the comfortable line-width setting. In landscape or
+at accessibility text sizes, focusing the body temporarily hides the title and
+navigation bar to leave room above the keyboard; Done restores them. Save errors
+remain visible. Explicit titles are included in durable drafts and recovery and
+remain intact in the notes list. The color control shows the current name and swatch.
 The Mac Markdown preview retains heading semantics and image alt text with
 loading/retry states.
 The editor has a Note body label, notes expose state and accessibility actions,
