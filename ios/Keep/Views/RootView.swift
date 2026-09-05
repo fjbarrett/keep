@@ -5,6 +5,7 @@ struct RootView: View {
     @Environment(NotesStore.self) private var store
     @Environment(\.scenePhase) private var phase
     @State private var sheet: Sheet?
+    @State private var isEditorPresented = false
     @State private var spotlightID: String?
     @Namespace private var noteTransition
 
@@ -65,7 +66,25 @@ struct RootView: View {
             get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } }
         )) { Button("OK") { store.errorMessage = nil } }
         message: { Text(store.errorMessage ?? "") }
-        .sheet(item: $sheet) { sheetContent(for: $0) }
+        .fullScreenCover(item: editorPresentation, onDismiss: { isEditorPresented = false }) {
+            sheetContent(for: $0)
+        }
+        .sheet(item: signInPresentation) { sheetContent(for: $0) }
+    }
+
+    private var editorPresentation: Binding<Sheet?> {
+        Binding(get: {
+            if case .editor = sheet { return sheet }
+            return nil
+        }, set: { if $0 == nil, case .editor = sheet { sheet = nil } })
+    }
+
+    private var signInPresentation: Binding<Sheet?> {
+        Binding(get: {
+            // Let the editor finish closing before presenting authentication.
+            if !isEditorPresented, case .signIn = sheet { return sheet }
+            return nil
+        }, set: { if $0 == nil, case .signIn = sheet { sheet = nil } })
     }
 
     @ViewBuilder private func sheetContent(for destination: Sheet) -> some View {
@@ -75,12 +94,12 @@ struct RootView: View {
                 NoteEditorView(note: note, draft: note.flatMap { store.drafts.items[$0.id] })
             }
                 .id(destination.id)
-                .presentationDragIndicator(.hidden)
+                .padding(.top, 10)
                 .presentationBackground(.clear)
-                .presentationCornerRadius(28)
                 .modifier(NotePresentationTransition(sourceID: sourceID,
                                                      namespace: noteTransition))
                 .interactiveDismissDisabled()
+                .onAppear { isEditorPresented = true }
         case .signIn:
             SignInView()
                 .interactiveDismissDisabled()

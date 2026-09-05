@@ -130,12 +130,14 @@ Each card shows its title and a short summary or body preview, with pin/share in
 Accessibility text sizes use one column and allow longer titles. Touch and hold a
 card for note actions; VoiceOver exposes the same actions. Search, view filters,
 pull-to-refresh, and pinned-first ordering apply to the grid.
-Opening a note presents an editor modal over the grid. The close button returns
+Opening a note presents a fixed editor cover over the grid. The close button returns
 to the same grid, filter, and search; dismissing flushes pending edits.
-Swipe-to-dismiss is disabled for both existing and new notes.
+The cover stays stationary during drags; swipe-to-dismiss is disabled for both
+existing and new notes. Body text still scrolls normally. Sign-in retains its sheet
+presentation and waits for an open editor to finish closing when authentication expires.
 On iOS 18 and later, a tapped card expands into the editor with SwiftUI's native
 zoom transition and returns to its source on dismissal. Reduce Motion, new notes,
-Spotlight results, and earlier iOS versions use the standard sheet presentation.
+Spotlight results, and earlier iOS versions use the standard cover presentation.
 The editor initializes its title and body from the current draft or saved note
 before presentation so text layout is ready for the first frame of the expansion.
 The editor uses a compact header with the editable title and close icon in one row.
