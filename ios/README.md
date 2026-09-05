@@ -130,8 +130,9 @@ Each card shows its title and a short summary or body preview, with pin/share in
 Accessibility text sizes use one column and allow longer titles. Touch and hold a
 card for note actions; VoiceOver exposes the same actions. Search, view filters,
 pull-to-refresh, and pinned-first ordering apply to the grid.
-Opening a note presents an editor modal over the grid. Close or swipe down
-returns to the same grid, filter, and search; dismissing flushes pending edits.
+Opening a note presents an editor modal over the grid. The close button returns
+to the same grid, filter, and search; dismissing flushes pending edits.
+Swipe-to-dismiss is disabled for both existing and new notes.
 On iOS 18 and later, a tapped card expands into the editor with SwiftUI's native
 zoom transition and returns to its source on dismissal. Reduce Motion, new notes,
 Spotlight results, and earlier iOS versions use the standard sheet presentation.
@@ -151,11 +152,11 @@ moves into the blank body, without a placeholder. Both fields disable keyboard
 autocorrection and suggestions. The ASCII-capable keyboard removes the empty
 prediction strip; pasted Unicode text is preserved. Both inputs have no outlines;
 the title and body share one neutral, translucent material surface inspired by
-the grid cards. The modal has rounded corners without a reflective outline and a
-four-point outer inset; dark mode deepens the material to match the near-black
+the grid cards. Its rounded surface fills the presentation without an inset rim;
+the text and controls retain their positions. Dark mode matches the near-black
 charcoal tone of the grid cards. The text keeps its comfortable side insets.
 The writing area spans the available width. Edits autosave while typing, with no
-Save or Done button; close or swipe dismissal also flushes pending edits. Titles wrap, and the
+Save or Done button; closing also flushes pending edits. Titles wrap, and the
 editor uses the available width by default; the comfortable line-width setting
 keeps text in a centered column on iPad. In landscape or
 at accessibility text sizes, focusing the body temporarily hides the title to

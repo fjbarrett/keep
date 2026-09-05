@@ -32,8 +32,8 @@ struct NoteEditorView: View {
             editorHeader
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity, alignment: .leading)
                 .frame(maxWidth: .infinity)
-                .padding(.leading, 26)
-                .padding(.trailing, 4)
+                .padding(.leading, 30)
+                .padding(.trailing, 8)
                 .padding(.top, 8)
             TextEditor(text: Binding(get: { body_ }, set: { value in
                 guard value != body_ else { return }
@@ -45,7 +45,7 @@ struct NoteEditorView: View {
                 .keyboardType(.asciiCapable)
                 .scrollContentBackground(.hidden)
                 .modifier(ReadingStyle(constrainWidth: false))
-                .padding(.horizontal, 22)
+                .padding(.horizontal, 26)
                 .padding(.vertical, 8)
                 .frame(maxWidth: comfortableWidth ? 620 : .infinity)
                 .frame(maxWidth: .infinity)
@@ -56,7 +56,7 @@ struct NoteEditorView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 if store.drafts.errors[id] != nil {
-                    DraftSaveStatus(id: id, horizontalPadding: 12) { _ in dismiss() }
+                    DraftSaveStatus(id: id, horizontalPadding: 16) { _ in dismiss() }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
                 }
@@ -64,8 +64,8 @@ struct NoteEditorView: View {
                     .buttonStyle(.plain)
                     .tint(.primary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.trailing, 4)
-                    .padding(.bottom, 4)
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 8)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -78,8 +78,6 @@ struct NoteEditorView: View {
                     }
                 }
         }
-        .padding(.horizontal, 4)
-        .padding(.bottom, 4)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
