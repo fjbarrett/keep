@@ -68,15 +68,14 @@ struct NoteEditorView: View {
                     .padding(.bottom, 8)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .background {
-            let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
-            shape.fill(.regularMaterial)
+            Rectangle().fill(.regularMaterial)
                 .overlay {
                     if colorScheme == .dark {
-                        shape.fill(.black.opacity(0.64))
+                        Color.black.opacity(0.64)
                     }
                 }
+                .ignoresSafeArea()
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)

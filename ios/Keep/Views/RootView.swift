@@ -94,7 +94,6 @@ struct RootView: View {
                 NoteEditorView(note: note, draft: note.flatMap { store.drafts.items[$0.id] })
             }
                 .id(destination.id)
-                .padding(.top, 10)
                 .presentationBackground(.clear)
                 .modifier(NotePresentationTransition(sourceID: sourceID,
                                                      namespace: noteTransition))
