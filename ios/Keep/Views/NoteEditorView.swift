@@ -15,11 +15,11 @@ struct NoteEditorView: View {
     let note: Note?
     @State private var body_ = ""
     @State private var title = ""
-    @State private var isChangingColor = false
     @State private var isColorPickerPresented = false
     @State private var export: NoteExport?
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
+    private var selectedColor: String? { (store.visibleNotes.first { $0.id == id } ?? note)?.color }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -37,16 +37,6 @@ struct NoteEditorView: View {
             }))
                 .focused($focusedField, equals: .body)
                 .scrollContentBackground(.hidden)
-                .overlay(alignment: .topLeading) {
-                    if body_.isEmpty {
-                        Text("Start writing…")
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 8)
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                    }
-                }
                 .modifier(ReadingStyle(constrainWidth: false))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -67,7 +57,7 @@ struct NoteEditorView: View {
             }
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(note == nil ? "New note" : "Note")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isCompactWriting ? .hidden : .visible, for: .navigationBar)
         .onAppear {
@@ -104,31 +94,26 @@ struct NoteEditorView: View {
                     focusedField = nil
                 }
             }
-            // Wait for first autosave before offering a server-backed color change.
-            if let saved = store.notes.first(where: { $0.id == id }) {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { isColorPickerPresented = true } label: {
-                        colorMenuLabel(for: saved.color)
-                            .accessibilityLabel("Note color")
-                            .accessibilityValue(NotePalette.all.first { $0.key == saved.color }?.label ?? "None")
-                    }
-                    .disabled(!store.canEdit || isChangingColor)
-                    .popover(isPresented: $isColorPickerPresented) {
-                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 8), count: 3), spacing: 8) {
-                            colorOption(nil, for: saved)
-                            ForEach(NotePalette.all, id: \.key) { option in
-                                colorOption(option.key, for: saved)
-                            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { isColorPickerPresented = true } label: {
+                    colorMenuLabel(for: selectedColor)
+                        .accessibilityLabel("Note color")
+                        .accessibilityValue(NotePalette.all.first { $0.key == selectedColor }?.label ?? "None")
+                }
+                .disabled(!store.canEdit)
+                .popover(isPresented: $isColorPickerPresented) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 8), count: 3), spacing: 8) {
+                        colorOption(nil)
+                        ForEach(NotePalette.all, id: \.key) { option in
+                            colorOption(option.key)
                         }
-                        .padding(12)
-                        .presentationCompactAdaptation(.popover)
                     }
+                    .padding(12)
+                    .presentationCompactAdaptation(.popover)
                 }
             }
-            if note == nil {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Close") { dismiss() }
-                }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Close") { dismiss() }
             }
         }
     }
@@ -165,16 +150,13 @@ struct NoteEditorView: View {
             ?? Image(systemName: "paintpalette")
     }
 
-    private func colorOption(_ key: String?, for saved: Note) -> some View {
+    private func colorOption(_ key: String?) -> some View {
         Button {
             isColorPickerPresented = false
-            isChangingColor = true
-            Task {
-                await store.setColor(saved, to: key)
-                isChangingColor = false
-            }
+            guard key != selectedColor else { return }
+            stageDraft(color: key ?? "")
         } label: {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack {
                 Group {
                     if let key {
                         Circle().fill(NotePalette.color(for: key) ?? .gray)
@@ -183,24 +165,23 @@ struct NoteEditorView: View {
                     }
                 }
                 .frame(width: 28, height: 28)
-                if saved.color == key {
-                    Image(systemName: "checkmark.circle.fill")
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, .blue)
-                        .font(.system(size: 14))
+                if selectedColor == key {
+                    Circle()
+                        .strokeBorder(.primary, lineWidth: 2)
+                        .frame(width: 38, height: 38)
                 }
             }
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!store.canEdit || isChangingColor)
+        .disabled(!store.canEdit)
         .accessibilityLabel(NotePalette.all.first { $0.key == key }?.label ?? "None")
-        .accessibilityAddTraits(saved.color == key ? .isSelected : [])
+        .accessibilityAddTraits(selectedColor == key ? .isSelected : [])
     }
 
-    private func stageDraft() {
-        store.drafts.stage(id: id, body: body_, base: store.notes.first { $0.id == id }, title: title)
+    private func stageDraft(color: String? = nil) {
+        store.drafts.stage(id: id, body: body_, base: store.notes.first { $0.id == id }, title: title, color: color)
     }
 
 }

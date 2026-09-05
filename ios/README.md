@@ -117,11 +117,15 @@ Permanent deletion waits for pending saves and retires the draft.
 
 The interface uses SwiftUI controls, including `ShareLink`. Reading settings
 provide text size, line spacing, and line width. iPhone and iPad always edit raw
-Markdown as plain text. After the first save, the editor's Note color button opens
-a compact grid of eight swatches and a no-color icon, with a checkmark for the
+Markdown as plain text. From the moment a note opens, its Note color button opens
+a compact grid of eight swatches and a no-color icon, with a ring around the
 current selection. Options have 44-point touch targets and VoiceOver color names.
-Both fields are directly editable. New notes focus the title first, and Return
-moves into the body with a Start writing prompt. Both inputs have no outlines;
+Color choices are stored with the draft and included in creation, retry, and recovery.
+Opening a note presents an editor modal over the notes list. Close or swipe down
+returns to the same list, filter, and search; dismissing flushes pending edits.
+New notes and Spotlight results use the same modal. Both fields are directly
+editable. New notes focus the title first, and Return
+moves into the blank body, without a placeholder. Both inputs have no outlines;
 the body uses a lighter background with rounded corners, a small text inset,
 and a bottom gap that keeps its lower corners visible. The writing area spans
 the available width. The keyboard toolbar has Done to dismiss it. Titles wrap, and the
@@ -133,7 +137,7 @@ status is hidden; save errors show recovery below the writing area, including in
 compact mode. Explicit titles are included in durable drafts and recovery and
 remain intact in the notes list. The color control shows only the current swatch
 (a palette icon when unset); VoiceOver still announces its name and selected color.
-Export file in the editor toolbar or a note's context menu saves its current body
+The download icon in the editor toolbar or Export file in a note's context menu saves its current body
 as UTF-8 text (`.txt`) or Markdown (`.md`) through the system file picker. The title
 provides the filename; body text, whitespace, and Markdown syntax are preserved.
 Export includes unsaved drafts and works without a network save. It is also

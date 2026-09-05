@@ -27,6 +27,7 @@ final class NotesStore {
             var visible = saved
             visible.body = draft.body
             if draft.title != nil { visible.title = draft.resolvedTitle }
+            if draft.color != nil { visible.color = draft.resolvedColor }
             visible.updatedAt = draft.editedAt
             return visible
         }
