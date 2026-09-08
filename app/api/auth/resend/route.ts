@@ -58,9 +58,13 @@ export async function POST(req: Request) {
   } catch (error) {
     logger.error("verification resend failed", {
       route: "auth:resend",
-      error,
+      err: error,
       to: maskEmail(email),
     });
+    return NextResponse.json(
+      { error: "Verification email is temporarily unavailable. Try again shortly." },
+      { status: 503 },
+    );
   }
   return response();
 }

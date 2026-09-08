@@ -13,8 +13,12 @@ import { appOrigin, isSameOriginMutation } from "@/lib/appUrl";
 export const runtime = "nodejs";
 
 // Verification links expire after a day so a leaked link can't be redeemed
-// indefinitely; users can re-register or re-request to get a fresh one.
+// indefinitely; users can request a fresh one via /api/auth/resend.
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const accountConflict = () => NextResponse.json(
+  { error: "Could not create the account. If you've already signed up, sign in or request a new verification email." },
+  { status: 409 },
+);
 
 // Each call writes a user row and sends an email — cap per-IP so the endpoint
 // can't be used for signup spam or email-enumeration sweeps.
@@ -67,18 +71,21 @@ export async function POST(req: Request) {
     // victim verifies, then have the victim activate an attacker-set password.
     // A legit unverified user re-requests their link via /api/auth/resend, which
     // refreshes only the token and leaves the password untouched.
-    return NextResponse.json({ error: "Could not create the account." }, { status: 409 });
+    return accountConflict();
   }
 
   const id = newId();
   const hash = await hashPassword(password);
   const token = randomBytes(32).toString("hex");
   const now = Date.now();
-  await pool().query(
+  const inserted = await pool().query<{ id: string }>(
     `INSERT INTO users (id, email, name, password_hash, verify_token, verify_token_expires, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (lower(email)) WHERE email IS NOT NULL DO NOTHING RETURNING id`,
     [id, email, null, hash, token, now + VERIFY_TOKEN_TTL_MS, now],
   );
+  // A concurrent signup may have claimed this email after the lookup.
+  if (!inserted.rows[0]) return accountConflict();
 
   void recordSecurityEvent("register", {
     userId: id,
@@ -92,7 +99,7 @@ export async function POST(req: Request) {
   } catch (err) {
     logger.error("verification email failed", { route: "auth:register", err, to: maskEmail(email) });
     return NextResponse.json(
-      { error: "Your account was saved, but the verification email could not be sent. Try again." },
+      { error: "Your account was saved, but the verification email could not be sent. Request a new verification email below." },
       { status: 503 },
     );
   }
