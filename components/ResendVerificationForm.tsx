@@ -2,26 +2,30 @@
 
 import { useState } from "react";
 
-export function ResendVerificationForm() {
-  const [email, setEmail] = useState("");
+export function ResendVerificationForm({ initialEmail = "" }: { initialEmail?: string }) {
+  const [email, setEmail] = useState(initialEmail);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setError(false);
+    setError(null);
     try {
       const response = await fetch("/api/auth/resend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!response.ok) throw new Error("request failed");
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setError(data?.error ?? "Could not request a new link. Try again.");
+        return;
+      }
       setSent(true);
     } catch {
-      setError(true);
+      setError("Could not request a new link. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -29,15 +33,18 @@ export function ResendVerificationForm() {
 
   if (sent) {
     return (
-      <p className="mb-4 text-xs text-[var(--color-muted)]">
+      <p role="status" className="mb-4 text-xs text-[var(--color-muted)]">
         If that address has an unverified account, a new link is on its way.
       </p>
     );
   }
 
   return (
-    <form onSubmit={submit} className="mb-4 flex gap-2">
+    <form onSubmit={submit} className="mb-4 flex flex-wrap gap-2">
       <input
+        name="email"
+        disabled={busy}
+        autoComplete="email"
         type="email"
         required
         value={email}
@@ -53,7 +60,7 @@ export function ResendVerificationForm() {
       >
         {busy ? "Sending…" : "Send new link"}
       </button>
-      {error && <span className="sr-only" role="alert">Could not send a new link.</span>}
+      {error && <p className="w-full text-xs text-[var(--color-danger)]" role="alert">{error}</p>}
     </form>
   );
 }
