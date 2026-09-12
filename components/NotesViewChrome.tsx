@@ -170,13 +170,13 @@ export function MainPlaceholder({
           <StackIcon className="h-5 w-5 text-[var(--color-muted)]" />
         </div>
         <p className="text-base font-medium text-[var(--color-text)]">
-          {hasNotes ? "Select a text" : "No texts yet"}
+          {hasNotes ? "Select a text" : "Nothing yet."}
         </p>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          {hasNotes
-            ? "Open a text from the sidebar, or create a new one."
-            : "Start by creating your first text."}
-        </p>
+        {hasNotes && (
+          <p className="mt-1 text-sm text-[var(--color-muted)]">
+            Open a text from the sidebar, or create a new one.
+          </p>
+        )}
         <button
           type="button"
           onClick={onNewNote}

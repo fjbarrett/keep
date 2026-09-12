@@ -319,7 +319,7 @@ export function Sidebar({
           </div>
         ) : filtered.length === 0 ? (
           <p className="px-2 py-6 text-xs text-[var(--color-muted)]">
-            {filteredTitle ? `${filteredTitle} is empty.` : "No texts."}
+            {filteredTitle ? `${filteredTitle} is empty.` : "Nothing here"}
           </p>
         ) : (
           buckets.map((bucket, i) => (
