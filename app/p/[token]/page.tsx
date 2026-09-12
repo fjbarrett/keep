@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { pool, ready, rowToNote, NoteRow } from "@/lib/db";
 import { inferNoteTitle, needsInferredTitle } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
+import { remarkCitationReferences } from "@/lib/remarkCitationReferences";
 import { CopyNoteButton } from "@/components/CopyNoteButton";
 import { MarkdownCodeBlock } from "@/components/MarkdownCodeBlock";
 import { Logo } from "@/components/Logo";
@@ -178,7 +179,7 @@ export default async function SharedNotePage({
               className="prose-invert-auto max-w-none text-base leading-relaxed sm:text-[17px] sm:leading-[1.75]"
             >
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, remarkCitationReferences]}
                 components={{
                   pre: MarkdownCodeBlock,
                   img: (props) => <SharedImage {...props} token={token} />,
