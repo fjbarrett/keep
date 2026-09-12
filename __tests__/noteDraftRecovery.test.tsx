@@ -12,6 +12,44 @@ const note: Note = { id: "a".repeat(32), title: "Title", body: "Title\noriginal"
 const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); });
 
+it("discards a draft when refresh confirms that the server already saved it", async () => {
+  const owner = crypto.randomUUID();
+  const saved = { ...note, body: "Title\nsaved on exit", updatedAt: 2 };
+  writeNoteDraft(owner, {
+    note: saved,
+    patch: { body: saved.body },
+    type: "update",
+    base: note,
+  });
+  vi.stubGlobal("fetch", vi.fn(() => json({ notes: [saved] })));
+
+  const { result } = renderHook(() => useNotes(owner));
+  await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+  expect(readNoteDrafts(owner)).toEqual([]);
+  expect(result.current.error).toBeNull();
+  expect(result.current.notes[0].body).toBe(saved.body);
+});
+
+it("discards an acknowledged create despite server-generated fields", async () => {
+  const owner = crypto.randomUUID();
+  const created = { ...note, body: "New note", createdAt: 10, updatedAt: 10 };
+  const saved = { ...created, shareToken: "shared", createdAt: 20, updatedAt: 20 };
+  writeNoteDraft(owner, {
+    note: created,
+    patch: created,
+    type: "create",
+  });
+  vi.stubGlobal("fetch", vi.fn(() => json({ notes: [saved] })));
+
+  const { result } = renderHook(() => useNotes(owner));
+  await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+  expect(readNoteDrafts(owner)).toEqual([]);
+  expect(result.current.error).toBeNull();
+  expect(result.current.notes[0]).toEqual(saved);
+});
+
 it("retains a rejected edit through refresh and remount, then retries it", async () => {
   const owner = crypto.randomUUID();
   let reject = true;
