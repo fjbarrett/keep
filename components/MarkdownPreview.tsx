@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ComponentProps } from "react";
+import { remarkCitationReferences } from "@/lib/remarkCitationReferences";
 import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 
 type MarkdownModule = {
@@ -117,7 +118,7 @@ export function MarkdownPreview({
   return (
     <div className="prose-invert-auto mx-auto min-h-[320px] w-full max-w-2xl flex-1 overflow-y-auto px-6 text-[15px] leading-[26px] sm:px-10">
       <Markdown
-        remarkPlugins={[gfm]}
+        remarkPlugins={[gfm, remarkCitationReferences]}
         rehypePlugins={rehypePlugins}
         components={{ pre: MarkdownCodeBlock }}
       >
