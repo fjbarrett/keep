@@ -80,7 +80,7 @@ struct NoteCommands: Commands {
 
             Divider()
 
-            Button("Copy Text") {
+            Button("Copy Note") {
                 if let note { MacPasteboard.copy(note.body) }
             }
             .disabled(note == nil)

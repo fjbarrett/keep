@@ -65,8 +65,8 @@ describe("inferNoteTitle", () => {
   });
 
   it("returns fallback for empty body", () => {
-    expect(inferNoteTitle("")).toBe("Untitled text");
-    expect(inferNoteTitle("   ")).toBe("Untitled text");
+    expect(inferNoteTitle("")).toBe("Untitled note");
+    expect(inferNoteTitle("   ")).toBe("Untitled note");
   });
 
   it("accepts custom fallback", () => {
@@ -124,7 +124,7 @@ describe("previewText", () => {
   });
 
   it("returns fallback for blank note", () => {
-    expect(previewText({ body: "", title: "" })).toBe("Untitled text");
+    expect(previewText({ body: "", title: "" })).toBe("Untitled note");
   });
 });
 

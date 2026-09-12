@@ -10,13 +10,13 @@ export default function NotFound() {
             That page isn&apos;t here
           </p>
           <p className="mt-1 text-sm text-[var(--color-muted)]">
-            The text may have been deleted, moved, or shared with a different link.
+            The note may have been deleted, moved, or shared with a different link.
           </p>
           <a
             href="/"
             className="mt-4 inline-block rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]"
           >
-            Back to texts
+            Back to notes
           </a>
         </div>
       </main>

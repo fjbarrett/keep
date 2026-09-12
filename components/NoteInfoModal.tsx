@@ -85,7 +85,7 @@ export function NoteInfoModal({
     ? languageLabel(codeLang)
     : note.markdown
       ? "Markdown"
-      : "Plain text";
+      : "Unformatted note";
 
   function formatTimestamp(timestamp: number) {
     return new Intl.DateTimeFormat(undefined, {
@@ -103,7 +103,7 @@ export function NoteInfoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Close text info"
+        aria-label="Close note info"
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
@@ -111,18 +111,18 @@ export function NoteInfoModal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="text-info-title"
+        aria-labelledby="note-info-title"
         tabIndex={-1}
         className="relative z-10 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
-          <h2 id="text-info-title" className="text-sm font-semibold text-[var(--color-text)]">
-            Text Info
+          <h2 id="note-info-title" className="text-sm font-semibold text-[var(--color-text)]">
+            Note Info
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close text info"
+            aria-label="Close note info"
             className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
           >
             <XIcon className="h-4 w-4" />
@@ -154,7 +154,7 @@ export function NoteInfoModal({
             <div className="mt-4 border-t border-[var(--color-border)] pt-4">
               <p className="text-xs font-medium text-[var(--color-text)]">Public link</p>
               <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                Anyone with the link can read this text.
+                Anyone with the link can read this note.
               </p>
               {token ? (
                 <>

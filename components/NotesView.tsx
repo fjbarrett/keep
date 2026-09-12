@@ -445,7 +445,7 @@ export function NotesView({
       if ((event.key === "Delete" || event.key === "Backspace") && activeNote) {
         event.preventDefault();
         if (activeNote.trashed) {
-          if (confirm("Permanently delete this text?")) remove(activeNote.id);
+          if (confirm("Permanently delete this note?")) remove(activeNote.id);
         } else {
           trash(activeNote.id);
           if (target?.mode === "edit" && target.note.id === activeNote.id) {

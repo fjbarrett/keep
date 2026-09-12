@@ -24,7 +24,7 @@ export default async function SignInPage({
         <div className="mb-6 flex flex-col items-center gap-3">
           <Logo size={44} />
           <p className="text-sm text-[var(--color-muted)]">
-            Sign in to keep your text.
+            Sign in to keep your notes.
           </p>
         </div>
 

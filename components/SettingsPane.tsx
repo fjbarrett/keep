@@ -149,7 +149,7 @@ export function SettingsPane({
             disabled={importing}
             className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] disabled:cursor-not-allowed disabled:text-[var(--color-muted)] disabled:opacity-60"
           >
-            <span>{importing ? "Importing..." : "Import texts (.txt / .pdf / .zip)"}</span>
+            <span>{importing ? "Importing..." : "Import notes (.txt / .pdf / .zip)"}</span>
             <UploadIcon className="h-4 w-4" />
           </button>
 
@@ -159,7 +159,7 @@ export function SettingsPane({
               onClick={onGuestExport}
               className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
             >
-              <span>Export texts</span>
+              <span>Export notes</span>
               <DownloadIcon className="h-4 w-4" />
             </button>
           ) : exportableCount > 0 ? (
@@ -168,7 +168,7 @@ export function SettingsPane({
               className="flex w-full items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
               onClick={onClose}
             >
-              <span>Export texts</span>
+              <span>Export notes</span>
               <DownloadIcon className="h-4 w-4" />
             </a>
           ) : (
@@ -177,7 +177,7 @@ export function SettingsPane({
               disabled
               className="flex w-full cursor-not-allowed items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm font-medium text-[var(--color-muted)] opacity-60"
             >
-              <span>Export texts</span>
+              <span>Export notes</span>
               <DownloadIcon className="h-4 w-4" />
             </button>
           )}

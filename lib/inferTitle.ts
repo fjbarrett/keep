@@ -46,7 +46,7 @@ function trimTitle(title: string) {
   return capped.length > CHAR_LIMIT ? `${capped.slice(0, CHAR_LIMIT - 1).trim()}…` : capped;
 }
 
-export function inferNoteTitle(body: string, fallback = "Untitled text") {
+export function inferNoteTitle(body: string, fallback = "Untitled note") {
   const lines = body
     .split(/\r?\n/)
     .filter((raw) => {

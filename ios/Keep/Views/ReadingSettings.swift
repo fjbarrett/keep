@@ -8,7 +8,7 @@ struct ReadingSettings: View {
     var body: some View {
         Form {
             Section("Reading and editing") {
-                Picker("Text size", selection: $textSize) {
+                Picker("Note font size", selection: $textSize) {
                     Text("System default").fixedSize(horizontal: false, vertical: true).tag(0)
                     Text("Large").fixedSize(horizontal: false, vertical: true).tag(1)
                     Text("Extra large").fixedSize(horizontal: false, vertical: true).tag(2)
@@ -23,7 +23,7 @@ struct ReadingSettings: View {
                     }
                 }
                 Toggle("Comfortable reading width", isOn: $comfortableWidth)
-                Text("Text continues to follow your system accessibility settings.")
+                Text("Notes continue to follow your system accessibility settings.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Preview") {

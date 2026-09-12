@@ -134,7 +134,7 @@ function GridCard({
             <button
               type="button"
               onClick={act(() => {
-                if (confirm("Permanently delete this text?")) onRemove(note.id);
+                if (confirm("Permanently delete this note?")) onRemove(note.id);
               })}
               className={`${CARD_ICON} hover:text-[var(--color-danger)]`}
               title="Delete forever"

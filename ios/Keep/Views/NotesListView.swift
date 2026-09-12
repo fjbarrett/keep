@@ -203,7 +203,7 @@ struct NotesListView: View {
                 }
             }
             Divider()
-            Button("Copy Text", systemImage: "doc.on.doc") { Pasteboard.copy(note.body) }
+            Button("Copy Note", systemImage: "doc.on.doc") { Pasteboard.copy(note.body) }
             Button("Share Link…", systemImage: "link") {
                 Task {
                     if let url = await store.shareURL(for: note) {

@@ -22,7 +22,7 @@ struct NoteBodyTextView: UIViewRepresentable {
         view.autocorrectionType = .no
         view.adjustsFontForContentSizeCategory = true
         view.accessibilityLabel = "Note body"
-        view.accessibilityHint = "Edit or add text. Changes save automatically."
+        view.accessibilityHint = "Edit this note. Changes save automatically."
         return view
     }
 
