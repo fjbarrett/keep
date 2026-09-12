@@ -240,7 +240,7 @@ export function Sidebar({
 
   return (
     <aside
-      aria-label="Text sidebar"
+      aria-label="Note sidebar"
       className={
         mobile
           ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
@@ -280,7 +280,7 @@ export function Sidebar({
             onClick={onExitFilteredView}
             className="text-xs text-[var(--color-link)] hover:underline"
           >
-            Back to texts
+            Back to notes
           </button>
         </div>
       )}

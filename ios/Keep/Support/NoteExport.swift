@@ -7,7 +7,7 @@ struct NoteExport {
         case text = "txt"
         case markdown = "md"
 
-        var label: String { self == .text ? "Text (.txt)" : "Markdown (.md)" }
+        var label: String { self == .text ? "Note (.txt)" : "Markdown (.md)" }
         var contentType: UTType {
             self == .text ? .plainText : UTType(filenameExtension: "md", conformingTo: .plainText)!
         }

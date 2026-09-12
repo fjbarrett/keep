@@ -13,7 +13,7 @@ enum NoteTitle {
     }
 
     /// Mirrors `inferNoteTitle`: first non-empty, non-noise line of the body.
-    static func infer(_ body: String, fallback: String = "Untitled text") -> String {
+    static func infer(_ body: String, fallback: String = "Untitled note") -> String {
         let normalized = body.replacingOccurrences(of: "\r\n", with: "\n")
         let lines = normalized
             .split(separator: "\n", omittingEmptySubsequences: false)

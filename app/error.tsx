@@ -22,7 +22,7 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
             href="/"
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
           >
-            Back to texts
+            Back to notes
           </a>
         </div>
       </div>

@@ -98,7 +98,7 @@ struct NoteEditorView: View {
             .frame(maxWidth: comfortableWidth ? 620 : .infinity)
             .frame(maxWidth: .infinity)
             .accessibilityLabel("Note body")
-            .accessibilityHint("Edit or add text. Changes save automatically.")
+            .accessibilityHint("Edit this note. Changes save automatically.")
             .disabled(!store.canEdit)
     }
 

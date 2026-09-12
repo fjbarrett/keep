@@ -8,9 +8,9 @@ const SHORTCUT_GROUPS = [
   {
     title: "Navigation",
     items: [
-      { keys: ["j", "↓"], label: "Next text" },
-      { keys: ["k", "↑"], label: "Previous text" },
-      { keys: ["Enter", "o"], label: "Open text" },
+      { keys: ["j", "↓"], label: "Next note" },
+      { keys: ["k", "↑"], label: "Previous note" },
+      { keys: ["Enter", "o"], label: "Open note" },
       { keys: ["Esc"], label: "Close editor" },
     ],
   },

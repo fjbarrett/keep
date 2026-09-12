@@ -107,7 +107,7 @@ struct MacNoteDetail: View {
                                 : ["markdown": true, "highlight": false]
                             Task { await store.update(n.id, patch: patch) }
                         } label: {
-                            Label(n.markdown ? "Edit Text" : "Preview Markdown",
+                            Label(n.markdown ? "Edit Note" : "Preview Markdown",
                                   systemImage: n.markdown ? "square.and.pencil" : "doc.richtext")
                         }
                         .help(n.markdown ? "Back to editing" : "Preview as Markdown")

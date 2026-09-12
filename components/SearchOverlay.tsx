@@ -39,7 +39,7 @@ export function SearchOverlay({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Search texts"
+        aria-label="Search notes"
         tabIndex={-1}
         className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
       >
@@ -49,8 +49,8 @@ export function SearchOverlay({
             ref={searchRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            aria-label="Search texts"
-            placeholder="Search texts..."
+            aria-label="Search notes"
+            placeholder="Search notes..."
             className="min-w-0 flex-1 border-0 bg-transparent text-lg text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
           />
         </div>
@@ -88,7 +88,7 @@ export function SearchOverlay({
           ) : (
             <div className="px-3 py-8 text-center">
               <p className="text-sm font-medium text-[var(--color-text)]">
-                {hasQuery ? "No texts found" : "Start typing to search"}
+                {hasQuery ? "No notes found" : "Start typing to search"}
               </p>
             </div>
           )}

@@ -47,5 +47,5 @@ export async function exportGuestNotes(notes: Note[]) {
     zip.file(noteFileName(note), noteFileContent(note));
   }
   const content = await zip.generateAsync({ type: "blob" });
-  downloadBlob("keep-texts.zip", content, "application/zip");
+  downloadBlob("keep-notes.zip", content, "application/zip");
 }

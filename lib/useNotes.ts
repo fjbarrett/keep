@@ -87,7 +87,7 @@ export function useNotes(ownerId: string | null) {
       guestWriteFailedRef.current = false;
     } catch {
       guestWriteFailedRef.current = true;
-      setError("This browser could not save your local notes. Keep this page open and copy or download your text, then retry.");
+      setError("This browser could not save your local notes. Keep this page open and copy or download your notes, then retry.");
       setSyncStatus("error");
     }
   }, []);
@@ -469,7 +469,7 @@ export function useNotes(ownerId: string | null) {
     setNotes(next);
     let draft: NoteDraft;
     try { draft = writeNoteDraft(ownerId, { note, patch: note, type: "create" }); }
-    catch { setError("This browser could not keep the draft. Keep this page open and copy your text."); return null; }
+    catch { setError("This browser could not keep the draft. Keep this page open and copy your note."); return null; }
     cacheNote(ownerId, note).catch(() => {});
 
     try {
@@ -585,7 +585,7 @@ export function useNotes(ownerId: string | null) {
         predecessors: [...new Set([...(previousDraft?.predecessors ?? []), ...(submittedBodiesRef.current.get(id) ?? [])])],
       });
     } catch {
-      setError("This browser could not keep the draft. Keep this page open and copy your text.");
+      setError("This browser could not keep the draft. Keep this page open and copy your note.");
       return Promise.reject(new Error("Draft storage is unavailable"));
     }
     cacheNote(ownerId, optimistic).catch(() => {});

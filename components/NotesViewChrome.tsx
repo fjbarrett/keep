@@ -24,8 +24,8 @@ export function GuestSaveBanner({
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2">
       <p className="text-sm text-[var(--color-muted)]">
         {hasLocalNotes
-          ? "Some of your text is saved only in this browser."
-          : "Your text is saved only in this browser."}
+          ? "Some of your notes are saved only in this browser."
+          : "Your notes are saved only in this browser."}
       </p>
       <div className="flex items-center gap-1.5">
         {isGuest ? (
@@ -170,11 +170,11 @@ export function MainPlaceholder({
           <StackIcon className="h-5 w-5 text-[var(--color-muted)]" />
         </div>
         <p className="text-base font-medium text-[var(--color-text)]">
-          {hasNotes ? "Select a text" : "Nothing yet."}
+          {hasNotes ? "Select a note" : "Nothing yet."}
         </p>
         {hasNotes && (
           <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Open a text from the sidebar, or create a new one.
+            Open a note from the sidebar, or create a new one.
           </p>
         )}
         <button
