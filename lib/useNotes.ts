@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { overlayPendingNotes } from "./pendingNotes";
 import { saveNoteDraft } from "./saveNoteDraft";
-import { readNoteDrafts, writeNoteDraft, replaceNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
+import { discardAcknowledgedNoteDrafts, readNoteDrafts, writeNoteDraft, replaceNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
 import { Note } from "./types";
 import {
   cacheNotes,
@@ -228,7 +228,7 @@ export function useNotes(ownerId: string | null) {
       const pending = await getPendingOps(ownerId);
       const cached = pending.length ? await getCachedNotes(ownerId) : [];
       if (ownerRef.current !== ownerId) return;
-      const drafts = readNoteDrafts(ownerId);
+      const drafts = discardAcknowledgedNoteDrafts(ownerId, data.notes);
       const deleted = new Set(pending.filter((op) => op.type === "delete").map((op) => op.noteId));
       data.notes = overlayNoteDrafts(overlayPendingNotes(data.notes, cached, pending), drafts)
         .filter((note) => !deleted.has(note.id) && !deletingRef.current.has(note.id));
