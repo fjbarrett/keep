@@ -108,7 +108,7 @@ describe("NotesView deep links", () => {
     render(<NotesView initialNoteId="missing-note" ownerId={null} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No (?:texts|notes) yet/)).toBeTruthy();
+      expect(screen.getByText("Nothing yet.")).toBeTruthy();
     });
     expect(window.location.pathname).toBe("/");
     expect(routerState.replace).toHaveBeenCalledWith("/", { scroll: false });
@@ -155,12 +155,12 @@ describe("NotesView deep links", () => {
     const view = render(<NotesView initialNoteId={null} ownerId="owner-1" />);
 
     expect(screen.queryByText("Select a note")).toBeNull();
-    expect(screen.queryByText(/No (?:texts|notes) yet/)).toBeNull();
+    expect(screen.queryByText("Nothing yet.")).toBeNull();
 
     notesState.hydrated = true;
     view.rerender(<NotesView initialNoteId={null} ownerId="owner-1" />);
 
-    expect(screen.getByText(/No (?:texts|notes) yet/)).toBeTruthy();
+    expect(screen.getByText("Nothing yet.")).toBeTruthy();
   });
 
   it("closes the note when browser history returns to the notes route", async () => {
