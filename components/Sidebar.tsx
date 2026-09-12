@@ -468,8 +468,15 @@ function SidebarNoteRow({
   const { mounted: menuMounted, closing: menuClosing } = useMenuPresence(menuOpen);
   const [flipUp, setFlipUp] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const rowRef = useRef<HTMLLIElement>(null);
+  const optionsRef = useRef<HTMLButtonElement>(null);
+
+  function cancelDelete() {
+    setConfirmingDelete(false);
+    requestAnimationFrame(() => optionsRef.current?.focus());
+  }
 
   // Open the options menu, flipping it above the row when there isn't enough
   // room below (rows near the bottom of the list would otherwise clip it).
@@ -502,12 +509,50 @@ function SidebarNoteRow({
       data-note-id={note.id}
       className="group relative flex items-center rounded-md"
       onContextMenu={(e) => {
-        if (isRenaming) return;
+        if (isRenaming || confirmingDelete) return;
         e.preventDefault();
         openMenu();
       }}
     >
-      {isRenaming ? (
+      {confirmingDelete ? (
+        <div
+          role="alertdialog"
+          aria-label={`Permanently delete ${previewText(note)}?`}
+          className="flex min-h-8 w-full items-center gap-1 rounded-md bg-[var(--color-surface)] px-1.5 py-1 text-xs text-[var(--color-text)] ring-1 ring-inset ring-[var(--color-border)]"
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === "Escape") {
+              event.preventDefault();
+              cancelDelete();
+            }
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setConfirmingDelete(false);
+            }
+          }}
+        >
+          <span className="min-w-0 flex-1 truncate">Delete forever?</span>
+          <button
+            type="button"
+            autoFocus
+            onClick={cancelDelete}
+            className="shrink-0 rounded px-1.5 py-1 hover:bg-[var(--color-surface-hover)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmingDelete(false);
+              remove();
+            }}
+            className="shrink-0 rounded px-1.5 py-1 text-[var(--color-danger)] hover:bg-[var(--color-surface-hover)]"
+          >
+            Delete
+          </button>
+        </div>
+      ) : isRenaming ? (
         <input
           autoFocus
           value={renameValue}
@@ -559,6 +604,7 @@ function SidebarNoteRow({
               hovered (or the menu is open / the button is focused for keyboard
               nav); on touch, long-press still fires the context menu. */}
           <button
+            ref={optionsRef}
             type="button"
             aria-label="Note options"
             aria-haspopup="menu"
@@ -582,7 +628,7 @@ function SidebarNoteRow({
           </button>
         </>
       )}
-      {menuMounted && (
+      {menuMounted && !confirmingDelete && (
         <>
           {menuOpen && (
             <div
@@ -619,8 +665,8 @@ function SidebarNoteRow({
                 <MenuItem
                   danger
                   onClick={() => {
-                    if (confirm("Permanently delete this text?")) remove();
                     setMenuOpen(false);
+                    setConfirmingDelete(true);
                   }}
                 >
                   Delete forever
