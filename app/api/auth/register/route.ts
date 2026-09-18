@@ -101,8 +101,11 @@ export async function POST(req: Request) {
      ON CONFLICT (lower(email)) WHERE email IS NOT NULL DO NOTHING RETURNING id`,
     [id, email, null, hash, token, now + VERIFY_TOKEN_TTL_MS, now],
   );
-  // A concurrent signup may have claimed this email after the lookup.
-  if (!inserted.rows[0]) return accountConflict();
+  // A concurrent signup may have claimed this email after the lookup. Answer
+  // the same success either way: a 409 here would reopen the oracle the
+  // existing-address path just closed. The winning request already delivers
+  // the verification email to the address owner.
+  if (!inserted.rows[0]) return NextResponse.json({ ok: true });
 
   void recordSecurityEvent("register", {
     userId: id,

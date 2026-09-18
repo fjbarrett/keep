@@ -25,21 +25,38 @@ beforeEach(() => {
 });
 
 describe("registration recovery routes", () => {
-  it.each([null, 1])("preserves an existing account, including when verification is %s", async (verified) => {
-    mocks.query.mockResolvedValueOnce({ rows: [{ id: "existing", email_verified: verified }] });
+  it.each([null, 1])("answers success for a held address, including when verification is %s", async (verified) => {
+    // A 409 here would let anyone probe which addresses hold accounts, so the
+    // endpoint answers the same success as a fresh signup. Recovery still
+    // works: an unverified holder gets a fresh link inline.
+    const heldVerified = verified === 1;
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ id: "existing", email_verified: verified }] })
+      .mockResolvedValueOnce({ rows: heldVerified ? [] : [{ id: "existing" }] });
     const response = await register(request("register"));
-    expect(response.status).toBe(409);
-    expect((await response.json()).error).toContain("request a new verification email");
-    expect(mocks.query).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(mocks.query).toHaveBeenCalledTimes(2);
     expect(mocks.query).toHaveBeenCalledWith(expect.stringContaining("SELECT"), ["person@example.com"]);
+    const updateSql = String(mocks.query.mock.calls[1][0]);
+    expect(updateSql).toContain("email_verified IS NULL");
+    expect(updateSql).not.toContain("password_hash");
     expect(mocks.hash).not.toHaveBeenCalled();
-    expect(mocks.send).not.toHaveBeenCalled();
+    if (heldVerified) {
+      expect(mocks.send).not.toHaveBeenCalled();
+    } else {
+      expect(mocks.send).toHaveBeenCalledTimes(1);
+      expect(String(mocks.send.mock.calls[0][1])).toContain("/api/auth/verify?token=");
+    }
   });
 
-  it("returns recovery instructions when another signup wins the insert race", async () => {
+  it("returns success when another signup wins the insert race", async () => {
+    // The loser must not 409: that status would reopen the oracle the
+    // held-address path just closed. The winner's request delivers the link.
     mocks.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] });
     const response = await register(request("register"));
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
     expect(mocks.query.mock.calls[1][0]).toContain("ON CONFLICT (lower(email)) WHERE email IS NOT NULL DO NOTHING");
     expect(mocks.send).not.toHaveBeenCalled();
     expect(mocks.audit).not.toHaveBeenCalled();
