@@ -5,7 +5,8 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "no-referrer" },
   { key: "X-Frame-Options", value: "DENY" },
-  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  // includeSubDomains is safe: apex + www both terminate HTTPS at Cloudflare.
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   {
     key: "Permissions-Policy",
     value: "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
@@ -15,6 +16,8 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Don't advertise the framework version to scanners.
+  poweredByHeader: false,
   // Pin workspace discovery to this app. A package-lock higher in a developer's
   // home directory should not make Turbopack infer a different repository root.
   turbopack: {
