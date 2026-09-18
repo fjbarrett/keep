@@ -15,10 +15,6 @@ export const runtime = "nodejs";
 // Verification links expire after a day so a leaked link can't be redeemed
 // indefinitely; users can request a fresh one via /api/auth/resend.
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-const accountConflict = () => NextResponse.json(
-  { error: "Could not create the account. If you've already signed up, sign in or request a new verification email." },
-  { status: 409 },
-);
 
 // Each call writes a user row and sends an email — cap per-IP so the endpoint
 // can't be used for signup spam or email-enumeration sweeps.
@@ -65,13 +61,34 @@ export async function POST(req: Request) {
     [email],
   );
   if (existing.rows[0]) {
-    // Generic message — don't reveal whether the email exists. Crucially, never
-    // rewrite an existing (even unverified) account here: an UPDATE would let an
-    // attacker who knows a victim's email overwrite its password_hash before the
-    // victim verifies, then have the victim activate an attacker-set password.
-    // A legit unverified user re-requests their link via /api/auth/resend, which
-    // refreshes only the token and leaves the password untouched.
-    return accountConflict();
+    // Identical success response as a fresh registration, so the status code
+    // can't probe which addresses hold accounts. Crucially, never rewrite an
+    // existing (even unverified) account here: an UPDATE would let an attacker
+    // who knows a victim's email overwrite its password_hash before the victim
+    // verifies, then have the victim activate an attacker-set password. Only
+    // the verification token is refreshed, and only on still-unverified rows —
+    // the same predicate /api/auth/resend uses — so the password is untouched
+    // and re-registering an unverified address still delivers a live link.
+    // (#384's recoverability message is subsumed: the fresh link is delivered
+    // inline instead of asking the user to request one.)
+    const retryToken = randomBytes(32).toString("hex");
+    const retryNow = Date.now();
+    const { rows } = await pool().query<{ id: string }>(
+      `UPDATE users
+          SET verify_token = $1, verify_token_expires = $2, updated_at = $3
+        WHERE lower(email) = $4 AND email_verified IS NULL
+        RETURNING id`,
+      [retryToken, retryNow + VERIFY_TOKEN_TTL_MS, retryNow, email],
+    );
+    if (rows[0]) {
+      const verifyUrl = `${origin.replace(/\/$/, "")}/api/auth/verify?token=${retryToken}`;
+      try {
+        await sendVerificationEmail(email, verifyUrl);
+      } catch (err) {
+        logger.error("verification email failed", { route: "auth:register", err, to: maskEmail(email) });
+      }
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const id = newId();
