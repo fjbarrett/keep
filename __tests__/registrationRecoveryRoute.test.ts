@@ -70,6 +70,8 @@ describe("registration recovery routes", () => {
     expect((await response.json()).error).toContain("Request a new verification email");
     expect(mocks.query).toHaveBeenCalledTimes(2);
     expect(mocks.audit).toHaveBeenCalledOnce();
+    expect(mocks.query.mock.calls[1][1][3]).toBeNull();
+    expect(mocks.hash).not.toHaveBeenCalled();
   });
 
   it("reports a resend outage instead of falsely claiming delivery", async () => {
