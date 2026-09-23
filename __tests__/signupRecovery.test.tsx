@@ -16,8 +16,6 @@ afterEach(() => {
 function submitSignup() {
   render(<SignUpForm />);
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: "person@example.com" } });
-  fireEvent.change(screen.getByLabelText("Password"), { target: { value: "original-password" } });
-  fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "original-password" } });
   fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 }
 
@@ -61,4 +59,16 @@ describe("signup verification recovery", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Use a stronger password.");
     expect(screen.queryByRole("button", { name: "Send new link" })).toBeNull();
   });
+});
+
+it("collects a password only after the email link, and submits the proof with it", async () => {
+  const token = "b".repeat(64);
+  render(<SignUpForm token={token} />);
+  expect(screen.queryByLabelText("Email")).toBeNull();
+  fetchMock.mockResolvedValueOnce(Response.json({ ok: true }));
+  fireEvent.change(screen.getByLabelText("Password"), { target: { value: "owner-password" } });
+  fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "owner-password" } });
+  fireEvent.click(screen.getByRole("button", { name: "Set password" }));
+  await screen.findByText(/Your account is ready/);
+  expect(fetchMock).toHaveBeenCalledWith("/api/auth/verify", expect.objectContaining({ body: JSON.stringify({ token, password: "owner-password" }) }));
 });

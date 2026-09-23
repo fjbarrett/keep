@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { pool, ready, newId } from "@/lib/db";
-import { hashPassword, passwordIssue } from "@/lib/password";
 import { sendVerificationEmail } from "@/lib/email";
 import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
 import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
@@ -47,13 +46,10 @@ export async function POST(req: Request) {
   }
   const input = body && typeof body === "object" ? body as Record<string, unknown> : null;
   const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
-  const password = typeof input?.password === "string" ? input.password : "";
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json({ error: "Enter a valid email." }, { status: 400 });
   }
-  const issue = passwordIssue(password);
-  if (issue) return NextResponse.json({ error: issue }, { status: 400 });
 
   await ready();
   const existing = await pool().query<{ id: string }>(
@@ -61,16 +57,8 @@ export async function POST(req: Request) {
     [email],
   );
   if (existing.rows[0]) {
-    // Identical success response as a fresh registration, so the status code
-    // can't probe which addresses hold accounts. Crucially, never rewrite an
-    // existing (even unverified) account here: an UPDATE would let an attacker
-    // who knows a victim's email overwrite its password_hash before the victim
-    // verifies, then have the victim activate an attacker-set password. Only
-    // the verification token is refreshed, and only on still-unverified rows —
-    // the same predicate /api/auth/resend uses — so the password is untouched
-    // and re-registering an unverified address still delivers a live link.
-    // (#384's recoverability message is subsumed: the fresh link is delivered
-    // inline instead of asking the user to request one.)
+    // Registration establishes no credential. The mailbox owner chooses a
+    // password when redeeming the link, including for legacy pending accounts.
     const retryToken = randomBytes(32).toString("hex");
     const retryNow = Date.now();
     const { rows } = await pool().query<{ id: string }>(
@@ -92,14 +80,13 @@ export async function POST(req: Request) {
   }
 
   const id = newId();
-  const hash = await hashPassword(password);
   const token = randomBytes(32).toString("hex");
   const now = Date.now();
   const inserted = await pool().query<{ id: string }>(
     `INSERT INTO users (id, email, name, password_hash, verify_token, verify_token_expires, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (lower(email)) WHERE email IS NOT NULL DO NOTHING RETURNING id`,
-    [id, email, null, hash, token, now + VERIFY_TOKEN_TTL_MS, now],
+    [id, email, null, null, token, now + VERIFY_TOKEN_TTL_MS, now],
   );
   // A concurrent signup may have claimed this email after the lookup. Answer
   // the same success either way: a 409 here would reopen the oracle the
