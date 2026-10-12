@@ -103,13 +103,6 @@ export async function PUT(
   }
   try {
     await ready();
-    const taken = await pool().query(
-      `SELECT id FROM notes WHERE share_token = $1 AND id <> $2`,
-      [token, id],
-    );
-    if (taken.rows[0]) {
-      return NextResponse.json({ error: "That link is already taken." }, { status: 409 });
-    }
     const { rows } = await pool().query<NoteRow>(
       `UPDATE notes SET share_token = $1, updated_at = $2
          WHERE id = $3 AND user_id = $4 RETURNING *`,
@@ -125,8 +118,8 @@ export async function PUT(
     });
     return NextResponse.json({ note: rowToNote(rows[0]) });
   } catch (err) {
-    // Two concurrent PUTs can both pass the SELECT above and race on the
-    // unique index; turn that into a clean 409 instead of a leaked 500.
+    // Ownership is checked by the update predicate before the unique index
+    // can report a collision. Unowned notes always return 404.
     if (isUniqueViolation(err)) {
       return NextResponse.json(
         { error: "That link is already taken." },
