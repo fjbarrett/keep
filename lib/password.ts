@@ -63,6 +63,19 @@ export async function verifyPassword(password: string, stored: string): Promise<
   }
 }
 
+let decoy: Promise<string> | undefined;
+
+/**
+ * Hash of a throwaway random password, made once per process with the current
+ * parameters. Verifying against it costs the same scrypt work as a stored
+ * credential, so signing in to an address that holds no password takes as
+ * long as a wrong password does.
+ */
+export function decoyPasswordHash(): Promise<string> {
+  decoy ??= hashPassword(randomBytes(32).toString("base64"));
+  return decoy;
+}
+
 export function passwordNeedsRehash(stored: string): boolean {
   const parts = stored.split("$");
   if (parts.length !== 6 || parts[0] !== "scrypt") return true;

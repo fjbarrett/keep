@@ -1,19 +1,8 @@
 import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
 
-// Sign-in throttling for the password Credentials provider. Both budgets are
-// checked *before* the expensive password hash, so a flood can neither burn
-// CPU nor brute-force a password:
-//
-//   - per IP: stops one host from spraying attempts (and stops a scrypt
-//     CPU-DoS, since we short-circuit before verifyPassword runs). Kept lenient
-//     enough that a shared NAT of real users won't trip it.
-//   - per account: stops a distributed guess against one victim even when the
-//     attacker rotates source IPs. The bucket refills continuously, so a burst
-//     of wrong guesses only *slows* an account for a few minutes rather than
-//     hard-locking it — and Google sign-in stays unaffected regardless.
-//
-// In-memory and per-process, like the route limiters: fine for the single
-// prod droplet; a multi-instance deploy would move this to a shared store.
+// Both limits run before scrypt. The account budget is scoped to its source
+// address so failed attempts from one network cannot lock out the owner on
+// every device. These in-memory limits assume one application process.
 
 export type LoginThrottleScope = "ip" | "account";
 export type LoginThrottleResult =
@@ -47,7 +36,7 @@ export function createLoginThrottle({
     if (!perIp(`ip:${ip}`, now).allowed) return { allowed: false, scope: "ip" };
     // Only spend an account token once the IP budget has allowed the attempt, so
     // an IP-blocked flood can't also exhaust a victim's account budget.
-    if (accountKey && !perAccount(`account:${accountKey}`, now).allowed) {
+    if (accountKey && !perAccount(`account:${JSON.stringify([ip, accountKey])}`, now).allowed) {
       return { allowed: false, scope: "account" };
     }
     return { allowed: true };

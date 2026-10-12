@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { pool, ready } from "@/lib/db";
-import { hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
+import { decoyPasswordHash, hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
 import { recordSecurityEvent } from "@/lib/audit";
 import { linkGoogleAccount } from "@/lib/googleAccountLink";
 import { logger, maskEmail } from "@/lib/logger";
@@ -22,8 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!email || !password) return null;
 
         // Throttle before the DB hit and scrypt: per-IP stops a spray (and the
-        // scrypt CPU-DoS), per-account slows targeted guessing across rotating
-        // IPs. Blocked attempts fail the same null way as a bad password.
+        // scrypt CPU-DoS), per-account/source slows repeated guessing. Blocked attempts fail the same null way as a bad password.
         const ip = request?.headers ? clientIpFromHeaders(request.headers) : "unknown";
         const throttle = checkLoginThrottle(ip, email);
         if (!throttle.allowed) {
@@ -54,8 +53,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
           return null;
         };
+        // An address with no password pays the same scrypt cost as a wrong
+        // password, so response time can't reveal which addresses hold one.
+        const ok = await verifyPassword(password, user?.password_hash ?? (await decoyPasswordHash()));
         if (!user?.password_hash) return fail("no_account");
-        const ok = await verifyPassword(password, user.password_hash);
         if (!ok) return fail("bad_password");
         // Require a verified email before issuing a session. Fail the same way
         // as a bad password (null, not a distinct error) so we don't reveal
