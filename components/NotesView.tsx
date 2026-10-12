@@ -116,16 +116,19 @@ export function NotesView({
     [notes],
   );
 
+  const viewFiltered = useMemo(() => notes.filter((n) => {
+    if (viewMode === "trash") return n.trashed;
+    if (viewMode === "archive") return n.archived && !n.trashed;
+    return !n.archived && !n.trashed;
+  }), [notes, viewMode]);
+  const searchIndex = useMemo(() => new Fuse(viewFiltered, {
+    keys: [{ name: "title", getFn: (n: Note) => searchableText(n) }, "body"],
+    threshold: 0.5, ignoreLocation: true, minMatchCharLength: 2,
+  }), [viewFiltered]);
   const filtered = useMemo(() => {
     const q = searchOpen ? query.trim() : "";
-    const viewFiltered = notes
-      .filter((n) => {
-        if (viewMode === "trash") return n.trashed;
-        if (viewMode === "archive") return n.archived && !n.trashed;
-        return !n.archived && !n.trashed;
-      });
     if (!q)
-      return viewFiltered.sort((a, b) => {
+      return [...viewFiltered].sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
         return b.updatedAt - a.updatedAt;
       });
@@ -137,20 +140,12 @@ export function NotesView({
       const hay = `${n.title}\n${n.body}`.toLowerCase();
       return tokens.every((t) => hay.includes(t));
     });
-    const fuse = new Fuse(contains, {
-      keys: [
-        { name: "title", getFn: (n: Note) => searchableText(n) },
-        "body",
-      ],
-      threshold: 0.5,
-      ignoreLocation: true,
-      minMatchCharLength: 2,
-    });
-    const ranked = fuse.search(q).map((r) => r.item);
+    const containingIDs = new Set(contains.map(note => note.id));
+    const ranked = searchIndex.search(q).map(r => r.item).filter(note => containingIDs.has(note.id));
     const seen = new Set(ranked.map((n) => n.id));
     // Keep any containing note Fuse didn't rank (e.g. a match only in the body).
     return [...ranked, ...contains.filter((n) => !seen.has(n.id))];
-  }, [notes, query, searchOpen, viewMode]);
+  }, [viewFiltered, searchIndex, query, searchOpen]);
 
   const visibleNotes = filtered;
   const activeNote =
@@ -580,32 +575,21 @@ export function NotesView({
 
   return (
     <>
-      {/* Desktop: sidebar (or mini rail) + editor side by side */}
-      <div className="hidden min-h-0 flex-1 bg-[var(--color-canvas)] md:flex">
-        {sidebarCollapsed ? (
+      <div className="flex min-h-0 flex-1 bg-[var(--color-canvas)]">
+        <div className={`${mainTarget || restoringFromUrl ? "hidden" : "flex"} w-full md:w-[260px] md:shrink-0 ${sidebarCollapsed ? "md:hidden" : "md:flex"}`}>
+          <Sidebar {...sidebarProps} />
+        </div>
+        {sidebarCollapsed && <div className="hidden md:flex">
           <MiniRail
             onNewNote={sidebarProps.onNewNote}
             onOpenSettings={sidebarProps.onOpenSettings}
             onOpenShortcuts={sidebarProps.onOpenShortcuts}
             onExpand={() => toggleSidebar(false)}
           />
-        ) : (
-          <Sidebar {...sidebarProps} />
-        )}
-        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-canvas)]">
+        </div>}
+        <main className={`${mainTarget || restoringFromUrl ? "flex" : "hidden"} relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--color-canvas)] md:flex`}>
           {editorPanel}
         </main>
-      </div>
-
-      {/* Mobile: full-screen list or full-screen editor */}
-      <div className="flex min-h-0 flex-1 flex-col md:hidden">
-        {mainTarget || restoringFromUrl ? (
-          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--color-canvas)]">
-            {editorPanel}
-          </main>
-        ) : (
-          <Sidebar {...sidebarProps} mobile />
-        )}
       </div>
 
       {searchOpen && (

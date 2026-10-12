@@ -122,7 +122,7 @@ describe("NotesView deep links", () => {
     render(<NotesView initialNoteId="N42" ownerId={null} />);
 
     await waitFor(() => {
-      expect(screen.getAllByDisplayValue("opened from the route")).toHaveLength(2);
+      expect(screen.getAllByDisplayValue("opened from the route")).toHaveLength(1);
     });
     expect(routerState.replace).not.toHaveBeenCalled();
   });
@@ -141,7 +141,7 @@ describe("NotesView deep links", () => {
     view.rerender(<NotesView initialNoteId="N42" ownerId={null} />);
 
     await waitFor(() => {
-      expect(screen.getAllByDisplayValue("loaded after hydration")).toHaveLength(2);
+      expect(screen.getAllByDisplayValue("loaded after hydration")).toHaveLength(1);
     });
     expect(routerState.replace).not.toHaveBeenCalled();
     expect(window.location.pathname).toBe("/note/N42");
@@ -168,7 +168,7 @@ describe("NotesView deep links", () => {
     routerState.pathname = "/note/N42";
     window.history.replaceState(null, "", "/note/N42");
     const view = render(<NotesView initialNoteId="N42" ownerId={null} />);
-    await waitFor(() => expect(screen.getAllByDisplayValue("history body")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByDisplayValue("history body")).toHaveLength(1));
 
     routerState.pathname = "/";
     window.history.replaceState(null, "", "/");
@@ -197,7 +197,7 @@ describe("NotesView deep links", () => {
 
     routerState.pathname = window.location.pathname;
     view.rerender(<NotesView initialNoteId={null} ownerId={null} />);
-    await waitFor(() => expect(screen.getAllByDisplayValue("grid body")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByDisplayValue("grid body")).toHaveLength(1));
     fireEvent.click(screen.getAllByRole("button", { name: "Open N43" })[0]);
 
     await waitFor(() => {

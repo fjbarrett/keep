@@ -8,8 +8,8 @@ import {
   useImperativeHandle,
   useCallback,
 } from "react";
-import type { Highlighter, ThemeRegistrationAny } from "shiki";
-import { COMMON_LANGS, detectLanguage } from "@/lib/detectLanguage";
+import type { Highlighter, ThemeRegistrationAny, BundledLanguage } from "shiki";
+import { detectLanguage } from "@/lib/detectLanguage";
 import { keepPaletteThemeDark, keepPaletteThemeLight } from "@/lib/shikiTheme";
 import { renderSearchHits } from "./renderSearchHits";
 
@@ -29,7 +29,7 @@ function getHighlighter() {
           keepPaletteThemeDark as ThemeRegistrationAny,
           keepPaletteThemeLight as ThemeRegistrationAny,
         ],
-        langs: COMMON_LANGS,
+        langs: [],
       }),
     );
   }
@@ -56,12 +56,12 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     { value, onChange, onPaste, onDrop, placeholderText, searchMatches, activeMatch = 0 },
     ref,
   ) {
-    const [html, setHtml] = useState("");
+    const [rendered, setRendered] = useState({ value: "", theme: "", html: "" });
     const [lang, setLang] = useState<string>(() => detectLanguage(value));
     const [theme, setTheme] = useState<string>(currentShikiTheme);
+    const html = rendered.value === value && rendered.theme === theme ? rendered.html : "";
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const preRef = useRef<HTMLPreElement>(null);
-    const hlRef = useRef<Highlighter | null>(null);
 
     // Re-highlight when the app theme flips so code stays readable in light mode.
     useEffect(() => {
@@ -100,29 +100,21 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
     }, [value]);
 
     useEffect(() => {
-      // Shiki separates its <span class="line"> rows with literal "\n". The CSS
-      // renders each .line as a block (so wrapped rows hang past the gutter), so
-      // strip those newlines or every line would double-space.
-      const render = (hl: Highlighter) =>
-        hl
-          .codeToHtml(value || " ", { theme, lang })
-          .replace(/\n(<span class="line">)/g, "$1");
-      if (hlRef.current) {
-        try {
-          setHtml(render(hlRef.current));
-        } catch { /* lang not loaded */ }
-        return;
-      }
+      // Long notes stay editable as plain text. Highlight only after a pause,
+      // and never display tokens belonging to an older version of the body.
+      if (value.length > 100_000) return;
       let cancelled = false;
-      getHighlighter().then((hl) => {
-        hlRef.current = hl;
-        if (!cancelled) {
-          try {
-            setHtml(render(hl));
-          } catch { /* lang not loaded */ }
-        }
-      });
-      return () => { cancelled = true; };
+      const timer = window.setTimeout(async () => {
+        try {
+          const hl = await getHighlighter();
+          if (!hl.getLoadedLanguages().includes(lang)) await hl.loadLanguage(lang as BundledLanguage);
+          if (cancelled) return;
+          const html = hl.codeToHtml(value || " ", { theme, lang })
+            .replace(/\n(<span class="line">)/g, "$1");
+          setRendered({ value, theme, html });
+        } catch { highlighterPromise = null; /* Plain text remains editable. */ }
+      }, 120);
+      return () => { cancelled = true; window.clearTimeout(timer); };
     }, [value, lang, theme]);
 
     const handleChange = useCallback(
