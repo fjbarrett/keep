@@ -31,6 +31,7 @@ struct MacRootView: View {
     @State private var createdNoteFocus: Note.ID?
     @State private var query = ""
     @State private var showSignIn = false
+    @State private var confirmSignOut = false
     @State private var pendingDelete: Note?
     @State private var infoNote: Note?
 
@@ -92,6 +93,13 @@ struct MacRootView: View {
         .sheet(isPresented: $showSignIn) {
             SignInView()
                 .frame(minWidth: 400, minHeight: 440)
+                .interactiveDismissDisabled(store.needsAuth)
+        }
+        .confirmationDialog("Sign out?", isPresented: $confirmSignOut) {
+            Button("Sign out", role: .destructive) { Task { await store.signOut() } }
+        } message: {
+            Text(store.drafts.items.isEmpty ? "You can sign in again at any time." :
+                 "Unsynced drafts will stay on this Mac and return when you sign in to this account again.")
         }
         .alert(
             "Something went wrong",
@@ -158,6 +166,13 @@ struct MacRootView: View {
         .navigationTitle(filter?.rawValue ?? "Notes")
         .navigationSplitViewColumnWidth(min: 240, ideal: 300)
         .toolbar {
+            ToolbarItem {
+                if store.needsAuth {
+                    Button("Sign in") { showSignIn = true }
+                } else {
+                    Button("Sign out") { confirmSignOut = true }
+                }
+            }
             ToolbarItem {
                 Button(action: startCompose) {
                     Label("New Note", systemImage: "square.and.pencil")

@@ -17,6 +17,31 @@ struct DraftStorage {
         self.backend = backend
     }
 
+    private var ownerFile: URL {
+        let digest = SHA256.hash(data: Data(backend.utf8)).map { String(format: "%02x", $0) }.joined()
+        return root.appendingPathComponent("owner-" + digest)
+    }
+
+    func rememberedOwner() throws -> String? {
+        guard FileManager.default.fileExists(atPath: ownerFile.path) else { return nil }
+        return try String(contentsOf: ownerFile, encoding: .utf8)
+    }
+
+    func remember(owner: String?) throws {
+        guard let owner else {
+            if FileManager.default.fileExists(atPath: ownerFile.path) { try FileManager.default.removeItem(at: ownerFile) }
+            return
+        }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true,
+                                               attributes: [.posixPermissions: 0o700])
+        var options: Data.WritingOptions = [.atomic]
+        #if os(iOS)
+        options.insert(.completeFileProtectionUnlessOpen)
+        #endif
+        try Data(owner.utf8).write(to: ownerFile, options: options)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: ownerFile.path)
+    }
+
     private func directory(_ owner: String) -> URL {
         let digest = SHA256.hash(data: Data((backend + "\0" + owner).utf8))
         let name = digest.map { String(format: "%02x", $0) }.joined()
