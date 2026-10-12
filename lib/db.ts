@@ -145,6 +145,9 @@ async function bootstrap(): Promise<void> {
       expires_at   BIGINT NOT NULL
     );
 
+    ALTER TABLE native_auth_codes ADD COLUMN IF NOT EXISTS challenge TEXT;
+    CREATE INDEX IF NOT EXISTS native_auth_codes_expiry_idx ON native_auth_codes (expires_at);
+
     CREATE TABLE IF NOT EXISTS users (
       id         TEXT PRIMARY KEY,
       email      TEXT,

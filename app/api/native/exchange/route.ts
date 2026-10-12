@@ -1,3 +1,5 @@
+import { nativeCodeHash, openNativeCookie } from "@/lib/nativeAuthCode";
+import { internalError } from "@/lib/apiError";
 import { NextResponse } from "next/server";
 import { pool, ready } from "@/lib/db";
 import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
@@ -46,36 +48,41 @@ export async function POST(req: Request) {
   }
   const input = body && typeof body === "object" ? body as Record<string, unknown> : null;
   const code = typeof input?.code === "string" ? input.code : "";
-  if (!/^[A-Za-z0-9_-]{43}$/.test(code)) {
+  const verifier = typeof input?.verifier === "string" ? input.verifier : "";
+  if (!/^[A-Za-z0-9_-]{43}$/.test(code) || !/^[A-Za-z0-9_-]{43}$/.test(verifier)) {
     return NextResponse.json({ error: "Missing code." }, { status: 400 });
   }
 
-  await ready();
-  // DELETE … RETURNING claims the code atomically, so it is spendable exactly
-  // once even if two requests race.
-  const { rows } = await pool().query<{
-    cookie_name: string;
-    cookie_value: string;
-  }>(
-    `DELETE FROM native_auth_codes
-     WHERE code = $1 AND expires_at > $2
-     RETURNING cookie_name, cookie_value`,
-    [code, Date.now()],
-  );
-  const row = rows[0];
-  if (!row) {
-    return NextResponse.json({ error: "Invalid or expired code." }, { status: 400 });
-  }
+  try {
+    await ready();
+    await pool().query("DELETE FROM native_auth_codes WHERE expires_at < $1", [Date.now()]);
+    // DELETE … RETURNING claims the code atomically, so it is spendable exactly
+    // once even if two requests race.
+    const { rows } = await pool().query<{
+      cookie_name: string;
+      cookie_value: string;
+    }>(
+      `DELETE FROM native_auth_codes
+       WHERE code = $1 AND expires_at > $2 AND challenge = $3
+       RETURNING cookie_name, cookie_value`,
+      [nativeCodeHash(code), Date.now(), nativeCodeHash(verifier)],
+    );
+    const row = rows[0];
+    if (!row) {
+      return NextResponse.json({ error: "Invalid or expired code." }, { status: 400 });
+    }
 
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set({
-    name: row.cookie_name,
-    value: row.cookie_value,
-    httpOnly: true,
-    secure: row.cookie_name.startsWith("__Secure-"),
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_COOKIE_MAX_AGE,
-  });
-  return res;
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set({
+      name: row.cookie_name,
+      value: openNativeCookie(row.cookie_value, row.cookie_name),
+      httpOnly: true,
+      secure: row.cookie_name.startsWith("__Secure-"),
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_COOKIE_MAX_AGE,
+    });
+    res.headers.set("Cache-Control", "no-store");
+    return res;
+  } catch (error) { return internalError("native:exchange", error); }
 }

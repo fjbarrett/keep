@@ -1,5 +1,7 @@
 import AuthenticationServices
 import Foundation
+import CryptoKit
+import Security
 #if canImport(UIKit)
 import UIKit
 #elseif canImport(AppKit)
@@ -29,13 +31,27 @@ final class GoogleSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
     }
 
     func signIn() async throws {
-        let callbackURL = try await authenticate(
-            startURL: baseURL.appendingPathComponent("native/google")
-        )
-        guard let code = code(from: callbackURL) else {
-            throw SignInError(errorDescription: "Google sign-in didn't complete.")
+        var bytes = [UInt8](repeating: 0, count: 32)
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+            throw SignInError(errorDescription: "Couldn't start secure sign-in.")
         }
-        try await exchange(code: code)
+        let verifier = Self.base64url(Data(bytes))
+        let challenge = Self.base64url(Data(SHA256.hash(data: Data(verifier.utf8))))
+        var start = URLComponents(url: baseURL.appendingPathComponent("native/google"), resolvingAgainstBaseURL: false)!
+        start.queryItems = [URLQueryItem(name: "challenge", value: challenge)]
+        let callbackURL = try await authenticate(startURL: start.url!)
+        let callback = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)
+        guard callbackURL.scheme == callbackScheme, callbackURL.host == "auth-callback",
+              callback?.queryItems?.first(where: { $0.name == "state" })?.value == challenge,
+              let code = code(from: callbackURL) else {
+            throw SignInError(errorDescription: "Google sign-in didn't match this request.")
+        }
+        try await exchange(code: code, verifier: verifier)
+    }
+
+    private static func base64url(_ data: Data) -> String {
+        data.base64EncodedString().replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 
     private func authenticate(startURL: URL) async throws -> URL {
@@ -74,11 +90,11 @@ final class GoogleSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
 
     /// Trades the code for the session cookie. The response's Set-Cookie lands in
     /// the shared cookie storage, authenticating subsequent `KeepAPI` requests.
-    private func exchange(code: String) async throws {
+    private func exchange(code: String, verifier: String) async throws {
         var req = URLRequest(url: baseURL.appendingPathComponent("api/native/exchange"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONSerialization.data(withJSONObject: ["code": code])
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["code": code, "verifier": verifier])
         let (_, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode) else {
