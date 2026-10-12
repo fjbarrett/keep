@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
+import { nativeCodeHash, sealNativeCookie } from "@/lib/nativeAuthCode";
 import { pool, ready } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -13,7 +14,9 @@ const CODE_TTL_MS = 60_000;
 // jar, out of reach of the app's URLSession. Mint a single-use code bound to
 // that cookie and bounce to the app's custom scheme; /api/native/exchange
 // trades the code back for the cookie so the native client becomes authed.
-export async function GET() {
+export async function GET(req: Request) {
+  const challenge = new URL(req.url).searchParams.get("challenge");
+  if (!challenge || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) return new Response("Missing sign-in challenge.", { status: 400 });
   const session = await auth();
   if (!session?.user) {
     return new Response("Sign-in did not complete.", { status: 401 });
@@ -36,13 +39,13 @@ export async function GET() {
     Date.now(),
   ]);
   await pool().query(
-    `INSERT INTO native_auth_codes (code, cookie_name, cookie_value, expires_at)
-     VALUES ($1, $2, $3, $4)`,
-    [code, sessionCookie.name, sessionCookie.value, Date.now() + CODE_TTL_MS],
+    `INSERT INTO native_auth_codes (code, cookie_name, cookie_value, expires_at, challenge)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [nativeCodeHash(code), sessionCookie.name, sealNativeCookie(sessionCookie.value, sessionCookie.name), Date.now() + CODE_TTL_MS, challenge],
   );
 
   return new Response(null, {
     status: 302,
-    headers: { Location: `keep://auth-callback?code=${encodeURIComponent(code)}` },
+    headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", Location: `keep://auth-callback?code=${encodeURIComponent(code)}&state=${challenge}` },
   });
 }
