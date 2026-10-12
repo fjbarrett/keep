@@ -45,6 +45,47 @@ final class NotesStoreTests: XCTestCase {
         return NotesStore(api: KeepAPI(session: session), auth: AuthClient(session: session))
     }
 
+    func testOfflineLaunchRestoresDraftsButUnauthorizedClearsTheRememberedOwner() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let storage = DraftStorage(root: folder)
+        try storage.remember(owner: "offline-owner")
+        try storage.save(NoteDraft(id: Self.id, body: "Unsent words", base: nil, revision: 1), owner: "offline-owner")
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FixtureProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let sut = NotesStore(api: KeepAPI(session: session), auth: AuthClient(session: session), draftStorage: storage)
+        FixtureProtocol.respond = { $0.reply(["error": "Unavailable"], status: 503) }
+        await sut.load()
+        XCTAssertTrue(sut.canEdit)
+        XCTAssertEqual(sut.visibleNotes.first?.body, "Unsent words")
+        FixtureProtocol.respond = { $0.reply([:], status: 401) }
+        await sut.load()
+        XCTAssertTrue(sut.needsAuth)
+        XCTAssertTrue(sut.visibleNotes.isEmpty)
+        XCTAssertNil(try storage.rememberedOwner())
+        XCTAssertEqual(try storage.load(owner: "offline-owner").count, 1)
+    }
+
+    func testSessionServerErrorDoesNotSignOutTheAccount() async {
+        FixtureProtocol.respond = { $0.reply(["error": "Unavailable"], status: 503) }
+        let sut = store()
+        await sut.load()
+        XCTAssertFalse(sut.needsAuth)
+        XCTAssertEqual(sut.errorMessage, "Server error (503).")
+    }
+
+    func testValidationErrorsKeepTheServerExplanation() async {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FixtureProtocol.self]
+        let api = KeepAPI(session: URLSession(configuration: configuration))
+        FixtureProtocol.respond = { $0.reply(["error": "Note storage quota exceeded."], status: 413) }
+        do {
+            _ = try await api.create(body: "Text")
+            XCTFail("Expected a validation error")
+        } catch { XCTAssertEqual(error.localizedDescription, "Note storage quota exceeded.") }
+    }
+
     func testOldAccountReadCannotAppearAfterNewSignIn() async {
         let started = expectation(description: "old read starts")
         var old: FixtureProtocol?

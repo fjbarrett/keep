@@ -8,6 +8,7 @@ import Observation
 final class DraftSaver {
     private(set) var items: [String: NoteDraft] = [:]
     private(set) var errors: [String: String] = [:]
+    private(set) var requiresResolution: Set<String> = []
     private(set) var saving: Set<String> = []
     var onSaved: (Note) -> Void = { _ in }
     var onUnauthorized: () -> Void = {}
@@ -34,6 +35,7 @@ final class DraftSaver {
         paused = []
         saving = []
         errors = [:]
+        requiresResolution = []
         items = [:]
         self.owner = nil
         if let owner { items = try storage.load(owner: owner) }
@@ -44,16 +46,17 @@ final class DraftSaver {
         guard let owner else { return }
         let previous = items[id]
         let draft = NoteDraft(id: id, body: body, base: previous == nil ? base : previous!.base,
-                              revision: (previous?.revision ?? 0) + 1, title: title ?? previous?.title,
+                              revision: (previous?.revision ?? 0) + 1, title: (title ?? previous?.title).map(NoteTitle.bounded),
                               color: color ?? previous?.color)
         items[id] = draft
         do {
             try storage.save(draft, owner: owner)
-            errors[id] = nil
+            if !requiresResolution.contains(id) { errors[id] = nil }
         } catch {
             errors[id] = "Could not keep this draft on this device: " + error.localizedDescription
             return
         }
+        guard !requiresResolution.contains(id) else { return }
         timers[id]?.cancel()
         timers[id] = Task {
             do { try await Task.sleep(for: .milliseconds(600)) } catch { return }
@@ -62,7 +65,7 @@ final class DraftSaver {
     }
 
     func start(_ id: String) {
-        guard !paused.contains(id), workers[id] == nil, items[id] != nil, let owner else { return }
+        guard !requiresResolution.contains(id), !paused.contains(id), workers[id] == nil, items[id] != nil, let owner else { return }
         timers[id]?.cancel()
         timers[id] = nil
         let session = generation
@@ -125,6 +128,8 @@ final class DraftSaver {
                             catch { errors[id] = error.localizedDescription; return }
                         }
                     }
+                    if case APIError.conflict = error { requiresResolution.insert(id) }
+                    if case APIError.http(404) = error { requiresResolution.insert(id) }
                     if case APIError.unauthorized = error { onUnauthorized() }
                     errors[id] = error.localizedDescription
                     return
@@ -150,6 +155,7 @@ final class DraftSaver {
         timers[id] = nil
         items[id] = nil
         errors[id] = nil
+        requiresResolution.remove(id)
     }
 
     func retryAll() {
@@ -171,6 +177,7 @@ final class DraftSaver {
             try storage.remove(id, owner: owner)
             items[id] = nil
             errors[id] = nil
+            requiresResolution.remove(id)
             items[copy.id] = copy
             start(copy.id)
             return copy.id

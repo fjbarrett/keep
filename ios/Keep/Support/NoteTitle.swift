@@ -6,6 +6,15 @@ enum NoteTitle {
     private static let wordLimit = 4
     private static let charLimit = 36
 
+    /// The server measures title length in UTF-16 code units.
+    static func bounded(_ title: String) -> String {
+        var units = 0
+        return String(title.prefix { character in
+            units += String(character).utf16.count
+            return units <= 120
+        })
+    }
+
     /// Let the view wrap or truncate a title without replacing its contents.
     static func preview(title: String, body: String) -> String {
         let text = trim(collapseWhitespace(title))

@@ -90,6 +90,12 @@ final class DraftSaverTests: XCTestCase {
         await sut.waitForSave(id)
         XCTAssertEqual(sut.items[id]?.body, "My text")
         XCTAssertNotNil(sut.errors[id])
+        XCTAssertTrue(sut.requiresResolution.contains(id))
+        var retried = false
+        FixtureProtocol.respond = { _ in retried = true }
+        sut.start(id)
+        await sut.waitForSave(id)
+        XCTAssertFalse(retried)
         FixtureProtocol.respond = { request in
             var row = NotesStoreTests.row("My text")
             row["id"] = request.payload["id"]

@@ -4,6 +4,7 @@ import ImageIO
 enum APIError: Error, LocalizedError {
     case unauthorized
     case http(Int)
+    case rejected(String)
     case decoding(Error)
     case transport(Error)
     case conflict(Note)
@@ -11,6 +12,7 @@ enum APIError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unauthorized: return "Please sign in."
+        case .rejected(let message): return message
         case .http(let code): return "Server error (\(code))."
         case .decoding: return "Couldn't read the server response."
         case .transport(let e): return e.localizedDescription
@@ -123,6 +125,11 @@ actor KeepAPI {
             if http.statusCode == 401 { throw APIError.unauthorized }
             if http.statusCode == 409, let conflict = try? decoder.decode(NoteResponse.self, from: data) {
                 throw APIError.conflict(conflict.note)
+            }
+            if [400, 413, 429].contains(http.statusCode),
+               let problem = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let message = problem["error"] as? String, !message.isEmpty {
+                throw APIError.rejected(String(message.prefix(500)))
             }
             guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
             do { return try decoder.decode(T.self, from: data) }

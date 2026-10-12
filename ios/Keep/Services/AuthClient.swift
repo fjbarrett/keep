@@ -32,7 +32,8 @@ actor AuthClient {
             "callbackUrl": baseURL.absoluteString,
             "json": "true",
         ])
-        _ = try await session.data(for: req)
+        let (_, response) = try await session.data(for: req)
+        try requireSuccess(response)
         // The callback returns 200 even on bad credentials (with an error in the
         // body), so confirm a real session exists rather than trusting the POST.
         guard try await isSignedIn() else {
@@ -46,11 +47,13 @@ actor AuthClient {
     }
 
     func userID() async throws -> String? {
-        let (data, _) = try await session.data(from: url("api/auth/session"))
-        // Authenticated → {"user": {...}, ...}; otherwise `null` or {}.
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
-        }
+        let (data, response) = try await session.data(from: url("api/auth/session"))
+        if (response as? HTTPURLResponse)?.statusCode == 401 { return nil }
+        try requireSuccess(response)
+        // A transport/server failure is not proof that the session ended.
+        let value = try JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed)
+        if value is NSNull { return nil }
+        guard let obj = value as? [String: Any] else { throw APIError.http(502) }
         return (obj["user"] as? [String: Any])?["id"] as? String
     }
 
@@ -65,17 +68,25 @@ actor AuthClient {
             req.httpBody = formBody(["csrfToken": csrf, "json": "true"])
             _ = try? await session.data(for: req)
         }
-        session.configuration.httpCookieStorage?.cookies?.forEach {
-            session.configuration.httpCookieStorage?.deleteCookie($0)
-        }
+        let host = baseURL.host?.lowercased() ?? ""
+        session.configuration.httpCookieStorage?.cookies?.filter {
+            let domain = $0.domain.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+            return !host.isEmpty && (host == domain || host.hasSuffix("." + domain))
+        }.forEach { session.configuration.httpCookieStorage?.deleteCookie($0) }
     }
 
     // MARK: - Plumbing
 
     private func csrfToken() async throws -> String {
         struct CSRF: Decodable { let csrfToken: String }
-        let (data, _) = try await session.data(from: url("api/auth/csrf"))
+        let (data, response) = try await session.data(from: url("api/auth/csrf"))
+        try requireSuccess(response)
         return try JSONDecoder().decode(CSRF.self, from: data).csrfToken
+    }
+
+    private func requireSuccess(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { throw APIError.http(-1) }
+        guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
     }
 
     private func url(_ path: String) -> URL { baseURL.appendingPathComponent(path) }

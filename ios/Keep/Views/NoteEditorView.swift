@@ -201,7 +201,7 @@ struct NoteEditorView: View {
     private var titleField: some View {
         TextField("Title", text: Binding(get: { title }, set: { value in
             guard value != title else { return }
-            title = value
+            title = NoteTitle.bounded(value)
             stageDraft()
         }), prompt: Text("Title").foregroundStyle(.secondary), axis: .vertical)
             .font(.title2.weight(.semibold))

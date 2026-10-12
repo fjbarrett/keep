@@ -34,11 +34,13 @@ final class NotesStore {
             + unsent.values.filter { draft in !savedIDs.contains(draft.id) }.map(\.snapshot)
     }
 
+    private let draftStorage: DraftStorage
     private let api: KeepAPI
     private let auth: AuthClient
     private let google = GoogleSignIn()
 
     init(api: KeepAPI = KeepAPI(), auth: AuthClient = AuthClient(), draftStorage: DraftStorage = DraftStorage()) {
+        self.draftStorage = draftStorage
         self.api = api
         self.auth = auth
         drafts = DraftSaver(api: api, storage: draftStorage)
@@ -98,12 +100,27 @@ final class NotesStore {
             }
             try drafts.activate(owner: owner)
             ownerID = owner
+            try draftStorage.remember(owner: owner)
             let loaded = try await api.listNotes()
             guard session == sessionGeneration, content == contentGeneration,
                   request == loadGeneration else { return }
             notes = loaded
             drafts.retryAll()
-        } catch { if session == sessionGeneration { handle(error) } }
+        } catch {
+            guard session == sessionGeneration else { return }
+            if case APIError.unauthorized = error { handle(error); return }
+            // A transport/server failure doesn't invalidate the last known
+            // account. Its durable drafts remain available on an offline launch.
+            if ownerID == nil {
+                do {
+                    if let owner = try draftStorage.rememberedOwner() {
+                        try drafts.activate(owner: owner)
+                        ownerID = owner
+                    }
+                } catch { errorMessage = "Could not reopen local drafts: " + error.localizedDescription }
+            }
+            handle(error)
+        }
     }
 
     @discardableResult
@@ -283,6 +300,7 @@ final class NotesStore {
         loadGeneration += 1
         notes = []
         ownerID = nil
+        try? draftStorage.remember(owner: nil)
         try? drafts.activate(owner: nil)
         errorMessage = nil
         isLoading = false
@@ -299,7 +317,12 @@ final class NotesStore {
     /// A 401 means "sign in" (surface the sheet); anything else is a real error.
     private func handle(_ error: Error) {
         if case APIError.unauthorized = error {
+            sessionGeneration += 1
             needsAuth = true
+            ownerID = nil
+            notes = []
+            try? draftStorage.remember(owner: nil)
+            try? drafts.activate(owner: nil)
         } else {
             errorMessage = error.localizedDescription
         }

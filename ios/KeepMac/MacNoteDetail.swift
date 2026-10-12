@@ -19,8 +19,6 @@ struct MacNoteDetail: View {
     @State private var draftID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     private var id: String { note?.id ?? draftID }
 
-    private let titleCharLimit = 36
-
     /// The live note (existing, or the one we just created), pulled fresh from
     /// the store so toolbar state (pin/archive) reflects the latest.
     private var current: Note? {
@@ -157,9 +155,8 @@ struct MacNoteDetail: View {
                     titleFocused = false
                 }
                 .onChange(of: title) { _, value in
-                    if value.count > titleCharLimit {
-                        title = String(value.prefix(titleCharLimit))
-                    }
+                    let bounded = NoteTitle.bounded(value)
+                    if bounded != value { title = bounded }
                 }
                 .onChange(of: titleFocused) { _, focused in
                     if !focused { commitTitle(for: n) }
@@ -174,7 +171,7 @@ struct MacNoteDetail: View {
             title = n.displayTitle
             return
         }
-        Task { await store.update(n.id, patch: ["title": trimmed]) }
+        store.drafts.stage(id: n.id, body: text, base: store.notes.first { $0.id == n.id }, title: trimmed)
     }
 
 }
