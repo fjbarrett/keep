@@ -1,3 +1,4 @@
+import { assertOwnerSession } from "./ownerSession";
 import type { Note } from "./types";
 import { notesApi, NotesApiError } from "./notesClient";
 import { readNoteDrafts, replaceNoteDraft, removeNoteDraft, type NoteDraft } from "./noteDrafts";
@@ -9,6 +10,7 @@ const equal = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.s
 
 /** Every body PATCH names the version its draft was based on. */
 export async function saveNoteDraft(owner: string, submitted: NoteDraft, options: { keepalive?: boolean } = {}) {
+  assertOwnerSession(owner);
   const current = readNoteDrafts(owner).find((draft) => draft.note.id === submitted.note.id);
   const draft = current?.revision === submitted.revision ? current : submitted;
   let base = draft.base;
@@ -31,6 +33,7 @@ export async function saveNoteDraft(owner: string, submitted: NoteDraft, options
   for (let attempt = 0; !saved && attempt < 3; attempt++) {
     if (patch.body !== undefined && !base) throw conflict();
     try {
+      assertOwnerSession(owner);
       const data = await notesApi<{ note: Note }>(`/api/notes/${draft.note.id}`, {
         method: "PATCH", ...options, json: { ...patch, ...(base ? { expectedUpdatedAt: base.updatedAt } : {}) },
       });
