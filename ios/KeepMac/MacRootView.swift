@@ -7,24 +7,7 @@ struct MacRootView: View {
     @Environment(NotesStore.self) private var store
     @Environment(\.scenePhase) private var phase
 
-    enum Filter: String, CaseIterable, Identifiable {
-        case all = "All Notes"
-        case pinned = "Pinned"
-        case archived = "Archived"
-        case trash = "Trash"
-
-        var id: String { rawValue }
-        var symbol: String {
-            switch self {
-            case .all: return "note.text"
-            case .pinned: return "pin"
-            case .archived: return "archivebox"
-            case .trash: return "trash"
-            }
-        }
-    }
-
-    @State private var filter: Filter? = .all
+    @State private var filter: NoteFilter? = .all
     @State private var selection: Note.ID?
     @State private var composing = false
     @State private var composeFocusRequest = 0
@@ -128,7 +111,7 @@ struct MacRootView: View {
     }
 
     private var sidebar: some View {
-        List(Filter.allCases, selection: $filter) { f in
+        List(NoteFilter.allCases, selection: $filter) { f in
             Label(f.rawValue, systemImage: f.symbol).tag(f)
         }
         .navigationSplitViewColumnWidth(min: 170, ideal: 200, max: 240)
@@ -252,12 +235,7 @@ struct MacRootView: View {
     }
 
     private func matches(_ note: Note) -> Bool {
-        switch filter ?? .all {
-        case .all: return !note.trashed && !note.archived
-        case .pinned: return note.pinned && !note.trashed && !note.archived
-        case .archived: return note.archived && !note.trashed
-        case .trash: return note.trashed
-        }
+        (filter ?? .all).matches(note)
     }
 
     private var filteredNotes: [Note] {
@@ -313,23 +291,5 @@ private struct MacNoteRow: View {
             }
         }
         .padding(.vertical, 2)
-    }
-}
-
-/// The web app's note-label palette (lib/noteColors.ts) on system colors.
-enum NotePalette {
-    static let all: [(key: String, label: String, color: Color)] = [
-        ("blue", "Blue", .blue),
-        ("purple", "Purple", .purple),
-        ("pink", "Pink", .pink),
-        ("red", "Red", .red),
-        ("orange", "Orange", .orange),
-        ("yellow", "Yellow", .yellow),
-        ("green", "Green", .green),
-        ("graphite", "Graphite", .gray),
-    ]
-
-    static func color(for key: String?) -> Color? {
-        all.first { $0.key == key }?.color
     }
 }

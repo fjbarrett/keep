@@ -44,7 +44,7 @@ struct MacNoteDetail: View {
                     .padding(.bottom, 10)
             }
             if current?.markdown == true {
-                MacMarkdownView(source: text)
+                MarkdownView(source: text)
             } else {
                 TextEditor(text: Binding(get: { text }, set: { value in
                     text = value

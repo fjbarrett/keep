@@ -123,25 +123,6 @@ final class NotesStore {
         }
     }
 
-    @discardableResult
-    func create(body: String) async -> Note? {
-        guard !needsAuth else { return nil }
-        let session = sessionGeneration
-        contentGeneration += 1
-        do {
-            let meta = try? await api.generateMeta(body: body)
-            guard session == sessionGeneration else { return nil }
-            let note = try await api.create(body: body, title: meta?.title, summary: meta?.summary)
-            guard session == sessionGeneration else { return nil }
-            contentGeneration += 1
-            notes.insert(note, at: 0)
-            return note
-        } catch {
-            if session == sessionGeneration { handle(error) }
-            return nil
-        }
-    }
-
     /// Body saves regenerate the title/summary when the lead line changes (or
     /// the note has no title yet), folded into the same PATCH — mirroring the
     /// web's autosave. Meta failures degrade to a plain body save.
