@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED = new Set([
   "title",
+  "titleManual",
   "summary",
   "color",
   "body",
@@ -71,7 +72,7 @@ export async function PATCH(
     ) {
       return NextResponse.json({ error: "Invalid summary." }, { status: 400 });
     }
-    for (const key of ["pinned", "archived", "trashed", "markdown", "highlight"]) {
+    for (const key of ["pinned", "archived", "trashed", "markdown", "highlight", "titleManual"]) {
       if (key in patch && typeof patch[key] !== "boolean") {
         return NextResponse.json({ error: `Invalid ${key} value.` }, { status: 400 });
       }
@@ -87,7 +88,7 @@ export async function PATCH(
     let i = 1;
     for (const [k, v] of Object.entries(patch)) {
       if (!ALLOWED.has(k)) continue;
-      sets.push(`${k} = $${i++}`);
+      sets.push(`${k === "titleManual" ? "title_manual" : k} = $${i++}`);
       values.push(v);
     }
     sets.push(`updated_at = GREATEST(updated_at + 1, $${i++})`);

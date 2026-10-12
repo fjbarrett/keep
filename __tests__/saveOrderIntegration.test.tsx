@@ -113,3 +113,22 @@ it("replays only the latest durable body when multiple older operations are queu
   expect(server.body).toBe("Heading\nLatest");
   expect(readNoteDrafts(owner)).toEqual([]);
 });
+
+it("keeps a manual title when the note's first line changes", async () => {
+  const owner = crypto.randomUUID();
+  let server = initial;
+  const fetch = vi.fn(async (path, init) => {
+    if (init?.method === "PATCH") {
+      server = { ...server, ...JSON.parse(init.body), updatedAt: server.updatedAt + 1 };
+      return json({ note: server });
+    }
+    return json({ notes: [server] });
+  });
+  vi.stubGlobal("fetch", fetch);
+  const { result } = renderHook(() => useNotes(owner));
+  await waitFor(() => expect(result.current.hydrated).toBe(true));
+  await act(async () => { await result.current.update(initial.id, { title: "My chosen title", titleManual: true }); });
+  await act(async () => { await result.current.update(initial.id, { body: "A different first line" }); });
+  expect(server.title).toBe("My chosen title");
+  expect(fetch.mock.calls.some(([path]) => path === "/api/notes/title")).toBe(false);
+});

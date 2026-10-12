@@ -111,6 +111,7 @@ async function bootstrap(): Promise<void> {
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS summary TEXT;
     -- Optional color label key (blue, pink, …); NULL means no label.
     ALTER TABLE notes ADD COLUMN IF NOT EXISTS color TEXT;
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS title_manual BOOLEAN NOT NULL DEFAULT false;
     CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at DESC);
     CREATE INDEX IF NOT EXISTS notes_tags_idx ON notes USING GIN (tags);
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
@@ -248,6 +249,7 @@ export function ready(): Promise<void> {
 export type NoteRow = {
   id: string;
   title: string;
+  title_manual?: boolean;
   summary: string | null;
   color: string | null;
   body: string;
@@ -266,6 +268,7 @@ export function rowToNote(r: NoteRow) {
   return {
     id: r.id,
     title: r.title,
+    titleManual: Boolean(r.title_manual),
     summary: r.summary ?? null,
     color: r.color ?? null,
     body: r.body,

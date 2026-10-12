@@ -153,6 +153,7 @@ final class NotesStore {
         if let body = patch["body"] as? String,
            patch["title"] == nil,
            let current = notes.first(where: { $0.id == id }),
+           current.titleManual != true,
            Self.firstLine(body) != Self.firstLine(current.body)
                || current.title.trimmingCharacters(in: .whitespaces).isEmpty,
            let meta = try? await api.generateMeta(body: body) {

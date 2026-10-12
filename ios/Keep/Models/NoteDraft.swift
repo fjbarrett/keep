@@ -18,7 +18,7 @@ struct NoteDraft: Codable, Equatable, Identifiable {
             pinned: false, archived: false, trashed: false, markdown: false,
             highlight: false, tags: [], createdAt: editedAt, updatedAt: editedAt)
         note.body = body
-        if title != nil { note.title = resolvedTitle }
+        if title != nil { note.title = resolvedTitle; note.titleManual = true }
         note.color = resolvedColor
         note.updatedAt = editedAt
         return note

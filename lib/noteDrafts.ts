@@ -57,6 +57,7 @@ function draftMatchesServer(draft: NoteDraft, server: Note | undefined) {
   const intended = draft.type === "create"
     ? [
         ["title", draft.note.title],
+        ...(draft.note.titleManual === undefined ? [] : [["titleManual", draft.note.titleManual]]),
         ["summary", draft.note.summary],
         ["color", draft.note.color],
         ["body", draft.note.body],

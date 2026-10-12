@@ -27,7 +27,7 @@ function normalizeStoredNote(value: unknown): Note | null {
   const title = String(note.title ?? "");
   return {
     ...note,
-    title: needsInferredTitle(title, body) ? inferNoteTitle(body || title) : title,
+    title: !note.titleManual && needsInferredTitle(title, body) ? inferNoteTitle(body || title) : title,
     body,
     trashed: Boolean(note.trashed),
     markdown: Boolean(note.markdown),

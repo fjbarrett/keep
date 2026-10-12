@@ -1,6 +1,7 @@
 export type Note = {
   id: string;
   title: string;
+  titleManual?: boolean;
   summary?: string | null;
   color?: string | null;
   body: string;

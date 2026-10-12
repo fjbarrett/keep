@@ -86,18 +86,19 @@ final class DraftSaver {
                             if draft.color != nil { patch["color"] = draft.resolvedColor ?? NSNull() }
                             if draft.title != nil {
                                 patch["title"] = draft.resolvedTitle
+                                patch["titleManual"] = true
                                 if draft.body.components(separatedBy: "\n").first != base.body.components(separatedBy: "\n").first {
                                     patch["summary"] = NSNull()
                                 }
-                            } else if draft.body.components(separatedBy: "\n").first != base.body.components(separatedBy: "\n").first
-                                || base.title.trimmingCharacters(in: .whitespaces).isEmpty {
+                            } else if base.titleManual != true && (draft.body.components(separatedBy: "\n").first != base.body.components(separatedBy: "\n").first
+                                || base.title.trimmingCharacters(in: .whitespaces).isEmpty) {
                                 patch["title"] = NoteTitle.infer(draft.body)
                                 patch["summary"] = NSNull()
                             }
                             saved = try await api.update(id: id, patch: patch)
                         } else {
                             saved = try await api.create(body: draft.body, title: draft.resolvedTitle,
-                                                         id: id, ownerID: owner, color: draft.resolvedColor)
+                                                         id: id, ownerID: owner, color: draft.resolvedColor, titleManual: draft.title != nil)
                         }
                     } catch APIError.conflict(let remote) where draft.matches(remote) {
                         // The previous request committed but its acknowledgement was lost.
