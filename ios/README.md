@@ -110,7 +110,9 @@ gh variable set IOS_SCREENSHOT --body true
 ## Saving and accessibility
 
 Edits are journaled to per-account, per-backend files before network work.
-A new note keeps the same ID across retries. Opening a note does not write it
+A new note keeps the same ID across retries. A draft file that no longer
+decodes is moved to a `corrupt/` folder beside the others and logged, so one
+bad file never hides the rest. Opening a note does not write it
 back; body updates name the server version they were based on. A conflicting
 remote edit is preserved and the local draft offers retry or save-as-copy.
 Permanent deletion waits for pending saves and retires the draft.
