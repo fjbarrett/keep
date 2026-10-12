@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { overlayPendingNotes } from "./pendingNotes";
 import { saveNoteDraft } from "./saveNoteDraft";
-import { discardAcknowledgedNoteDrafts, readNoteDrafts, writeNoteDraft, replaceNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
+import { discardAcknowledgedNoteDrafts, readNoteDraft, readNoteDrafts, writeNoteDraft, replaceNoteDraft, removeNoteDraft, overlayNoteDrafts, type NoteDraft } from "./noteDrafts";
 import { Note } from "./types";
 import {
   cacheNotes,
@@ -205,7 +205,7 @@ export function useNotes(ownerId: string | null) {
 
   const finishDeletion = useCallback(async (owner: string, id: string, through: number) => {
     await Promise.allSettled([...(activeSavesRef.current.get(id) ?? [])]);
-    const draft = readNoteDrafts(owner).find((entry) => entry.note.id === id);
+    const draft = readNoteDraft(owner, id);
     try { await notesApi(`/api/notes/${id}`, { method: "DELETE" }); }
     catch (error) { if (!(error instanceof NotesApiError) || error.status !== 404) throw error; }
     if (draft) removeNoteDraft(owner, draft);
@@ -347,7 +347,7 @@ export function useNotes(ownerId: string | null) {
             try {
               await enqueueSave(op.noteId, async () => {
                 if (ownerRef.current !== ownerId) throw new NotesApiError("Account changed", 401);
-                const draft = readNoteDrafts(ownerId).find((entry) => entry.note.id === op.noteId);
+                const draft = readNoteDraft(ownerId, op.noteId);
                 if (draft && op.type !== "delete") {
                   const saved = await submitDraft(ownerId, draft);
                   if (ownerRef.current === ownerId) rememberSaved(saved);
@@ -357,12 +357,12 @@ export function useNotes(ownerId: string | null) {
                   processed.add(op.noteId);
                 } else if (op.type === "create" && op.payload) {
                   await notesApi("/api/notes", { method: "POST", json: { ...op.payload, id: op.noteId, ownerId } });
-                  const draft = readNoteDrafts(ownerId).find((entry) => entry.note.id === op.noteId);
+                  const draft = readNoteDraft(ownerId, op.noteId);
                   if (draft) writeNoteDraft(ownerId, { ...draft, type: "update" });
                 } else if (op.type === "update" && op.payload) {
                   if (op.payload.body !== undefined) throw new NotesApiError("This older offline draft needs a recovery copy.", 409);
-                  const failedCreate = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId && draft.type === "create");
-                  if (failedCreate) throw new NotesApiError("The new note needs recovery before updates can sync.", 409);
+                  const failedCreate = readNoteDraft(ownerId, op.noteId);
+                  if (failedCreate?.type === "create") throw new NotesApiError("The new note needs recovery before updates can sync.", 409);
                   await notesApi(`/api/notes/${op.noteId}`, { method: "PATCH", json: op.payload });
                 } else if (op.type === "delete") {
                   deletingRef.current.add(op.noteId);
@@ -370,7 +370,7 @@ export function useNotes(ownerId: string | null) {
                 }
               });
               await removePendingOp(ownerId, op.id);
-              const draft = readNoteDrafts(ownerId).find((entry) => entry.note.id === op.noteId);
+              const draft = readNoteDraft(ownerId, op.noteId);
               if (draft && op.payload?.body === draft.note.body &&
                   !(await getPendingOps(ownerId)).some((entry) => entry.noteId === op.noteId)) {
                 removeNoteDraft(ownerId, draft);
@@ -395,7 +395,7 @@ export function useNotes(ownerId: string | null) {
                 break;
               }
               if (op.type === "delete") deletingRef.current.delete(op.noteId);
-              let savedDraft = readNoteDrafts(ownerId).find((draft) => draft.note.id === op.noteId);
+              let savedDraft = readNoteDraft(ownerId, op.noteId);
               if (!savedDraft && typeof op.payload?.body === "string") {
                 const recovered = overlayPendingNotes([], notesRef.current, ops.filter((entry) => entry.noteId === op.noteId))[0];
                 if (recovered) savedDraft = writeNoteDraft(ownerId, {
@@ -493,7 +493,7 @@ export function useNotes(ownerId: string | null) {
 
     if (isGuest || localNoteIds.has(id)) {
       if (ownerId) {
-        const migration = readNoteDrafts(ownerId).find(draft => draft.note.id === id);
+        const migration = readNoteDraft(ownerId, id);
         if (migration) {
           try {
             writeNoteDraft(ownerId, { ...migration, note: optimistic, patch: { ...migration.patch, ...initialPatch },
@@ -507,7 +507,7 @@ export function useNotes(ownerId: string | null) {
     }
     if (!ownerId) return Promise.resolve();
 
-    const previousDraft = readNoteDrafts(ownerId).find((draft) => draft.note.id === id);
+    const previousDraft = readNoteDraft(ownerId, id);
     let draft: NoteDraft;
     try {
       draft = writeNoteDraft(ownerId, {
@@ -537,7 +537,8 @@ export function useNotes(ownerId: string | null) {
 
       if (ownerRef.current !== ownerId || mutationRevisionRef.current.get(id) !== revision) return;
       // Keep the acknowledged base written by an earlier serialized save.
-      const staged = readNoteDrafts(ownerId).find((entry) => entry.revision === draft.revision);
+      const currentDraft = readNoteDraft(ownerId, id);
+      const staged = currentDraft?.revision === draft.revision ? currentDraft : undefined;
       draft = { ...(staged ?? draft), note: { ...draft.note, ...nextPatch }, patch: nextPatch };
       replaceNoteDraft(ownerId, draft);
       const alreadyQueued =
@@ -649,8 +650,9 @@ export function useNotes(ownerId: string | null) {
       if (ownerRef.current !== ownerId) return data.note;
       if (deletingRef.current.has(note.id)) return null;
       rememberSaved(data.note);
+      const currentDraft = readNoteDraft(ownerId, note.id);
       data.note = overlayNoteDrafts([serverNotesRef.current.get(note.id) ?? data.note],
-        readNoteDrafts(ownerId).filter((draft) => draft.note.id === note.id))[0];
+        currentDraft ? [currentDraft] : [])[0];
       // Upsert, don't map: a refresh() fired by replay/reconnect can overwrite
       // notesRef with a server list that predates this POST, and a plain map
       // would then find no match and silently drop the note the user just made.
@@ -672,7 +674,7 @@ export function useNotes(ownerId: string | null) {
       }
       return data.note;
     } catch (e) {
-      if (!readNoteDrafts(ownerId).some((draft) => draft.note.id === note.id)) {
+      if (!readNoteDraft(ownerId, note.id)) {
         return notesRef.current.find((item) => item.id === note.id) ?? note;
       }
       if (isRetryableNoteError(e)) {
@@ -871,7 +873,7 @@ export function useNotes(ownerId: string | null) {
       const note = notesRef.current.find(note => note.id === candidate.id);
       if (!note) continue;
       try {
-        const previous = readNoteDrafts(ownerId).find(draft => draft.note.id === note.id);
+        const previous = readNoteDraft(ownerId, note.id);
         const pending = writeNoteDraft(ownerId, {
           note, patch: editableFields(note), type: previous?.base ? "update" : "create", base: previous?.base,
           predecessors: [...new Set([...(previous?.predecessors ?? []), ...(previous ? [previous.note.body] : [])])],

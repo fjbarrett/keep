@@ -47,8 +47,14 @@ export async function cacheNotes(ownerId: string, notes: Note[]) {
   assertOwnerSession(ownerId);
   const tx = db.transaction("notes", "readwrite");
   const store = tx.objectStore("notes");
-  await store.clear();
-  for (const note of notes) await store.put(note);
+  const incoming = new Map(notes.map((note) => [note.id, note]));
+  for (let cursor = await store.openCursor(); cursor; cursor = await cursor.continue()) {
+    const next = incoming.get(String(cursor.primaryKey));
+    if (!next) await cursor.delete();
+    else if (JSON.stringify(cursor.value) !== JSON.stringify(next)) await cursor.update(next);
+    incoming.delete(String(cursor.primaryKey));
+  }
+  for (const note of incoming.values()) await store.put(note);
   await tx.done;
 }
 

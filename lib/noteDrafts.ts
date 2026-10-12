@@ -11,17 +11,21 @@ export type NoteDraft = {
 };
 const prefix = (owner: string) => `keep.draft.v1.${encodeURIComponent(owner)}.`;
 
+export function readNoteDraft(owner: string, id: string): NoteDraft | undefined {
+  try {
+    const draft = JSON.parse(localStorage.getItem(prefix(owner) + id) ?? "null");
+    if (id && draft?.note?.id === id && typeof draft.note.body === "string" && draft.revision) return draft;
+  } catch { /* Keep unreadable records for manual recovery. */ }
+}
+
 export function readNoteDrafts(owner: string): NoteDraft[] {
   const drafts: NoteDraft[] = [];
   try {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (!key?.startsWith(prefix(owner))) continue;
-    try {
-      const draft = JSON.parse(localStorage.getItem(key) ?? "null");
-      if (draft?.note?.id && key === prefix(owner) + draft.note.id &&
-          typeof draft.note.body === "string" && draft.revision) drafts.push(draft);
-    } catch { /* Keep unreadable records for manual recovery. */ }
+    const draft = readNoteDraft(owner, key.slice(prefix(owner).length));
+    if (draft) drafts.push(draft);
   }
   } catch { /* Storage may be disabled; writes surface an actionable error. */ }
   return drafts;
