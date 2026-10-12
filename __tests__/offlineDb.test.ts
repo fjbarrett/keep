@@ -1,6 +1,6 @@
 import { readNoteDrafts, writeNoteDraft } from "@/lib/noteDrafts";
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDB } from "idb";
 import {
   addPendingOp,
@@ -11,6 +11,8 @@ import {
   removePendingOp,
 } from "@/lib/offlineDb";
 import type { Note } from "@/lib/types";
+
+afterEach(() => vi.restoreAllMocks());
 
 function note(id: string, body: string): Note {
   return {
@@ -32,6 +34,26 @@ function note(id: string, body: string): Note {
 }
 
 describe("account-scoped offline storage", () => {
+  it("writes only changed notes while removing rows absent from a refresh", async () => {
+    const owner = crypto.randomUUID();
+    const initial = [note("a", "unchanged"), note("b", "before"), note("c", "removed")];
+    await cacheNotes(owner, initial);
+    const put = vi.spyOn(IDBObjectStore.prototype, "put");
+    const update = vi.spyOn(IDBCursor.prototype, "update");
+    const remove = vi.spyOn(IDBCursor.prototype, "delete");
+    await cacheNotes(owner, structuredClone(initial));
+    expect(put).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+
+    const next = [initial[0], note("b", "after"), note("d", "added")];
+    await cacheNotes(owner, next);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(await getCachedNotes(owner)).toEqual(next);
+  });
+
   it("quarantines ownerless legacy operations without deleting them", async () => {
     const legacy = await openDB("keep-offline", 1, {
       upgrade(db) {

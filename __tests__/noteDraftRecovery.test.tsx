@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { useNotes } from "@/lib/useNotes";
-import { readNoteDrafts, writeNoteDraft, removeNoteDraft } from "@/lib/noteDrafts";
+import { readNoteDraft, readNoteDrafts, writeNoteDraft, removeNoteDraft } from "@/lib/noteDrafts";
 import { clearOwnerData } from "@/lib/offlineDb";
 import type { Note } from "@/lib/types";
 
@@ -11,6 +11,21 @@ const note: Note = { id: "a".repeat(32), title: "Title", body: "Title\noriginal"
   shareToken: null, createdAt: 1, updatedAt: 1 };
 const json = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); });
+
+it("reads a single current draft without scanning unrelated browser storage", () => {
+  const owner = crypto.randomUUID();
+  for (let i = 0; i < 200; i++) localStorage.setItem(`unrelated-${i}`, "value");
+  const first = writeNoteDraft(owner, { note, patch: {}, type: "create" });
+  const scan = vi.spyOn(Storage.prototype, "key");
+  expect(readNoteDrafts(owner)).toEqual([first]);
+  expect(scan).toHaveBeenCalledTimes(201);
+  scan.mockClear();
+  expect(readNoteDraft(owner, note.id)).toEqual(first);
+  const newer = writeNoteDraft(owner, { note: { ...note, body: "another tab's edit" }, patch: {}, type: "create" });
+  expect(readNoteDraft(owner, note.id)).toEqual(newer);
+  expect(readNoteDraft("another-owner", note.id)).toBeUndefined();
+  expect(scan).not.toHaveBeenCalled();
+});
 
 it("discards a draft when refresh confirms that the server already saved it", async () => {
   const owner = crypto.randomUUID();
