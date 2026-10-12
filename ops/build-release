@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Root-only: build a trusted Git archive without production credentials.
+set -euo pipefail
+[[ $EUID == 0 && $# == 2 && $1 =~ ^[0-9a-f]{40}$ ]] || exit 64
+sha=$1
+archive=$(realpath "$2")
+[[ -f $archive ]] || exit 66
+exec 9>/run/keep-build.lock
+flock -n 9 || exit 75
+release=/opt/keep/releases/$sha
+work=/var/lib/keep-build/$sha
+[[ ! -e $release && ! -e $work ]] || { echo "Release already exists"; exit 73; }
+install -d -m 755 /opt/keep/releases /var/lib/keep-build
+install -d -o keep-build -g keep-build -m 700 "$work"
+install -o keep-build -g keep-build -m 600 "$archive" "$work/source.tar"
+trap 'rm -rf -- "$work"' EXIT
+
+systemd-run --wait --pipe --collect --service-type=exec \
+  --unit="keep-build-${sha:0:12}" --uid=keep-build --gid=keep-build \
+  --working-directory="$work" \
+  -p MemoryMax=2G -p RuntimeMaxSec=20min -p Nice=10 \
+  -p NoNewPrivileges=true -p ProtectSystem=strict -p ProtectHome=true \
+  -p PrivateTmp=true -p PrivateDevices=true -p KillMode=control-group \
+  -p "ReadWritePaths=$work" \
+  /usr/bin/env -i PATH=/usr/bin:/bin HOME="$work" \
+  AUTH_SECRET=build-only-placeholder NEXT_TELEMETRY_DISABLED=1 \
+  /bin/bash -euc '
+    tar --no-same-owner --no-same-permissions -xf source.tar
+    rm source.tar
+    test ! -e .env.local && test ! -e .env.production
+    npm ci --no-fund
+    npm audit --omit=dev --audit-level=high
+    npm run build
+    npm prune --omit=dev --ignore-scripts --no-audit --no-fund
+    rm -rf .npm .next/cache
+  '
+
+# Keep previously served immutable assets available to already-open browser tabs.
+if [[ -L /opt/keep/current ]]; then
+  previous=$(readlink -f /opt/keep/current)
+  cp -an "$previous/.next/static/." "$work/.next/static/"
+  find "$previous/public" -maxdepth 1 -name 'pdf.worker.*.mjs' \
+    -exec cp -n -t "$work/public" {} +
+fi
+install -d -o keep -g keep -m 700 "/var/cache/keep/$sha"
+ln -s "/var/cache/keep/$sha" "$work/.next/cache"
+printf '%s\n' "$sha" > "$work/RELEASE"
+chown -R root:root "$work"
+chmod -R a+rX,go-w "$work"
+mv "$work" "$release"
+trap - EXIT
+echo "Built $release"

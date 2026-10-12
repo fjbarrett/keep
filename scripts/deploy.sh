@@ -1,31 +1,16 @@
 #!/usr/bin/env bash
-# Manually deploy Keep to its Proxmox production container.
-#
-# Env overrides: KEEP_HOST (ssh target), KEEP_URL (public url).
+# Deploy an explicitly selected, committed local revision to a prepared host.
+# See ops/README.md. KEEP_HOST must be an operator SSH target, not the CI user.
 set -euo pipefail
 
-HOST="${KEEP_HOST:-root@192.168.0.113}"
-URL="${KEEP_URL:-https://keeptxt.com}"
-
-echo "-> Deploying latest main to ${HOST}"
-ssh "$HOST" 'set -e
-  cd /opt/keep
-  git fetch origin main -q && git reset --hard origin/main -q
-  if [ ! -d node_modules ] || ! git diff --quiet ORIG_HEAD HEAD -- package-lock.json; then
-    echo "   npm ci"
-    npm ci --no-audit --no-fund 2>&1 | tail -2
-  fi
-  # Wipe stale build output but keep .next/cache so next build is incremental.
-  find .next -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} + 2>/dev/null || true
-  npm run build 2>&1 | tail -3
-  systemctl restart keep
-  sleep 5
-  echo "   service: $(systemctl is-active keep) @ $(git rev-parse --short HEAD)"'
-
-echo "-> Waiting for ${URL} to come back up"
-for _ in $(seq 1 24); do
-  curl -sf -o /dev/null "$URL" && break
-  sleep 5
-done
-
-echo "Done."
+: "${KEEP_HOST:?Set KEEP_HOST to the prepared production SSH target}"
+[[ $# == 1 ]] || { echo "Usage: $0 <commit>" >&2; exit 64; }
+sha=$(git rev-parse --verify "$1^{commit}")
+archive=$(mktemp)
+trap 'rm -f "$archive"' EXIT
+git archive --format=tar "$sha" > "$archive"
+ssh "$KEEP_HOST" 'install -d -m 700 /var/lib/keep-incoming'
+scp "$archive" "$KEEP_HOST:/var/lib/keep-incoming/$sha.tar"
+ssh "$KEEP_HOST" "/usr/local/sbin/keep-build-release $sha /var/lib/keep-incoming/$sha.tar && /usr/local/sbin/keep-activate-release $sha && rm /var/lib/keep-incoming/$sha.tar"
+curl --fail --silent --show-error --max-time 20 "${KEEP_URL:-https://keeptxt.com}" > /dev/null
+echo "Deployed $sha"
