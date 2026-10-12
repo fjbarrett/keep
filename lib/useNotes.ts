@@ -114,6 +114,8 @@ export function useNotes(ownerId: string | null) {
     void getPendingOps(ownerId).then((ops) => {
       if (ownerRef.current !== ownerId) return;
       queuedNoteIdsRef.current = new Set(ops.map((op) => op.noteId));
+    }).catch(() => {
+      if (ownerRef.current === ownerId) setError("Offline storage is unavailable. Keep this page open while saving.");
     });
   }, [ownerId]);
 
@@ -247,7 +249,7 @@ export function useNotes(ownerId: string | null) {
         notesRef.current = loaded;
         setNotes(loaded);
       }
-      setError(drafts.length ? "Some changes are saved on this device and still need to sync." : null);
+      setError(drafts.some((draft) => !activeSavesRef.current.get(draft.note.id)?.size && !saveChainsRef.current.has(draft.note.id)) ? "Some changes are saved on this device and still need to sync." : null);
     } catch (e) {
       if (ownerRef.current !== ownerId) return;
       if (e instanceof NotesApiError && e.status === 401) {
@@ -265,10 +267,11 @@ export function useNotes(ownerId: string | null) {
       } else {
         const cached = await getCachedNotes(ownerId).catch(() => []);
         if (ownerRef.current !== ownerId) return;
-        if (cached.length > 0) {
-          notesRef.current = cached;
-          setNotes(cached);
-          setError(null);
+        const loaded = overlayNoteDrafts(notesRef.current.length ? notesRef.current : cached, readNoteDrafts(ownerId));
+        if (loaded.length > 0) {
+          notesRef.current = loaded;
+          setNotes(loaded);
+          setError("Showing notes saved on this device. Reconnect to sync.");
         } else {
           setError(e instanceof Error ? e.message : "Failed to load");
         }
@@ -298,9 +301,11 @@ export function useNotes(ownerId: string | null) {
           ownerRef.current !== ownerId ||
           cacheLoadGenerationRef.current !== cacheLoadGeneration
         ) return;
-        if (cached.length > 0) {
-          notesRef.current = cached;
-          setNotes(cached);
+        const drafts = readNoteDrafts(ownerId);
+        const loaded = drafts.length ? overlayNoteDrafts(cached, drafts) : cached;
+        if (loaded.length > 0) {
+          notesRef.current = loaded;
+          setNotes(loaded);
           setHydrated(true);
         }
       })
@@ -428,104 +433,17 @@ export function useNotes(ownerId: string | null) {
     return () => window.removeEventListener("online", onOnline);
   }, [enqueueSave, finishDeletion, hydrated, ownerId, refresh, rememberSaved, replayTick, requestReplay, submitDraft]);
 
-  const create = useCallback(async (
-    partial: Partial<Note>,
-    options: { keepalive?: boolean } = {},
-  ) => {
-    const body = partial.body ?? "";
-    let meta = partial.title
-      ? { title: partial.title, summary: partial.summary ?? "" }
-      : { title: inferNoteTitle(body), summary: "" };
-    const now = Date.now();
-    const note: Note = {
-      id: partial.id ?? localNoteId(),
-      title: meta.title,
-      summary: meta.summary || null,
-      color: partial.color ?? null,
-      body,
-      pinned: partial.pinned ?? false,
-      archived: partial.archived ?? false,
-      trashed: false,
-      markdown: partial.markdown ?? false,
-      highlight: partial.highlight ?? false,
-      tags: partial.tags ?? [],
-      shareToken: null,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    if (isGuest) {
-      setLocalNoteIds((prev) => new Set(prev).add(note.id));
-      const next = [note, ...notesRef.current.filter((item) => item.id !== note.id)];
-      notesRef.current = next;
-      setNotes(next);
-      persistGuest(next);
-      return note;
-    }
-
-    if (!ownerId) return null;
-    const next = [note, ...notesRef.current.filter((item) => item.id !== note.id)];
-    notesRef.current = next;
-    setNotes(next);
-    let draft: NoteDraft;
-    try { draft = writeNoteDraft(ownerId, { note, patch: note, type: "create" }); }
-    catch { setError("This browser could not keep the draft. Keep this page open and copy your note."); return null; }
-    cacheNote(ownerId, note).catch(() => {});
-
-    try {
-      if (!options.keepalive && !partial.title) meta = await metadataForBody(body);
-      if (ownerRef.current !== ownerId) return note;
-      draft = { ...draft, note: { ...draft.note, title: meta.title, summary: meta.summary || null } };
-      replaceNoteDraft(ownerId, draft);
-      const data = { note: await trackSync(submitDraft(ownerId, draft, options)) };
-      if (ownerRef.current !== ownerId) return data.note;
-      if (deletingRef.current.has(note.id)) return null;
-      rememberSaved(data.note);
-      data.note = overlayNoteDrafts([serverNotesRef.current.get(note.id) ?? data.note],
-        readNoteDrafts(ownerId).filter((draft) => draft.note.id === note.id))[0];
-      // Upsert, don't map: a refresh() fired by replay/reconnect can overwrite
-      // notesRef with a server list that predates this POST, and a plain map
-      // would then find no match and silently drop the note the user just made.
-      const current = notesRef.current;
-      const saved = current.some((item) => item.id === note.id)
-        ? current.map((item) => (item.id === note.id ? data.note : item))
-        : [data.note, ...current];
-      notesRef.current = saved;
-      setNotes(saved);
-      cacheNote(ownerId, data.note).catch(() => {});
-      return data.note;
-    } catch (e) {
-      if (!readNoteDrafts(ownerId).some((draft) => draft.note.id === note.id)) {
-        return notesRef.current.find((item) => item.id === note.id) ?? note;
-      }
-      if (isRetryableNoteError(e)) {
-        await addPendingOp(ownerId, {
-          type: "create",
-          noteId: note.id,
-          payload: note,
-        })
-          .then(() => {
-            queuedNoteIdsRef.current.add(note.id);
-            requestReplay();
-          })
-          .catch(() => {
-            setError("The note could not be queued for sync.");
-          });
-        setSyncStatus(navigator.onLine ? "error" : "offline");
-        return note;
-      }
-      if (ownerRef.current === ownerId) setError(e instanceof Error ? e.message : "Failed to create");
-      return note;
-    }
-  }, [isGuest, ownerId, persistGuest, rememberSaved, requestReplay, submitDraft, trackSync]);
-
   const update = useCallback((
     id: string,
     patch: Partial<Note>,
     options: { keepalive?: boolean; base?: Note } = {},
   ): Promise<void> => {
     const current = notesRef.current.find((note) => note.id === id);
-    if (!current) return Promise.resolve();
+    if (!current) {
+      const message = "This note no longer exists. Copy your text to a new note.";
+      setError(message);
+      return Promise.reject(new NotesApiError(message, 404));
+    }
     patch = Object.fromEntries(Object.entries(patch).filter(([key, value]) =>
       JSON.stringify(value) !== JSON.stringify(current[key as keyof Note])));
     if (!Object.keys(patch).length) return Promise.resolve();
@@ -538,7 +456,7 @@ export function useNotes(ownerId: string | null) {
       bodyChanged &&
       patch.body !== undefined &&
       patch.title === undefined &&
-      (firstNoteLine(patch.body) !== firstNoteLine(current.body) || !current.title.trim());
+      (firstNoteLine(patch.body) !== firstNoteLine(serverNotesRef.current.get(id)?.body ?? current.body) || !current.title.trim());
     const initialPatch =
       needsMeta && options.keepalive && patch.body !== undefined
         ? { ...patch, title: inferNoteTitle(patch.body) }
@@ -606,7 +524,7 @@ export function useNotes(ownerId: string | null) {
       if (ownerRef.current !== ownerId || mutationRevisionRef.current.get(id) !== revision) return;
       // Keep the acknowledged base written by an earlier serialized save.
       const staged = readNoteDrafts(ownerId).find((entry) => entry.revision === draft.revision);
-      draft = { ...(staged ?? draft), patch: nextPatch };
+      draft = { ...(staged ?? draft), note: { ...draft.note, ...nextPatch }, patch: nextPatch };
       replaceNoteDraft(ownerId, draft);
       const alreadyQueued =
         !options.keepalive &&
@@ -666,6 +584,103 @@ export function useNotes(ownerId: string | null) {
     // waiting behind an older promise would prevent the request from launching.
     return options.keepalive ? save() : enqueueSave(id, save);
   }, [enqueueSave, isGuest, localNoteIds, ownerId, persistGuest, rememberSaved, requestReplay, submitDraft, trackSync]);
+
+  const create = useCallback(async (
+    partial: Partial<Note>,
+    options: { keepalive?: boolean } = {},
+  ) => {
+    const body = partial.body ?? "";
+    const meta = partial.title
+      ? { title: partial.title, summary: partial.summary ?? "" }
+      : { title: inferNoteTitle(body), summary: "" };
+    const now = Date.now();
+    const note: Note = {
+      id: partial.id ?? localNoteId(),
+      title: meta.title,
+      summary: meta.summary || null,
+      color: partial.color ?? null,
+      body,
+      pinned: partial.pinned ?? false,
+      archived: partial.archived ?? false,
+      trashed: false,
+      markdown: partial.markdown ?? false,
+      highlight: partial.highlight ?? false,
+      tags: partial.tags ?? [],
+      shareToken: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (isGuest) {
+      setLocalNoteIds((prev) => new Set(prev).add(note.id));
+      const next = [note, ...notesRef.current.filter((item) => item.id !== note.id)];
+      notesRef.current = next;
+      setNotes(next);
+      persistGuest(next);
+      return note;
+    }
+
+    if (!ownerId) return null;
+    const next = [note, ...notesRef.current.filter((item) => item.id !== note.id)];
+    notesRef.current = next;
+    setNotes(next);
+    let draft: NoteDraft;
+    try { draft = writeNoteDraft(ownerId, { note, patch: note, type: "create" }); }
+    catch { setError("This browser could not keep the draft. Keep this page open and copy your note."); return null; }
+    cacheNote(ownerId, note).catch(() => {});
+
+    try {
+      if (ownerRef.current !== ownerId) return note;
+      const data = { note: await trackSync(submitDraft(ownerId, draft, options)) };
+      if (ownerRef.current !== ownerId) return data.note;
+      if (deletingRef.current.has(note.id)) return null;
+      rememberSaved(data.note);
+      data.note = overlayNoteDrafts([serverNotesRef.current.get(note.id) ?? data.note],
+        readNoteDrafts(ownerId).filter((draft) => draft.note.id === note.id))[0];
+      // Upsert, don't map: a refresh() fired by replay/reconnect can overwrite
+      // notesRef with a server list that predates this POST, and a plain map
+      // would then find no match and silently drop the note the user just made.
+      const current = notesRef.current;
+      const saved = current.some((item) => item.id === note.id)
+        ? current.map((item) => (item.id === note.id ? data.note : item))
+        : [data.note, ...current];
+      notesRef.current = saved;
+      setNotes(saved);
+      cacheNote(ownerId, data.note).catch(() => {});
+      if (!options.keepalive && !partial.title) {
+        // The note is durable before optional title generation begins.
+        void metadataForBody(body).then(async (generated) => {
+          const latest = notesRef.current.find((item) => item.id === note.id);
+          if (ownerRef.current !== ownerId || !latest || deletingRef.current.has(note.id) ||
+              firstNoteLine(latest.body) !== firstNoteLine(body) || latest.title !== meta.title) return;
+          await update(note.id, { title: generated.title, summary: generated.summary || null });
+        }).catch(() => { /* update retains its draft and exposes storage failures. */ });
+      }
+      return data.note;
+    } catch (e) {
+      if (!readNoteDrafts(ownerId).some((draft) => draft.note.id === note.id)) {
+        return notesRef.current.find((item) => item.id === note.id) ?? note;
+      }
+      if (isRetryableNoteError(e)) {
+        await addPendingOp(ownerId, {
+          type: "create",
+          noteId: note.id,
+          payload: note,
+        })
+          .then(() => {
+            queuedNoteIdsRef.current.add(note.id);
+            requestReplay();
+          })
+          .catch(() => {
+            setError("The note could not be queued for sync.");
+          });
+        setSyncStatus(navigator.onLine ? "error" : "offline");
+        return note;
+      }
+      if (ownerRef.current === ownerId) setError(e instanceof Error ? e.message : "Failed to create");
+      return note;
+    }
+  }, [isGuest, ownerId, persistGuest, rememberSaved, requestReplay, submitDraft, trackSync, update]);
 
   const retryDrafts = useCallback(async (copyId?: string) => {
     if (!ownerId || guestWriteFailedRef.current) {

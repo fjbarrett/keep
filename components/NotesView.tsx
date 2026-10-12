@@ -459,6 +459,13 @@ export function NotesView({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeNote, activeNoteId, notes, query, remove, searchOpen, target, toggleArchive, togglePin, trash, visibleNotes]);
 
+  useEffect(() => {
+    if (hydrated && target?.mode === "edit" && !notes.some((note) => note.id === target.note.id)) {
+      setTarget(null);
+      setActiveNoteId(null);
+    }
+  }, [hydrated, notes, target]);
+
   const mainTarget: EditorTarget =
     target?.mode === "edit"
       ? {

@@ -493,7 +493,7 @@ export function NoteEditor({
       }, 550);
       return () => window.clearTimeout(timer);
     }
-  }, [archived, body, dirty, highlight, submitUpdate, pinned, previewOpen, startCreate, target]);
+  }, [archived, body, dirty, highlight, submitUpdate, pinned, previewOpen, startCreate, targetKey]);
 
   function markBody(value: string) {
     if (!dirtyRef.current) editingBaseRef.current = liveNoteRef.current ?? undefined;
