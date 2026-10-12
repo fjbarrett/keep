@@ -1,4 +1,6 @@
 import { Note } from "./types";
+import { noteFileName, noteFileContent } from "./noteTextExport";
+export { noteFileName, noteFileContent } from "./noteTextExport";
 
 const DOS_EPOCH = new Date("1980-01-01T00:00:00Z").getTime();
 
@@ -9,28 +11,6 @@ const CRC_TABLE = new Uint32Array(256).map((_, index) => {
   }
   return crc >>> 0;
 });
-
-function noteText(note: Note): string {
-  return note.body.trim() || note.title.trim();
-}
-
-function sanitizeName(value: string): string {
-  const normalized = value
-    .replace(/\s+/g, " ")
-    .replace(/[<>:"/\\|?*\x00-\x1f]/g, "")
-    .trim()
-    .slice(0, 60);
-  return normalized || "note";
-}
-
-export function noteFileName(note: Note): string {
-  const firstLine = noteText(note).split("\n")[0] ?? "";
-  return `${sanitizeName(firstLine)}-${note.id.slice(-6)}.txt`;
-}
-
-export function noteFileContent(note: Note): string {
-  return `${noteText(note)}\n`;
-}
 
 function crc32(buffer: Buffer): number {
   let crc = 0xffffffff;

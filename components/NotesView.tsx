@@ -546,7 +546,6 @@ export function NotesView({
             onRename={(title) =>
               mainTarget.mode === "edit" && update(mainTarget.note.id, { title, titleManual: true })
             }
-            presentation="panel"
           />
         ) : restoringFromUrl || !hydrated ? (
           <div className="flex-1" aria-hidden />

@@ -10,8 +10,7 @@ import { NoteEditorToolbar } from "./NoteEditorToolbar";
 import { renderSearchHits } from "./renderSearchHits";
 import { noteColorVar } from "@/lib/noteColors";
 import { useAutohideScrollbar } from "@/lib/useAutohideScrollbar";
-import { useModalDialog } from "@/lib/useModalDialog";
-import { noteFileExtension } from "@/lib/detectLanguage";
+import { downloadNoteBody } from "@/lib/downloadNote";
 
 export type EditorTarget =
   | { mode: "new" }
@@ -49,7 +48,6 @@ export function NoteEditor({
   onRemove,
   onColor,
   onRename,
-  presentation = "modal",
 }: {
   target: EditorTarget;
   onClose: () => void;
@@ -61,7 +59,6 @@ export function NoteEditor({
   onRemove: (id: string) => void;
   onColor?: (color: string | null) => void;
   onRename?: (title: string) => void;
-  presentation?: "modal" | "panel";
 }) {
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
@@ -157,8 +154,6 @@ export function NoteEditor({
     target?.mode === "edit"
       ? `${target.note.id}${target.highlightQuery ? `:q:${target.highlightQuery}` : ""}`
       : target?.mode === "new" ? `new:${newDraftId}` : "closed";
-  const isPanel = presentation === "panel";
-  const modalRef = useModalDialog(close, !isPanel && Boolean(target));
   const editNote = target?.mode === "edit" ? target.note : null;
 
   const flushPending = useCallback(
@@ -614,21 +609,6 @@ export function NoteEditor({
     }
   }
 
-  function downloadNote() {
-    if (!body.trim()) return;
-    const ext = noteFileExtension(body);
-    const first = body.split("\n").find((l) => l.trim()) ?? "note";
-    const base =
-      first.replace(/^#{1,6}\s+/, "").replace(/[<>:"/\\|?*\x00-\x1f]/g, "").trim().slice(0, 50) ||
-      "note";
-    const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${base}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
 
   function flushEdit() {
     if (!target || target.mode !== "edit") return;
@@ -667,7 +647,6 @@ export function NoteEditor({
       highlight={highlight}
       previewOpen={previewOpen}
       copied={copied}
-      isPanel={isPanel}
       onBack={onBack}
       onRename={onRename}
       onColor={onColor}
@@ -676,7 +655,7 @@ export function NoteEditor({
       onTogglePinned={togglePinned}
       onCopyBody={copyBody}
       onCopyFormatted={copyFormatted}
-      onDownload={downloadNote}
+      onDownload={() => downloadNoteBody(body)}
       onToggleArchived={toggleArchived}
       onFlush={flushEdit}
       onTrash={onTrash}
@@ -759,45 +738,23 @@ export function NoteEditor({
     </>
   );
 
-  if (presentation === "panel") {
-    return (
-      // The card hugs the note: width matches the text column and height is
-      // content-driven, so the 2px outline alone marks the margins and the
-      // bottom edge — the fill matches the canvas so the page doesn't read
-      // as a lighter sheet. Highlight mode widens for code.
-      <div
-        ref={panelRef}
-        className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-canvas)] transition-[max-width,border-color] duration-300 ${
-          highlight && !previewOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-2xl"
-        }`}
-        style={
-          target.mode === "edit"
-            ? { borderColor: noteColorVar(target.note.color) ?? undefined }
-            : undefined
-        }
-      >
-        {editor}
-      </div>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={close}
-      />
-
-      <div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Note editor"
-        tabIndex={-1}
-        className="relative z-10 flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
-      >
-        {editor}
-      </div>
+    // The card hugs the note: width matches the text column and height is
+    // content-driven, so the 2px outline alone marks the margins and the
+    // bottom edge — the fill matches the canvas so the page doesn't read
+    // as a lighter sheet. Highlight mode widens for code.
+    <div
+      ref={panelRef}
+      className={`mx-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-[var(--color-border)] bg-[var(--color-canvas)] transition-[max-width,border-color] duration-300 ${
+        highlight && !previewOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-2xl"
+      }`}
+      style={
+        target.mode === "edit"
+          ? { borderColor: noteColorVar(target.note.color) ?? undefined }
+          : undefined
+      }
+    >
+      {editor}
     </div>
   );
 }
