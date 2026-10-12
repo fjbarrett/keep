@@ -1,3 +1,4 @@
+import { readNoteDrafts, writeNoteDraft } from "@/lib/noteDrafts";
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { openDB } from "idb";
@@ -94,4 +95,16 @@ describe("account-scoped offline storage", () => {
     await expect(getCachedNotes(owner)).resolves.toEqual([]);
     await expect(getPendingOps(owner)).resolves.toEqual([]);
   });
+});
+
+it("rejects a stale tab's writes after sign-out clears account storage", async () => {
+  const owner = crypto.randomUUID();
+  const draft = { note: note("a".repeat(32), "Private text"), patch: {}, type: "create" as const };
+  writeNoteDraft(owner, draft);
+  await clearOwnerData(owner);
+  expect(() => writeNoteDraft(owner, draft)).toThrow("signed out");
+  await expect(cacheNotes(owner, [draft.note])).rejects.toThrow("signed out");
+  await expect(addPendingOp(owner, { type: "create", noteId: draft.note.id, payload: draft.note })).rejects.toThrow("signed out");
+  expect(readNoteDrafts(owner)).toEqual([]);
+  expect(await getCachedNotes(owner)).toEqual([]);
 });

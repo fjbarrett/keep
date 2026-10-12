@@ -2,6 +2,7 @@
 
 import { openDB, type IDBPDatabase } from "idb";
 import { clearNoteDrafts } from "./noteDrafts";
+import { assertOwnerSession, endOwnerSession } from "./ownerSession";
 import { Note } from "./types";
 
 const DB_PREFIX = "keep-offline-v2";
@@ -43,6 +44,7 @@ function getDb(ownerId: string) {
 
 export async function cacheNotes(ownerId: string, notes: Note[]) {
   const db = await getDb(ownerId);
+  assertOwnerSession(ownerId);
   const tx = db.transaction("notes", "readwrite");
   const store = tx.objectStore("notes");
   await store.clear();
@@ -55,7 +57,9 @@ export async function getCachedNotes(ownerId: string): Promise<Note[]> {
 }
 
 export async function cacheNote(ownerId: string, note: Note) {
-  await (await getDb(ownerId)).put("notes", note);
+  const db = await getDb(ownerId);
+  assertOwnerSession(ownerId);
+  await db.put("notes", note);
 }
 
 export async function removeCachedNote(ownerId: string, id: string) {
@@ -67,6 +71,7 @@ export async function addPendingOp(
   op: Omit<PendingOp, "id" | "createdAt">,
 ) {
   const db = await getDb(ownerId);
+  assertOwnerSession(ownerId);
   // A read/write transaction serializes stamp allocation across every tab.
   const tx = db.transaction("pending", "readwrite");
   const last = await tx.store.index("createdAt").openCursor(null, "prev");
@@ -91,6 +96,7 @@ export async function removePendingOp(ownerId: string, id: string) {
 
 /** Remove cached notes and queued mutations when the user explicitly signs out. */
 export async function clearOwnerData(ownerId: string) {
+  endOwnerSession(ownerId);
   clearNoteDrafts(ownerId);
   const name = databaseName(ownerId);
   const db = await getDb(ownerId);

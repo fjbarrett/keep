@@ -1,3 +1,4 @@
+import { assertOwnerSession } from "./ownerSession";
 import type { Note } from "./types";
 
 export type NoteDraft = {
@@ -28,6 +29,7 @@ export function readNoteDrafts(owner: string): NoteDraft[] {
 
 /** Synchronous journal: accepted edits survive navigation before a fetch starts. */
 export function writeNoteDraft(owner: string, draft: Omit<NoteDraft, "revision">): NoteDraft {
+  assertOwnerSession(owner);
   const entry = { ...draft, revision: crypto.randomUUID() };
   localStorage.setItem(prefix(owner) + draft.note.id, JSON.stringify(entry));
   return entry;
@@ -35,6 +37,7 @@ export function writeNoteDraft(owner: string, draft: Omit<NoteDraft, "revision">
 
 /** Update the saved base without changing the identity of an in-flight draft. */
 export function replaceNoteDraft(owner: string, draft: NoteDraft) {
+  assertOwnerSession(owner);
   const key = prefix(owner) + draft.note.id;
   const current = JSON.parse(localStorage.getItem(key) ?? "null");
   if (current?.revision === draft.revision) localStorage.setItem(key, JSON.stringify(draft));
@@ -82,7 +85,12 @@ export function discardAcknowledgedNoteDrafts(owner: string, serverNotes: Note[]
 }
 
 export function clearNoteDrafts(owner: string) {
-  for (const draft of readNoteDrafts(owner)) removeNoteDraft(owner, draft);
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(prefix(owner))) keys.push(key);
+  }
+  for (const key of keys) localStorage.removeItem(key);
 }
 
 export function overlayNoteDrafts(notes: Note[], drafts: NoteDraft[]) {
