@@ -16,4 +16,4 @@ HISTORY.md
 docs/saved-tasks.md
 
 # Vendored pdfjs worker (copied from node_modules at build time)
-/public/pdf.worker.min.mjs
+/public/pdf.worker*.min.mjs

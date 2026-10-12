@@ -1,4 +1,4 @@
-const CACHE_NAME = "keep-static-v4";
+const CACHE_NAME = "keep-static-v5";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -44,23 +44,20 @@ self.addEventListener("fetch", (event) => {
   // revoked or signed out. IndexedDB owns note data; this cache owns static files.
   const staticAsset =
     url.pathname.startsWith("/_next/static/") ||
-    url.pathname === "/pdf.worker.min.mjs" ||
-    ["script", "style", "font", "image", "worker"].includes(request.destination);
+    /^\/pdf\.worker\.[0-9.]+\.min\.mjs$/.test(url.pathname);
   if (!staticAsset) return;
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fresh = fetch(request)
-        .then((response) => {
-          const cacheControl = response.headers.get("cache-control") ?? "";
-          if (response.ok && !/no-store|private/i.test(cacheControl)) {
-            const clone = response.clone();
-            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)));
-          }
-          return response;
-        })
-        .catch(() => cached ?? new Response("Offline", { status: 503 }));
-      return cached ?? fresh;
-    })
-  );
+  const cached = caches.match(request);
+  const fresh = fetch(request);
+  // Register lifetime work during event dispatch, before any promise settles.
+  event.waitUntil(fresh.then(async (response) => {
+    const cacheControl = response.headers.get("cache-control") ?? "";
+    if (response.ok && !/no-store|private/i.test(cacheControl)) {
+      const clone = response.clone();
+      await (await caches.open(CACHE_NAME)).put(request, clone);
+    }
+  }).catch(() => {}));
+  event.respondWith(cached.then((response) => response ?? fresh.catch(() =>
+    new Response("Offline", { status: 503 }),
+  )));
 });
