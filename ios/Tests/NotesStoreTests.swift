@@ -45,6 +45,25 @@ final class NotesStoreTests: XCTestCase {
         return NotesStore(api: KeepAPI(session: session), auth: AuthClient(session: session))
     }
 
+    func testSessionServerErrorDoesNotSignOutTheAccount() async {
+        FixtureProtocol.respond = { $0.reply(["error": "Unavailable"], status: 503) }
+        let sut = store()
+        await sut.load()
+        XCTAssertFalse(sut.needsAuth)
+        XCTAssertEqual(sut.errorMessage, "Server error (503).")
+    }
+
+    func testValidationErrorsKeepTheServerExplanation() async {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FixtureProtocol.self]
+        let api = KeepAPI(session: URLSession(configuration: configuration))
+        FixtureProtocol.respond = { $0.reply(["error": "Note storage quota exceeded."], status: 413) }
+        do {
+            _ = try await api.create(body: "Text")
+            XCTFail("Expected a validation error")
+        } catch { XCTAssertEqual(error.localizedDescription, "Note storage quota exceeded.") }
+    }
+
     func testOldAccountReadCannotAppearAfterNewSignIn() async {
         let started = expectation(description: "old read starts")
         var old: FixtureProtocol?
