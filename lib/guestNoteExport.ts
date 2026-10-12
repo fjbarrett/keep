@@ -1,42 +1,15 @@
 import { Note } from "@/lib/types";
 
-function noteText(note: Note) {
-  return note.body.trim() || note.title.trim();
-}
-
-function noteFileName(note: Note) {
-  const base =
-    noteText(note)
-      .split("\n")[0]
-      ?.replace(/\s+/g, " ")
-      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "")
-      .trim()
-      .slice(0, 60) || "note";
-  return `${base}-${note.id.slice(-6)}.txt`;
-}
-
-function noteFileContent(note: Note) {
-  return `${noteText(note)}\n`;
-}
-
-function downloadBlob(fileName: string, content: BlobPart, type: string) {
-  const blob = content instanceof Blob ? content : new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
+import { noteFileName, noteFileContent } from "./noteTextExport";
+import { downloadBlob } from "./downloadNote";
 
 export async function exportGuestNotes(notes: Note[]) {
   const exportable = notes.filter((note) => !note.trashed);
   if (exportable.length === 0) return;
   if (exportable.length === 1) {
     downloadBlob(
+      new Blob([noteFileContent(exportable[0])], { type: "text/plain" }),
       noteFileName(exportable[0]),
-      noteFileContent(exportable[0]),
-      "text/plain",
     );
     return;
   }
@@ -47,5 +20,5 @@ export async function exportGuestNotes(notes: Note[]) {
     zip.file(noteFileName(note), noteFileContent(note));
   }
   const content = await zip.generateAsync({ type: "blob" });
-  downloadBlob("keep-notes.zip", content, "application/zip");
+  downloadBlob(content, "keep-notes.zip");
 }

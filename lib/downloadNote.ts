@@ -1,7 +1,7 @@
 import { noteFileExtension } from "./detectLanguage";
 
 // Strip filesystem-reserved characters from the filename; keep spaces/hyphens.
-const RESERVED = /[<>:"/|?*]/g;
+const RESERVED = /[<>:"/\\|?*\x00-\x1f]/g;
 
 /** Filename base from the first non-empty line (shared by every export). */
 function noteBaseName(body: string): string {
@@ -9,7 +9,7 @@ function noteBaseName(body: string): string {
   return first.replace(/^#{1,6}\s+/, "").replace(RESERVED, "").trim().slice(0, 50) || "note";
 }
 
-function triggerDownload(blob: Blob, filename: string) {
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -27,7 +27,7 @@ export function downloadNoteBody(body: string) {
   if (!body.trim()) return;
   const ext = noteFileExtension(body);
   const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
-  triggerDownload(blob, `${noteBaseName(body)}.${ext}`);
+  downloadBlob(blob, `${noteBaseName(body)}.${ext}`);
 }
 
 /**

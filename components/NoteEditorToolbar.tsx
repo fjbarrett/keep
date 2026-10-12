@@ -37,7 +37,6 @@ export function NoteEditorToolbar({
   highlight,
   previewOpen,
   copied,
-  isPanel,
   onBack,
   onRename,
   onColor,
@@ -62,7 +61,6 @@ export function NoteEditorToolbar({
   highlight: boolean;
   previewOpen: boolean;
   copied: boolean;
-  isPanel: boolean;
   onBack?: () => void;
   onRename?: (title: string) => void;
   onColor?: (color: string | null) => void;
@@ -353,7 +351,6 @@ export function NoteEditorToolbar({
                     onClick={() => {
                       onFlush();
                       onTrash(target.note.id);
-                      if (!isPanel) onDismiss();
                     }}
                     className={`${ICON_BUTTON} hover:text-[var(--color-danger)]`}
                     title="Move to Trash"
@@ -406,7 +403,6 @@ export function NoteEditorToolbar({
             onClick={() => {
               onFlush();
               onRestore(target.note.id);
-              if (!isPanel) onDismiss();
             }}
             className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]"
           >

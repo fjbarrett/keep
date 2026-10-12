@@ -36,7 +36,6 @@ function renderEditor(target: EditorTarget) {
     onShare: vi.fn(async () => null),
     onUnshare: vi.fn(async () => {}),
     canShare: false,
-    presentation: "panel" as const,
   };
   const view = render(createElement(NoteEditor, props));
   return {
@@ -144,7 +143,6 @@ describe("NoteEditor autosave", () => {
         onTrash: vi.fn(),
         onRestore: vi.fn(),
         onRemove: vi.fn(),
-        presentation: "panel" as const,
       }),
     );
 
