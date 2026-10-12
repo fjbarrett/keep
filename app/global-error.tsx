@@ -1,18 +1,19 @@
 "use client";
 
-export default function GlobalError({ reset }: { reset: () => void }) {
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="en">
-      <body className="grid min-h-screen place-items-center bg-[#0c0c0d] px-6 font-sans text-[#ececee]">
-        <main className="max-w-sm text-center">
-          <p className="text-lg font-semibold">Keep couldn&apos;t start</p>
-          <p className="mt-2 text-sm text-[#8f8f98]">
+      <body style={{ display: "grid", minHeight: "100vh", placeItems: "center", background: "#0c0c0d", color: "#ececee", padding: "0 24px", margin: 0, fontFamily: "system-ui, sans-serif" }}>
+        <main style={{ maxWidth: 384, textAlign: "center" }}>
+          <p style={{ fontSize: 18, fontWeight: 600 }}>Keep couldn&apos;t start</p>
+          <p style={{ fontSize: 14, color: "#aaaab3" }}>
             Reload the application. Notes saved in this browser will remain available.
           </p>
+          {error.digest && <p>Reference: {error.digest}</p>}
           <button
             type="button"
             onClick={reset}
-            className="mt-4 rounded-md bg-[#2b60f2] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#527ef3]"
+            style={{ marginTop: 16, borderRadius: 6, background: "#2b60f2", color: "white", border: 0, padding: "8px 12px", cursor: "pointer" }}
           >
             Reload Keep
           </button>

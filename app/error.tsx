@@ -1,6 +1,6 @@
 "use client";
 
-export default function ErrorPage({ reset }: { reset: () => void }) {
+export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <main className="grid min-h-0 flex-1 place-items-center bg-[var(--color-canvas)] px-6">
       <div className="max-w-sm text-center">
@@ -10,6 +10,7 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
         <p className="mt-1 text-sm text-[var(--color-muted)]">
           Your local edits are still in this browser. Try loading the view again.
         </p>
+        {error.digest && <p className="mt-2 text-xs text-[var(--color-muted)]">Reference: {error.digest}</p>}
         <div className="mt-4 flex justify-center gap-2">
           <button
             type="button"
