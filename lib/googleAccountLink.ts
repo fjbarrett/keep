@@ -76,8 +76,9 @@ export async function linkGoogleAccount(identity: GoogleIdentity): Promise<LinkO
       );
       // security_events keeps its original user_id: it is an audit trail of what
       // happened under that id, not state to migrate.
-      await client.query(`UPDATE notes SET user_id = $1 WHERE user_id = $2`, [id, squatter.id]);
+      // Move attachment ownership first so note-reference triggers see the new owner.
       await client.query(`UPDATE uploads SET user_id = $1 WHERE user_id = $2`, [id, squatter.id]);
+      await client.query(`UPDATE notes SET user_id = $1 WHERE user_id = $2`, [id, squatter.id]);
       outcome = {
         linked: true,
         adoptedFrom: squatter.id,

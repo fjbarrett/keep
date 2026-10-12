@@ -69,9 +69,7 @@ export async function POST(req: Request) {
             WHERE u.user_id = $1
               AND u.created_at < $2
               AND NOT EXISTS (
-                SELECT 1 FROM notes n
-                 WHERE n.user_id = $1
-                   AND position('/api/uploads/' || u.id in n.body) > 0
+                SELECT 1 FROM note_upload_references r WHERE r.upload_id = u.id
               )
             RETURNING storage_key`,
           [session.user.id, Date.now() - 60_000],

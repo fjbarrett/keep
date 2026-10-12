@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { Pool } from "pg";
 import { logger } from "@/lib/logger";
+import { noteUploadReferencesSql } from "@/lib/noteUploadReferences";
 import { noteQuotaSql } from "@/lib/noteQuota";
 
 // CA certificate for verifying the Postgres server's TLS cert. DATABASE_CA_CERT
@@ -132,6 +133,7 @@ async function bootstrap(): Promise<void> {
       created_at   BIGINT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS uploads_user_idx ON uploads (user_id, created_at DESC);
+    ${noteUploadReferencesSql}
 
     -- Short-lived handoff codes for native (iOS) Google sign-in. The native app
     -- can't read the session cookie out of ASWebAuthenticationSession's browser
