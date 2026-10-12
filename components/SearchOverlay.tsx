@@ -49,13 +49,18 @@ export function SearchOverlay({
             ref={searchRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="true"
+            aria-controls="note-search-results"
+            aria-activedescendant={results.some(note => note.id === activeId) ? `search-note-${activeId}` : undefined}
             aria-label="Search notes"
             placeholder="Search notes..."
             className="min-w-0 flex-1 border-0 bg-transparent text-lg text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none"
           />
         </div>
 
-        <div className="max-h-[45vh] overflow-y-auto p-2">
+        <div id="note-search-results" role="listbox" aria-label="Notes" className="max-h-[45vh] overflow-y-auto p-2">
           {results.length > 0 ? (
             <div className="flex flex-col gap-1">
               {results.map((note) => {
@@ -63,6 +68,10 @@ export function SearchOverlay({
                 return (
                   <button
                     key={note.id}
+                    id={`search-note-${note.id}`}
+                    role="option"
+                    aria-selected={active}
+                    tabIndex={-1}
                     type="button"
                     onMouseEnter={() => setActiveId(note.id)}
                     onClick={() => onOpen(note)}

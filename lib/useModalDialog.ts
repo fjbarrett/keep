@@ -49,6 +49,7 @@ export function useModalDialog<T extends HTMLElement = HTMLDivElement>(
     });
 
     function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -76,10 +77,10 @@ export function useModalDialog<T extends HTMLElement = HTMLDivElement>(
       }
     }
 
-    document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
       window.cancelAnimationFrame(focusFrame);
-      document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };

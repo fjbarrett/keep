@@ -10,9 +10,11 @@ export function ColorSwatchRow({
   onPick: (color: string | null) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 px-3 py-1.5">
+    <div role="group" aria-label="Color" className="flex items-center gap-1.5 px-3 py-1.5">
       <button
         type="button"
+        role="menuitemradio"
+        aria-checked={selected === null}
         aria-label="No color"
         title="No color"
         onClick={() => onPick(null)}
@@ -28,6 +30,8 @@ export function ColorSwatchRow({
         <button
           key={c.key}
           type="button"
+          role="menuitemradio"
+          aria-checked={selected === c.key}
           aria-label={c.label}
           title={c.label}
           onClick={() => onPick(c.key)}

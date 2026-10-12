@@ -12,7 +12,7 @@
   --color-border-muted: #232327;
   --color-text: #ececee;
   --color-muted: #8f8f98;
-  --color-subtle: #717179;
+  --color-subtle: #95959e;
   --color-link: #527ef3;
   --color-link-hover: #7c9df5;
   --color-accent: #2b60f2;
@@ -43,7 +43,7 @@
   --color-border-muted: #e0dbd1;
   --color-text: #211f1b;
   --color-muted: #6e6a61;
-  --color-subtle: #7f7a70;
+  --color-subtle: #666158;
   --color-link: #0f4bee;
   --color-link-hover: #0635b6;
   --color-accent: #2b60f2;
@@ -132,9 +132,21 @@ html {
   outline-offset: -2px;
 }
 
-input:focus-visible,
-textarea:focus-visible {
+:root input:focus-visible,
+:root textarea:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: -2px;
+}
+
+/* The grid card's open control is stretched over the whole card through its
+   ::after, so the focus ring is drawn on that overlay — around the card —
+   rather than around the title text alone. */
+.note-card-open:focus-visible {
   outline: none;
+}
+.note-card-open:focus-visible::after {
+  outline: 2px solid var(--color-link);
+  outline-offset: -2px;
 }
 
 /* Highlighted editor overlay — textarea text is invisible, Shiki pre shows through */

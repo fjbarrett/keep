@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { previewText, TITLE_CHAR_LIMIT } from "@/lib/inferTitle";
 import { noteFileExtension } from "@/lib/detectLanguage";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
-import { noteColorVar } from "@/lib/noteColors";
+import { noteColorVar, noteColorForeground } from "@/lib/noteColors";
 import { downloadNoteBody, downloadNotePdf } from "@/lib/downloadNote";
 import { SyncStatus } from "@/lib/useNotes";
+import { useMenuKeyboard } from "@/lib/useMenuKeyboard";
 import { useMenuPresence } from "@/lib/useMenuPresence";
 import { Note } from "@/lib/types";
 import {
@@ -466,6 +467,7 @@ function SidebarNoteRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { mounted: menuMounted, closing: menuClosing } = useMenuPresence(menuOpen);
+  const menu = useMenuKeyboard(menuOpen, () => setMenuOpen(false));
   const [flipUp, setFlipUp] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -507,6 +509,7 @@ function SidebarNoteRow({
     <li
       ref={rowRef}
       data-note-id={note.id}
+      style={{ "--row-foreground": noteColorForeground(note.color) ?? "var(--color-accent-fg)" } as React.CSSProperties}
       className="group relative flex items-center rounded-md"
       onContextMenu={(e) => {
         if (isRenaming || confirmingDelete) return;
@@ -523,6 +526,7 @@ function SidebarNoteRow({
             event.stopPropagation();
             if (event.key === "Escape") {
               event.preventDefault();
+              event.stopPropagation();
               cancelDelete();
             }
           }}
@@ -559,7 +563,7 @@ function SidebarNoteRow({
           onChange={(e) => setRenameValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") { e.preventDefault(); commitRename(); }
-            if (e.key === "Escape") setIsRenaming(false);
+            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setIsRenaming(false); }
           }}
           onBlur={commitRename}
           onFocus={(e) => e.target.select()}
@@ -584,7 +588,7 @@ function SidebarNoteRow({
             aria-current={active ? "true" : undefined}
             className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors ${
               active && !slidingIn
-                ? "text-white"
+                ? "text-[var(--row-foreground)]"
                 : "text-[var(--color-text)]"
             }`}
           >
@@ -620,7 +624,7 @@ function SidebarNoteRow({
                 : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
             } ${
               active && !slidingIn
-                ? "text-white"
+                ? "text-[var(--row-foreground)]"
                 : "text-[var(--color-subtle)] hover:text-[var(--color-text)]"
             }`}
           >
@@ -632,12 +636,16 @@ function SidebarNoteRow({
         <>
           {menuOpen && (
             <div
+              aria-hidden
               className="fixed inset-0 z-10"
               onClick={() => setMenuOpen(false)}
             />
           )}
           <div
+            ref={menu.menuRef}
             role="menu"
+            aria-label="Note options"
+            onKeyDown={menu.onKeyDown}
             data-closing={menuClosing || undefined}
             className={`menu-pop absolute right-1 z-20 w-44 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg ${
               flipUp ? "bottom-7 origin-bottom-right" : "top-7 origin-top-right"

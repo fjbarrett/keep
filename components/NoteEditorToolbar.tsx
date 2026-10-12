@@ -18,6 +18,7 @@ import {
 import type { EditorTarget } from "@/components/NoteEditor";
 import { previewText, TITLE_CHAR_LIMIT } from "@/lib/inferTitle";
 import { noteColorVar } from "@/lib/noteColors";
+import { useMenuKeyboard } from "@/lib/useMenuKeyboard";
 
 const ICON_BUTTON =
   "grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]";
@@ -82,6 +83,8 @@ export function NoteEditorToolbar({
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const colorMenu = useMenuKeyboard(colorMenuOpen, () => setColorMenuOpen(false));
+  const copyMenu = useMenuKeyboard(copyMenuOpen, () => setCopyMenuOpen(false));
   const [titleDraft, setTitleDraft] = useState("");
   const [titleEditing, setTitleEditing] = useState(false);
   const cancelTitleEditRef = useRef(false);
@@ -221,14 +224,16 @@ export function NoteEditorToolbar({
                   </button>
                   {colorMenuOpen && (
                     <>
-                      <button
-                        type="button"
-                        aria-label="Close color menu"
-                        className="fixed inset-0 z-10 cursor-default"
+                      <div
+                        aria-hidden
+                        className="fixed inset-0 z-10"
                         onClick={() => setColorMenuOpen(false)}
                       />
                       <div
+                        ref={colorMenu.menuRef}
                         role="menu"
+                        aria-label="Color label"
+                        onKeyDown={colorMenu.onKeyDown}
                         className="absolute right-0 top-8 z-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
                       >
                         <ColorSwatchRow
@@ -263,14 +268,16 @@ export function NoteEditorToolbar({
                     </button>
                     {copyMenuOpen && (
                       <>
-                        <button
-                          type="button"
-                          aria-label="Close copy menu"
-                          className="fixed inset-0 z-10 cursor-default"
+                        <div
+                          aria-hidden
+                          className="fixed inset-0 z-10"
                           onClick={() => setCopyMenuOpen(false)}
                         />
                         <div
+                          ref={copyMenu.menuRef}
                           role="menu"
+                          aria-label="Copy note"
+                          onKeyDown={copyMenu.onKeyDown}
                           className="absolute right-0 top-8 z-20 min-w-[168px] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 text-sm shadow-lg"
                         >
                           <button
