@@ -11,6 +11,7 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
@@ -42,10 +43,12 @@ jobs:
 
   # Auto-deploy from inside the private Proxmox network on every merge to main,
   # only after the hosted checks pass. The runner has one sudo capability: the
-  # root-owned deployment script on the Keep container.
+  # root-owned SSH wrapper in an isolated CI container. The production forced
+  # command selects main and reruns its gates without accepting caller input.
   deploy:
+    timeout-minutes: 25
     needs: checks
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.KEEP_DEPLOY_ENABLED != 'false'
     runs-on: [self-hosted, linux, x64, keep-prod]
     environment:
       name: production

@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Root-only: smoke-test a release, switch atomically, and restore on failure.
+set -euo pipefail
+[[ $EUID == 0 && $# == 1 && $1 =~ ^[0-9a-f]{40}$ ]] || exit 64
+sha=$1
+release=/opt/keep/releases/$sha
+[[ $(cat "$release/RELEASE") == "$sha" ]] || exit 66
+exec 9>/run/keep-activate.lock
+flock -n 9 || exit 75
+previous=$(readlink -f /opt/keep/current || true)
+probe="keep-candidate-${sha:0:12}"
+cleanup() { systemctl stop "$probe" 2>/dev/null || true; }
+trap cleanup EXIT
+
+healthy() {
+  local port=$1
+  [[ $(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/") == 200 ]] &&
+  [[ $(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/api/notes") == 401 ]] &&
+  [[ $(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/p/release-health-not-a-share") == 404 ]]
+}
+wait_healthy() {
+  for _ in {1..30}; do
+    healthy "$1" && return 0
+    sleep 1
+  done
+  return 1
+}
+switch_to() {
+  ln -s "$1" /opt/keep/.current-next
+  mv -Tf /opt/keep/.current-next /opt/keep/current
+}
+
+systemd-run --collect --service-type=exec --unit="$probe" \
+  --uid=keep --gid=keep --working-directory="$release" \
+  -p EnvironmentFile=/etc/keep/keep.env -E NODE_ENV=production \
+  -p NoNewPrivileges=true -p ProtectSystem=strict -p ProtectHome=true \
+  -p PrivateTmp=true -p PrivateDevices=true -p MemoryMax=1G \
+  -p ReadWritePaths=/var/cache/keep \
+  /usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3001
+wait_healthy 3001 || { echo "Candidate failed; active release untouched"; exit 1; }
+cleanup
+switch_to "$release"
+if systemctl restart keep && wait_healthy 3000; then
+  printf '%s\n' "$previous" > /opt/keep/previous-release
+  echo "Serving $sha"
+else
+  echo "Health check failed; restoring $previous" >&2
+  if [[ -n $previous ]]; then
+    switch_to "$previous"
+    systemctl restart keep
+    wait_healthy 3000
+  fi
+  exit 1
+fi
