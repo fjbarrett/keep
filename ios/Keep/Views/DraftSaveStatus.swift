@@ -3,6 +3,7 @@ import SwiftUI
 struct DraftSaveStatus: View {
     @Environment(NotesStore.self) private var store
     @State private var showRecovery = false
+    @State private var confirmDiscard = false
     let id: String
     var horizontalPadding: CGFloat = 16
     var onCopy: (String) -> Void = { _ in }
@@ -27,11 +28,16 @@ struct DraftSaveStatus: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("Retry saving, or create a separate copy.")
-                        Button { store.drafts.start(id) } label: {
-                            Text(store.drafts.saving.contains(id) ? "Retrying…" : "Retry")
-                                .frame(maxWidth: .infinity)
+                        Text(store.drafts.requiresResolution.contains(id)
+                             ? "Save a separate copy, or discard this draft to keep the server version."
+                             : "Retry saving, or create a separate copy.")
+                        if !store.drafts.requiresResolution.contains(id) {
+                            Button { store.drafts.start(id) } label: {
+                                Text(store.drafts.saving.contains(id) ? "Retrying…" : "Retry")
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
+                        Button("Discard draft", role: .destructive) { confirmDiscard = true }
                         Button {
                             if let copy = store.drafts.saveCopy(id) {
                                 showRecovery = false
@@ -49,6 +55,12 @@ struct DraftSaveStatus: View {
                     .disabled(store.drafts.saving.contains(id))
                     .padding()
                 }
+                .confirmationDialog("Discard the unsynced text on this device?", isPresented: $confirmDiscard) {
+                    Button("Discard draft", role: .destructive) {
+                        do { try store.drafts.discard(id); showRecovery = false }
+                        catch { store.errorMessage = error.localizedDescription }
+                    }
+                } message: { Text("The server version will be kept. This cannot be undone.") }
                 .navigationTitle("Save recovery")
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
