@@ -56,12 +56,12 @@ function dosTimestamp(time: number): { date: number; time: number } {
   };
 }
 
-export function notesZip(notes: Note[]): Buffer {
-  const locals: Buffer[] = [];
+export async function* notesZip(notes: AsyncIterable<Note> | Iterable<Note>): AsyncGenerator<Uint8Array> {
+  let count = 0;
   const central: Buffer[] = [];
   let offset = 0;
 
-  for (const note of notes) {
+  for await (const note of notes) {
     const name = Buffer.from(noteFileName(note), "utf8");
     const content = Buffer.from(noteFileContent(note), "utf8");
     const checksum = crc32(content);
@@ -80,7 +80,10 @@ export function notesZip(notes: Note[]): Buffer {
     localHeader.writeUInt16LE(name.length, 26);
     localHeader.writeUInt16LE(0, 28);
 
-    locals.push(localHeader, name, content);
+    yield localHeader;
+    yield name;
+    yield content;
+    count += 1;
 
     const centralHeader = Buffer.alloc(46);
     centralHeader.writeUInt32LE(0x02014b50, 0);
@@ -110,11 +113,12 @@ export function notesZip(notes: Note[]): Buffer {
   end.writeUInt32LE(0x06054b50, 0);
   end.writeUInt16LE(0, 4);
   end.writeUInt16LE(0, 6);
-  end.writeUInt16LE(notes.length, 8);
-  end.writeUInt16LE(notes.length, 10);
+  end.writeUInt16LE(count, 8);
+  end.writeUInt16LE(count, 10);
   end.writeUInt32LE(centralSize, 12);
   end.writeUInt32LE(offset, 16);
   end.writeUInt16LE(0, 20);
 
-  return Buffer.concat([...locals, ...central, end]);
+  for (const chunk of central) yield chunk;
+  yield end;
 }

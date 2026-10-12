@@ -84,3 +84,23 @@ it("rolls back an entire import when storage runs out", async () => {
   expect(mocks.query).not.toHaveBeenCalledWith("COMMIT");
   expect(mocks.release).toHaveBeenCalledOnce();
 });
+
+it("streams a readable ZIP and releases the database snapshot", async () => {
+  const rows = ["first", "second"].map((body, i) => ({ id: String(i), body, title: body, updatedAt: 1700000000000 }));
+  mocks.query.mockImplementation(async (sql: string) => ({ rows: sql === "FETCH 2 FROM note_export" ? rows : [] }));
+  const response = await exportNotes();
+  const zip = await JSZip.loadAsync(await response.arrayBuffer());
+  expect(await Promise.all(Object.values(zip.files).map(file => file.async("string")))).toEqual(["first\n", "second\n"]);
+  expect(mocks.query).toHaveBeenCalledWith("ROLLBACK");
+  expect(mocks.release).toHaveBeenCalledOnce();
+});
+
+it("releases the export connection when the reader cancels", async () => {
+  mocks.query.mockResolvedValue({ rows: [{ id: "1", body: "one", updatedAt: 0 }, { id: "2", body: "two", updatedAt: 0 }] });
+  const response = await exportNotes();
+  const reader = response.body!.getReader();
+  await reader.read();
+  await reader.cancel();
+  expect(mocks.release).toHaveBeenCalledOnce();
+  expect(mocks.query).not.toHaveBeenCalledWith("FETCH 16 FROM note_export");
+});
