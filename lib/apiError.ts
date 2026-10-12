@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { isNoteQuotaError } from "@/lib/noteQuota";
 
 /**
  * Logs the real error server-side and returns a generic 500. Routes used to
@@ -7,6 +8,9 @@ import { logger } from "@/lib/logger";
  * DATABASE_URL hint string from lib/db — none of which a client should see.
  */
 export function internalError(context: string, err: unknown) {
+  if (isNoteQuotaError(err)) {
+    return NextResponse.json({ error: "Note limit reached (10,000 notes or 25 MiB). Export or delete notes to make room." }, { status: 413 });
+  }
   logger.error("request failed", { context, err });
   return NextResponse.json({ error: "Internal error" }, { status: 500 });
 }

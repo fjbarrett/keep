@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { Pool } from "pg";
 import { logger } from "@/lib/logger";
+import { noteQuotaSql } from "@/lib/noteQuota";
 
 // CA certificate for verifying the Postgres server's TLS cert. DATABASE_CA_CERT
 // may be the PEM contents inline or a path to a .pem/.crt file. When set, the
@@ -115,7 +116,9 @@ async function bootstrap(): Promise<void> {
     CREATE INDEX IF NOT EXISTS notes_archived_idx ON notes (archived);
     CREATE INDEX IF NOT EXISTS notes_trashed_idx ON notes (trashed);
     CREATE INDEX IF NOT EXISTS notes_user_idx ON notes (user_id);
+    CREATE INDEX IF NOT EXISTS notes_user_updated_idx ON notes (user_id, updated_at DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS notes_share_token_idx ON notes (share_token) WHERE share_token IS NOT NULL;
+    ${noteQuotaSql}
 
     -- Private note attachments. The object itself is private; this ownership
     -- row is the authorization boundary for /api/uploads/<id>.

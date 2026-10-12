@@ -10,6 +10,7 @@ export const MAX_NOTE_SUMMARY = 500;
 export const MAX_TAGS = 50;
 export const MAX_TAG_LEN = 64;
 export const MAX_NOTES_PER_USER = 10_000;
+export const MAX_NOTE_STORAGE_BYTES = 25 * 1024 * 1024;
 
 /** True when a tags value isn't an array of short strings within the count cap. */
 export function tagsInvalid(tags: unknown): boolean {
