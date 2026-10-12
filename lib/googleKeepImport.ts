@@ -49,13 +49,71 @@ export const IMPORT_LIMITS: KeepImportLimits = {
   maxTotalBytes: 50 * 1024 * 1024,
 };
 
-// JSZip exposes the declared uncompressed size on the entry's internal _data,
-// letting us skip a bomb entry before decompressing it. Read defensively and
-// fall back to a post-decompression length check when it isn't available.
+export class InvalidKeepExport extends Error {
+  constructor() {
+    super("That file isn't a Google Keep export.");
+    this.name = "InvalidKeepExport";
+  }
+}
+
+// The size a zip header declares was written by whoever built the zip, so it
+// only short-circuits entries that admit to being too big; inflateBounded is
+// what enforces the caps.
 type ZipEntryInternals = { _data?: { uncompressedSize?: number } };
 function declaredSize(entry: JSZip.JSZipObject): number | null {
   const size = (entry as unknown as ZipEntryInternals)._data?.uncompressedSize;
   return typeof size === "number" && Number.isFinite(size) ? size : null;
+}
+
+// JSZip's typings expose only the accumulating `async`; the chunked stream it
+// wraps is what lets inflation stop once an entry passes the cap.
+type StreamingZipEntry = {
+  internalStream(type: "uint8array"): JSZip.JSZipStreamHelper<Uint8Array>;
+};
+
+// Stop collecting at the byte cap and pause further compressed input. Count
+// all emitted bytes, including rejected entries, against the upload budget.
+function inflateBounded(
+  entry: JSZip.JSZipObject,
+  maxBytes: number,
+  budget: { used: number; limit: number },
+): Promise<Uint8Array | null> {
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    let settled = false;
+    const stream = (entry as unknown as StreamingZipEntry).internalStream("uint8array");
+    stream
+      .on("data", (chunk) => {
+        budget.used += chunk.length;
+        if (settled) return;
+        received += chunk.length;
+        if (received > maxBytes || budget.used > budget.limit) {
+          settled = true;
+          stream.pause();
+          resolve(null);
+          return;
+        }
+        chunks.push(chunk);
+      })
+      .on("error", (err) => {
+        if (settled) return;
+        settled = true;
+        reject(err);
+      })
+      .on("end", () => {
+        if (settled) return;
+        settled = true;
+        const bytes = new Uint8Array(received);
+        let offset = 0;
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset);
+          offset += chunk.length;
+        }
+        resolve(bytes);
+      })
+      .resume();
+  });
 }
 
 function stringValue(value: unknown) {
@@ -128,46 +186,55 @@ export async function parseGoogleKeepImport(
   let truncated = false;
 
   if (lowerName.endsWith(".zip")) {
-    const zip = await JSZip.loadAsync(data);
-    let decompressed = 0;
+    let zip: JSZip;
+    try {
+      zip = await JSZip.loadAsync(data);
+    } catch {
+      throw new InvalidKeepExport();
+    }
+    const budget = { used: 0, limit: limits.maxTotalBytes };
+    let visited = 0;
     for (const [path, entry] of Object.entries(zip.files)) {
       if (entry.dir || !isKeepJsonPath(path)) continue;
-      if (notes.length >= limits.maxNotes) {
+      if (visited++ >= limits.maxNotes || budget.used >= budget.limit) {
         truncated = true;
         break;
       }
 
-      // Cheap pre-checks using the declared size, before paying to decompress.
+      const remaining = limits.maxTotalBytes - budget.used;
       const declared = declaredSize(entry);
       if (declared !== null && declared > limits.maxEntryBytes) {
         skipped += 1;
+        truncated = true;
         continue;
       }
-      if (declared !== null && decompressed + declared > limits.maxTotalBytes) {
+      if (declared !== null && declared > remaining) {
         truncated = true;
         break;
       }
 
-      let text: string;
+      let bytes: Uint8Array | null;
       try {
-        text = await entry.async("text");
+        bytes = await inflateBounded(entry, Math.min(limits.maxEntryBytes, remaining), budget);
       } catch {
         skipped += 1;
         continue;
       }
-      // Enforce again on the real length for entries that didn't declare a size.
-      if (text.length > limits.maxEntryBytes) {
+      if (bytes === null) {
+        truncated = true;
+        if (budget.used >= budget.limit) {
+          truncated = true;
+          break;
+        }
         skipped += 1;
         continue;
       }
-      if (decompressed + text.length > limits.maxTotalBytes) {
-        truncated = true;
-        break;
-      }
-      decompressed += text.length;
 
       try {
-        const note = noteFromJson(path.split("/").pop() ?? path, text);
+        const note = noteFromJson(
+          path.split("/").pop() ?? path,
+          new TextDecoder().decode(bytes),
+        );
         if (note) notes.push(note);
         else skipped += 1;
       } catch {
@@ -178,7 +245,15 @@ export async function parseGoogleKeepImport(
   }
 
   if (lowerName.endsWith(".json")) {
-    const note = noteFromJson(fileName, new TextDecoder().decode(data));
+    if (data.byteLength > Math.min(limits.maxEntryBytes, limits.maxTotalBytes)) {
+      return { notes: [], skipped: 1, truncated: true };
+    }
+    let note: KeepImportNote | null;
+    try {
+      note = noteFromJson(fileName, new TextDecoder().decode(data));
+    } catch {
+      throw new InvalidKeepExport();
+    }
     return { notes: note ? [note] : [], skipped: note ? 0 : 1, truncated: false };
   }
 
