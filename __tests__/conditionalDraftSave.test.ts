@@ -8,6 +8,24 @@ const note: Note = { id: "a".repeat(32), title: "Title", body: "Original", pinne
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
+it("keeps metadata changed while the first create was in flight", async () => {
+  const created = { ...note, summary: null, color: null, updatedAt: 2 };
+  const intended = { ...created, pinned: true, markdown: true, color: "blue", title: "Chosen title" };
+  const fetcher = vi.fn((_url: string, init: RequestInit) => {
+    if (init.method === "POST") return Promise.resolve(json({ note: created }));
+    const patch = JSON.parse(String(init.body));
+    expect(patch.expectedUpdatedAt).toBe(2);
+    expect(patch).not.toHaveProperty("id");
+    return Promise.resolve(json({ note: { ...created, ...patch, updatedAt: 3 } }));
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const draft = writeNoteDraft("A", { note: intended, patch: intended, type: "create" });
+  const saved = await saveNoteDraft("A", draft);
+  expect(saved).toMatchObject({ pinned: true, markdown: true, color: "blue", title: "Chosen title" });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(readNoteDrafts("A")).toEqual([]);
+});
+
 it.each([true, false])("keeps the latest body when lifecycle request completes first: %s", async (latestFirst) => {
   let server = note;
   const requests: Array<() => void> = [];
