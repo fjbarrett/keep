@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 /**
  * Keeps a popup mounted briefly after `open` flips false so its exit
  * animation can play. `closing` is true during that grace period — put it on
- * a data attribute and drive the animation from CSS.
+ * a data attribute and drive the animation from CSS. Opening mounts the popup
+ * in the same render, so effects that run on open can already reach its DOM.
  */
 export function useMenuPresence(open: boolean, closeMs = 90) {
   const [mounted, setMounted] = useState(open);
@@ -16,5 +17,5 @@ export function useMenuPresence(open: boolean, closeMs = 90) {
     const timer = window.setTimeout(() => setMounted(false), closeMs);
     return () => window.clearTimeout(timer);
   }, [open, mounted, closeMs]);
-  return { mounted, closing: mounted && !open };
+  return { mounted: open || mounted, closing: mounted && !open };
 }

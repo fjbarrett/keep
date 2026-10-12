@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { useAutohideScrollbar } from "@/lib/useAutohideScrollbar";
+import { useMenuKeyboard } from "@/lib/useMenuKeyboard";
 import { Note } from "@/lib/types";
 import { needsInferredTitle, previewText } from "@/lib/inferTitle";
 import { noteColorVar } from "@/lib/noteColors";
@@ -61,37 +62,21 @@ function GridCard({
   onColor,
 }: { note: Note; trashMode: boolean } & GridHandlers) {
   const [colorOpen, setColorOpen] = useState(false);
+  const colorMenu = useMenuKeyboard(colorOpen, () => setColorOpen(false));
   const color = noteColorVar(note.color);
   const title = previewText(note);
   const snippet = snippetFor(note, title);
 
   // Whether the clamp actually cut the snippet off — drives the "more" hint.
-  const snippetRef = useRef<HTMLSpanElement>(null);
+  const snippetRef = useRef<HTMLParagraphElement>(null);
   const [clipped, setClipped] = useState(false);
   useLayoutEffect(() => {
     const el = snippetRef.current;
     if (el) setClipped(el.scrollHeight > el.clientHeight + 1);
   }, [snippet]);
 
-  const act = (fn: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    fn();
-  };
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(note)}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen(note);
-        }
-      }}
-      className="group relative mb-3 block w-full cursor-pointer break-inside-avoid rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-4 text-left"
-    >
+    <article className="group relative mb-3 break-inside-avoid rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-4">
       <span className="flex items-center gap-2">
         {color && (
           <span
@@ -99,17 +84,24 @@ function GridCard({
             style={{ background: color }}
           />
         )}
-        <span className="truncate text-sm font-medium text-[var(--color-text)]">
+        {/* Stretched over the whole card (see .note-card-open), so the card
+            stays one click target while the actions below remain their own
+            controls rather than children of this one. */}
+        <button
+          type="button"
+          onClick={() => onOpen(note)}
+          className="note-card-open min-w-0 truncate text-left text-sm font-medium text-[var(--color-text)] after:absolute after:inset-0 after:rounded-lg after:content-['']"
+        >
           {title}
-        </span>
+        </button>
       </span>
       {snippet && (
-        <span
+        <p
           ref={snippetRef}
           className="mt-2 line-clamp-[10] whitespace-pre-wrap break-words text-sm leading-6 text-[var(--color-muted)]"
         >
           {snippet}
-        </span>
+        </p>
       )}
       {clipped && (
         <span
@@ -119,12 +111,12 @@ function GridCard({
           •&thinsp;•&thinsp;•
         </span>
       )}
-      <span className="invisible mt-2 flex h-7 items-center gap-0.5 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      <div className="invisible relative mt-2 flex h-7 items-center gap-0.5 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
         {trashMode ? (
           <>
             <button
               type="button"
-              onClick={act(() => onRestore(note.id))}
+              onClick={() => onRestore(note.id)}
               className={CARD_ICON}
               title="Restore"
               aria-label="Restore"
@@ -133,9 +125,9 @@ function GridCard({
             </button>
             <button
               type="button"
-              onClick={act(() => {
+              onClick={() => {
                 if (confirm("Permanently delete this note?")) onRemove(note.id);
-              })}
+              }}
               className={`${CARD_ICON} hover:text-[var(--color-danger)]`}
               title="Delete forever"
               aria-label="Delete forever"
@@ -147,7 +139,7 @@ function GridCard({
           <>
             <button
               type="button"
-              onClick={act(() => onTogglePin(note.id))}
+              onClick={() => onTogglePin(note.id)}
               className={CARD_ICON}
               title={note.pinned ? "Unpin" : "Pin"}
               aria-label={note.pinned ? "Unpin" : "Pin"}
@@ -158,10 +150,10 @@ function GridCard({
                 <PinIcon className="h-4 w-4" />
               )}
             </button>
-            <span className="relative">
+            <div className="relative">
               <button
                 type="button"
-                onClick={act(() => setColorOpen((v) => !v))}
+                onClick={() => setColorOpen((v) => !v)}
                 className={CARD_ICON}
                 title="Color label"
                 aria-label="Color label"
@@ -175,14 +167,17 @@ function GridCard({
               </button>
               {colorOpen && (
                 <>
-                  <span
+                  <div
+                    aria-hidden
                     className="fixed inset-0 z-10"
-                    onClick={act(() => setColorOpen(false))}
+                    onClick={() => setColorOpen(false)}
                   />
-                  <span
+                  <div
+                    ref={colorMenu.menuRef}
                     role="menu"
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-8 left-0 z-20 block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
+                    aria-label="Color label"
+                    onKeyDown={colorMenu.onKeyDown}
+                    className="absolute bottom-8 left-0 z-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-lg"
                   >
                     <ColorSwatchRow
                       selected={note.color ?? null}
@@ -191,13 +186,13 @@ function GridCard({
                         setColorOpen(false);
                       }}
                     />
-                  </span>
+                  </div>
                 </>
               )}
-            </span>
+            </div>
             <button
               type="button"
-              onClick={act(() => onToggleArchive(note.id))}
+              onClick={() => onToggleArchive(note.id)}
               className={CARD_ICON}
               title={note.archived ? "Unarchive" : "Archive"}
               aria-label={note.archived ? "Unarchive" : "Archive"}
@@ -210,7 +205,7 @@ function GridCard({
             </button>
             <button
               type="button"
-              onClick={act(() => onTrash(note.id))}
+              onClick={() => onTrash(note.id)}
               className={`${CARD_ICON} hover:text-[var(--color-danger)]`}
               title="Move to Trash"
               aria-label="Move to Trash"
@@ -219,8 +214,8 @@ function GridCard({
             </button>
           </>
         )}
-      </span>
-    </div>
+      </div>
+    </article>
   );
 }
 

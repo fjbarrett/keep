@@ -134,7 +134,7 @@ export const HighlightedEditor = forwardRef<HighlightedEditorHandle, Props>(
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Tab") {
+        if (e.key === "Tab" && e.altKey && !e.shiftKey) {
           e.preventDefault();
           const ta = e.currentTarget;
           const start = ta.selectionStart;

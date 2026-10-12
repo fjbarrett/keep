@@ -187,7 +187,7 @@ describe("NotesView deep links", () => {
     window.history.replaceState(null, "", "/");
     const view = render(<NotesView initialNoteId={null} ownerId={null} />);
 
-    const card = screen.getByText("Grid note").closest('[role="button"]');
+    const card = screen.getByRole("button", { name: "Grid note" });
     expect(card).toBeTruthy();
     fireEvent.click(card!);
     await waitFor(() => {

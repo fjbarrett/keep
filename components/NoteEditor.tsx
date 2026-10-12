@@ -417,12 +417,12 @@ export function NoteEditor({
       ?.scrollIntoView({ block: "nearest" });
   }, [findQuery, findActive, matches.length]);
 
-  // While a search is live, Tab / Shift+Tab step through matches instead of
-  // moving focus. Capture phase so it beats the textarea's default.
+  // F3 follows the browser convention for stepping through search matches.
+  // Tab remains available for keyboard focus navigation.
   useEffect(() => {
     if (!findQuery || matches.length === 0) return;
     function onTab(e: KeyboardEvent) {
-      if (e.key !== "Tab") return;
+      if (e.key !== "F3") return;
       e.preventDefault();
       e.stopPropagation();
       setFindActive((i) =>
@@ -437,7 +437,7 @@ export function NoteEditor({
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!target) return;
+      if (!target || e.defaultPrevented) return;
       // Defer to the search overlay when it's mounted — Escape and ⌘K belong to it.
       if (document.querySelector("[data-search-overlay]")) return;
       if (e.key === "Escape") {
