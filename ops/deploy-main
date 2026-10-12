@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Root-owned SSH forced command. The caller cannot choose code or arguments.
+set -euo pipefail
+[[ $EUID == 0 && $# == 0 ]] || exit 64
+export PATH=/usr/bin:/bin
+exec 8>/run/keep-ci-deploy.lock
+flock -n 8 || exit 75
+install -d -m 700 /var/lib/keep-deploy
+stamp=/var/lib/keep-deploy/last-attempt
+now=$(date +%s)
+if [[ -f $stamp ]] && (( now - $(stat -c %Y "$stamp") < 600 )); then
+  echo 'Deployment requests are limited to one per ten minutes' >&2
+  exit 75
+fi
+touch "$stamp"
+repo=/opt/keep
+git -C "$repo" fetch --no-tags --no-recurse-submodules origin \
+  refs/heads/main:refs/remotes/origin/main
+sha=$(git -C "$repo" rev-parse --verify 'refs/remotes/origin/main^{commit}')
+current=$(cat /opt/keep/current/RELEASE)
+[[ $sha != "$current" ]] || { echo 'Already current'; exit 0; }
+# A queued request must never replace a newer/manual release with old main.
+git -C "$repo" merge-base --is-ancestor "$current" "$sha" || {
+  echo 'Main does not descend from the active release; operator action required' >&2
+  exit 1
+}
+archive=/var/lib/keep-deploy/source.tar
+trap 'rm -f "$archive"' EXIT
+git -C "$repo" archive --format=tar "$sha" > "$archive"
+if [[ ! -d /opt/keep/releases/$sha ]]; then
+  /usr/local/sbin/keep-build-release "$sha" "$archive"
+fi
+/usr/local/sbin/keep-activate-release "$sha"

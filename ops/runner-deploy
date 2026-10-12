@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Installed as /usr/local/sbin/deploy-keep in the isolated CI container only.
+set -euo pipefail
+[[ $EUID == 0 && $# == 0 ]] || exit 64
+exec /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/ssh \
+  -F /dev/null -o BatchMode=yes -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+  -o UserKnownHostsFile=/etc/keep-ci/known_hosts \
+  -i /etc/keep-ci/identity keep-deploy@192.168.0.113

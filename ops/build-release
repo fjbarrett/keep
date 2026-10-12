@@ -29,6 +29,8 @@ systemd-run --wait --pipe --collect --service-type=exec \
     rm source.tar
     test ! -e .env.local && test ! -e .env.production
     npm ci --no-fund
+    npm test
+    npx tsc --noEmit
     npm audit --omit=dev --audit-level=high
     npm run build
     npm prune --omit=dev --ignore-scripts --no-audit --no-fund
@@ -38,9 +40,9 @@ systemd-run --wait --pipe --collect --service-type=exec \
 # Keep previously served immutable assets available to already-open browser tabs.
 if [[ -L /opt/keep/current ]]; then
   previous=$(readlink -f /opt/keep/current)
-  cp -an "$previous/.next/static/." "$work/.next/static/"
+  cp -a --update=none "$previous/.next/static/." "$work/.next/static/"
   find "$previous/public" -maxdepth 1 -name 'pdf.worker.*.mjs' \
-    -exec cp -n -t "$work/public" {} +
+    -exec cp --update=none -t "$work/public" {} +
 fi
 install -d -o keep -g keep -m 700 "/var/cache/keep/$sha"
 ln -s "/var/cache/keep/$sha" "$work/.next/cache"
