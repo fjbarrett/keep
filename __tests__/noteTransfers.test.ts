@@ -4,15 +4,15 @@ import JSZip from "jszip";
 import { MAX_NOTE_BODY } from "@/lib/noteLimits";
 import { downloadDisposition } from "@/lib/downloadDisposition";
 import { importGuestKeepFile, readImportedTextBodies } from "@/lib/noteImportClient";
-const mocks = vi.hoisted(() => ({ query: vi.fn(), metadata: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), metadata: vi.fn(), release: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: async () => ({ user: { id: "owner" } }) }));
-vi.mock("@/lib/db", () => ({ ready: async () => {}, pool: () => ({ query: mocks.query }), rowToNote: (n: unknown) => n }));
+vi.mock("@/lib/db", () => ({ ready: async () => {}, pool: () => ({ query: mocks.query, connect: async () => ({ query: mocks.query, release: mocks.release }) }), rowToNote: (n: unknown) => n }));
 vi.mock("@/lib/notesClient", () => ({ localNoteId: () => "id", metadataForBody: mocks.metadata }));
 import { GET as exportNotes } from "@/app/api/notes/export/route";
 import { GET as publicText } from "@/app/p/[token]/raw.txt/route";
 import { POST as importNotes } from "@/app/api/notes/import/route";
 
-beforeEach(() => { mocks.query.mockReset(); mocks.metadata.mockReset(); });
+beforeEach(() => { mocks.query.mockReset(); mocks.metadata.mockReset(); mocks.release.mockReset(); });
 
 it("downloads Unicode titles through both routes", async () => {
   const body = "日本語のメモ 📝";
@@ -48,9 +48,9 @@ it("rejects oversized Takeout notes before querying or inserting", async () => {
 });
 
 it("accepts a Takeout note at the normal editor boundary", async () => {
-  mocks.query.mockResolvedValueOnce({ rows: [{ count: "0" }] }).mockResolvedValueOnce({ rowCount: 1 });
+  mocks.query.mockImplementation(async (sql: string) => sql.includes("count(*)") ? { rows: [{ count: "0" }] } : { rowCount: 1 });
   expect((await keepUpload("x".repeat(MAX_NOTE_BODY))).status).toBe(200);
-  expect(mocks.query.mock.calls[1][1][4]).toHaveLength(MAX_NOTE_BODY);
+  expect(mocks.query.mock.calls.find(([sql]) => sql.includes("INSERT INTO"))![1][4]).toHaveLength(MAX_NOTE_BODY);
 });
 
 it("validates guest imports before metadata requests", async () => {
@@ -65,4 +65,22 @@ it("rejects a mixed text ZIP as a whole when one note is too large", async () =>
   await expect(readImportedTextBodies(file)).rejects.toThrow("Split it into smaller notes");
   await expect(readImportedTextBodies(new File(["📝".repeat(MAX_NOTE_BODY / 2)], "note.txt")))
     .resolves.toEqual(["📝".repeat(MAX_NOTE_BODY / 2)]);
+});
+
+it("rolls back an entire import when storage runs out", async () => {
+  let inserts = 0;
+  mocks.query.mockImplementation(async (sql: string) => {
+    if (sql.includes("count(*)")) return { rows: [{ count: "0" }] };
+    if (sql.includes("INSERT INTO") && ++inserts === 2) throw { constraint: "notes_owner_quota" };
+    return { rowCount: 1 };
+  });
+  const zip = new JSZip().file("Keep/a.json", JSON.stringify({ textContent: "one" }))
+    .file("Keep/b.json", JSON.stringify({ textContent: "two" }));
+  const form = new FormData();
+  form.set("file", new File([await zip.generateAsync({ type: "arraybuffer" })], "notes.zip"));
+  const response = await importNotes(new Request("https://keep.test/api/notes/import", { method: "POST", body: form }));
+  expect(response.status).toBe(413);
+  expect(mocks.query).toHaveBeenCalledWith("ROLLBACK");
+  expect(mocks.query).not.toHaveBeenCalledWith("COMMIT");
+  expect(mocks.release).toHaveBeenCalledOnce();
 });

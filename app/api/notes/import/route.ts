@@ -72,42 +72,52 @@ export async function POST(req: Request) {
     validateImportedBodies(importable.map((note) => note.body));
 
     await ready();
-    const usage = await pool().query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM notes WHERE user_id = $1`,
-      [session.user.id],
-    );
-    const available = Math.max(0, MAX_NOTES_PER_USER - Number(usage.rows[0]?.count ?? 0));
-    const withinQuota = importable.slice(0, available);
-    let imported = 0;
-    for (const note of withinQuota) {
-      // Heuristic title/summary only — a per-note model call would turn one
-      // upload into N billed Anthropic requests.
-      const meta = heuristicNoteMeta(note.body);
-      const result = await pool().query(
-        `INSERT INTO notes (id, user_id, title, summary, body, pinned, archived, trashed, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9)
-         ON CONFLICT (id) DO NOTHING`,
-        [
-          googleKeepImportId(session.user.id, note),
-          session.user.id,
-          meta.title,
-          meta.summary,
-          note.body,
-          note.pinned,
-          note.archived,
-          note.createdAt,
-          note.updatedAt,
-        ],
+    const client = await pool().connect();
+    try {
+      await client.query("BEGIN");
+      const usage = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM notes WHERE user_id = $1`,
+        [session.user.id],
       );
-      imported += result.rowCount ?? 0;
-    }
+      const available = Math.max(0, MAX_NOTES_PER_USER - Number(usage.rows[0]?.count ?? 0));
+      const withinQuota = importable.slice(0, available);
+      let imported = 0;
+      for (const note of withinQuota) {
+        // Heuristic title/summary only — a per-note model call would turn one
+        // upload into N billed Anthropic requests.
+        const meta = heuristicNoteMeta(note.body);
+        const result = await client.query(
+          `INSERT INTO notes (id, user_id, title, summary, body, pinned, archived, trashed, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9)
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            googleKeepImportId(session.user.id, note),
+            session.user.id,
+            meta.title,
+            meta.summary,
+            note.body,
+            note.pinned,
+            note.archived,
+            note.createdAt,
+            note.updatedAt,
+          ],
+        );
+        imported += result.rowCount ?? 0;
+      }
+      await client.query("COMMIT");
 
-    return NextResponse.json({
-      imported,
-      skipped: skipped + notes.length - importable.length,
-      duplicates: withinQuota.length - imported,
-      truncated: truncated || withinQuota.length < importable.length,
-    });
+      return NextResponse.json({
+        imported,
+        skipped: skipped + notes.length - importable.length,
+        duplicates: withinQuota.length - imported,
+        truncated: truncated || withinQuota.length < importable.length,
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     if (err instanceof InvalidKeepExport) return NextResponse.json({ error: err.message }, { status: 400 });
     if (err instanceof ImportNoteTooLarge) return NextResponse.json({ error: err.message }, { status: 413 });
