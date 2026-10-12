@@ -76,6 +76,11 @@ retention does not replace database backups.
 
 ## CI isolation
 
+Set the repository variable `KEEP_DEPLOY_ENABLED=false` during an operator-led
+release sequence. Checks continue to run, while automatic production deployment
+is paused. Remove the override or set it to `true` before the final main push;
+changing the variable alone does not trigger a deployment.
+
 The prepared CI container is LXC 114. It has no database or application secrets.
 `ops/runner.nft` allows DHCP, DNS through the configured resolver, public HTTP(S),
 NTP, and SSH to the application host; other private-network traffic is blocked.
