@@ -1,7 +1,13 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { KeepImportNote, parseGoogleKeepImport } from "@/lib/googleKeepImport";
+import { createTokenBucketRateLimiter } from "@/lib/rateLimit";
+import { enforceIpRateLimit } from "@/lib/rateLimitGuard";
+import {
+  InvalidKeepExport,
+  KeepImportNote,
+  parseGoogleKeepImport,
+} from "@/lib/googleKeepImport";
 import { pool, ready } from "@/lib/db";
 import { heuristicNoteMeta } from "@/lib/titleModel";
 import { internalError } from "@/lib/apiError";
@@ -15,6 +21,9 @@ export const dynamic = "force-dynamic";
 // note count and decompressed size to defend against zip bombs.
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + 256 * 1024;
+// One import can inflate 50 MB and write 2,000 rows, so even a retry loop is
+// expensive; a handful per minute covers any real use.
+const importRateLimit = createTokenBucketRateLimiter({ limit: 5, windowMs: 60_000 });
 
 // Deterministic 128-bit id so re-importing the same note dedupes via ON CONFLICT.
 function googleKeepImportId(userId: string, note: KeepImportNote) {
@@ -34,6 +43,13 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = enforceIpRateLimit(
+    importRateLimit,
+    req.headers,
+    "notes-import",
+    "Too many imports. Try again in a minute.",
+  );
+  if (limited) return limited;
 
   try {
     const form = await readFormDataBody(req, MAX_MULTIPART_BYTES);
@@ -93,6 +109,7 @@ export async function POST(req: Request) {
       truncated: truncated || withinQuota.length < importable.length,
     });
   } catch (err) {
+    if (err instanceof InvalidKeepExport) return NextResponse.json({ error: err.message }, { status: 400 });
     if (err instanceof ImportNoteTooLarge) return NextResponse.json({ error: err.message }, { status: 413 });
     const tooLarge = requestBodyError(err, "That file is too large to import (max 20 MB).");
     if (tooLarge) return tooLarge;

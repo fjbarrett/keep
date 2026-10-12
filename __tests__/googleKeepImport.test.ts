@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import JSZip from "jszip";
-import { parseGoogleKeepImport } from "@/lib/googleKeepImport";
+import { InvalidKeepExport, parseGoogleKeepImport } from "@/lib/googleKeepImport";
+
+afterEach(() => vi.restoreAllMocks());
 
 function jsonToBuffer(data: Record<string, unknown>): ArrayBuffer {
   return new TextEncoder().encode(JSON.stringify(data)).buffer;
@@ -104,6 +106,48 @@ describe("parseGoogleKeepImport", () => {
 
 describe("parseGoogleKeepImport bounds", () => {
   const big = 1024 * 1024;
+
+  it("stops collecting streamed bytes at the cap without trusting metadata", async () => {
+    const pause = vi.fn();
+    const handlers: Record<string, (chunk?: Uint8Array) => void> = {};
+    const stream = {
+      on(event: string, handler: (chunk?: Uint8Array) => void) { handlers[event] = handler; return stream; },
+      pause,
+      resume() {
+        handlers.data(new Uint8Array(8));
+        handlers.data(new Uint8Array(8));
+        return stream;
+      },
+    };
+    vi.spyOn(JSZip, "loadAsync").mockResolvedValue({ files: {
+      "Keep/note.json": { dir: false, internalStream: () => stream },
+    } } as unknown as JSZip);
+    const result = await parseGoogleKeepImport("notes.zip", new ArrayBuffer(0), {
+      maxNotes: 2, maxEntryBytes: 12, maxTotalBytes: 100,
+    });
+    expect(pause).toHaveBeenCalledOnce();
+    expect(result).toEqual({ notes: [], skipped: 1, truncated: true });
+  });
+
+  it("bounds standalone JSON by UTF-8 bytes", async () => {
+    const result = await parseGoogleKeepImport("note.json", jsonToBuffer({ textContent: "é".repeat(20) }), {
+      maxNotes: 2, maxEntryBytes: 50, maxTotalBytes: 100,
+    });
+    expect(result).toEqual({ notes: [], skipped: 1, truncated: true });
+  });
+
+  it("returns a useful validation error for malformed JSON", async () => {
+    await expect(parseGoogleKeepImport("note.json", new TextEncoder().encode("{").buffer))
+      .rejects.toBeInstanceOf(InvalidKeepExport);
+  });
+
+  it("counts invalid entries toward the work limit", async () => {
+    const data = await buildKeepZip([{ textContent: "" }, { textContent: "later" }]);
+    const result = await parseGoogleKeepImport("notes.zip", data, {
+      maxNotes: 1, maxEntryBytes: 1000, maxTotalBytes: 1000,
+    });
+    expect(result).toEqual({ notes: [], skipped: 1, truncated: true });
+  });
 
   it("caps the number of imported notes and flags truncation", async () => {
     const data = await buildKeepZip([
