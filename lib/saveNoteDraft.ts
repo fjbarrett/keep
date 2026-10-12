@@ -14,9 +14,9 @@ export async function saveNoteDraft(owner: string, submitted: NoteDraft, options
   const current = readNoteDrafts(owner).find((draft) => draft.note.id === submitted.note.id);
   const draft = current?.revision === submitted.revision ? current : submitted;
   let base = draft.base;
-  const { title, summary, color, body, pinned, archived, trashed, markdown, highlight, tags } = draft.note;
+  const { title, titleManual, summary, color, body, pinned, archived, trashed, markdown, highlight, tags } = draft.note;
   const patch = draft.type === "create"
-    ? { title, summary, color, body, pinned, archived, trashed, markdown, highlight, tags }
+    ? { title, ...(titleManual === undefined ? {} : { titleManual }), summary, color, body, pinned, archived, trashed, markdown, highlight, tags }
     : draft.patch;
   let saved: Note | undefined;
   if (draft.type === "create") {

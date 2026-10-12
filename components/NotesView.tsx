@@ -492,7 +492,7 @@ export function NotesView({
     trash,
     restore,
     remove,
-    onRename: (id: string, title: string) => update(id, { title }),
+    onRename: (id: string, title: string) => update(id, { title, titleManual: true }),
     onInfo: (note: Note) => setInfoNote(note),
     onColor: (id: string, color: string | null) => update(id, { color }),
     onCollapse: () => toggleSidebar(true),
@@ -544,7 +544,7 @@ export function NotesView({
               mainTarget.mode === "edit" && update(mainTarget.note.id, { color })
             }
             onRename={(title) =>
-              mainTarget.mode === "edit" && update(mainTarget.note.id, { title })
+              mainTarget.mode === "edit" && update(mainTarget.note.id, { title, titleManual: true })
             }
             presentation="panel"
           />

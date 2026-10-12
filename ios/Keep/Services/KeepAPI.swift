@@ -42,8 +42,8 @@ actor KeepAPI {
     }
 
     func create(body: String, title: String? = nil, summary: String? = nil,
-                id: String? = nil, ownerID: String? = nil, color: String? = nil) async throws -> Note {
-        var json: [String: Any] = ["body": body]
+                id: String? = nil, ownerID: String? = nil, color: String? = nil, titleManual: Bool = false) async throws -> Note {
+        var json: [String: Any] = ["body": body, "titleManual": titleManual]
         if let id { json["id"] = id }
         if let ownerID { json["ownerId"] = ownerID }
         if let title { json["title"] = title }

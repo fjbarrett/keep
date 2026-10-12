@@ -7,8 +7,8 @@ const IMAGE_ONLY = /^!\[.*?\]\(.*?\)$/;
 const WORD_LIMIT = 4;
 const CHAR_LIMIT = 36;
 
-/** Hard cap for explicit titles — matches the inferred-title trim. */
-export const TITLE_CHAR_LIMIT = CHAR_LIMIT;
+/** Explicit titles share the server and native editor limit. */
+export const TITLE_CHAR_LIMIT = 120;
 
 function stripMarkdown(text: string): string {
   return text
@@ -68,8 +68,8 @@ export function searchableText(note: { body: string; title: string }) {
   return note.body.trim() || note.title.trim();
 }
 
-export function previewText(note: { body: string; title: string }) {
-  const title = needsInferredTitle(note.title, note.body)
+export function previewText(note: { body: string; title: string; titleManual?: boolean }) {
+  const title = !note.titleManual && needsInferredTitle(note.title, note.body)
     ? inferNoteTitle(searchableText(note))
     : note.title;
   const text = title.replace(/\s+/g, " ").trim();

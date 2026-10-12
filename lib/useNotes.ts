@@ -453,6 +453,7 @@ export function useNotes(ownerId: string | null) {
     // Only regenerate title/summary when the lead line changes (or there's no
     // title yet) — avoids a model call on every keystroke-batch autosave.
     const needsMeta =
+      !current.titleManual &&
       bodyChanged &&
       patch.body !== undefined &&
       patch.title === undefined &&
@@ -647,7 +648,7 @@ export function useNotes(ownerId: string | null) {
       notesRef.current = saved;
       setNotes(saved);
       cacheNote(ownerId, data.note).catch(() => {});
-      if (!options.keepalive && !partial.title) {
+      if (!options.keepalive && !partial.title && !partial.titleManual) {
         // The note is durable before optional title generation begins.
         void metadataForBody(body).then(async (generated) => {
           const latest = notesRef.current.find((item) => item.id === note.id);

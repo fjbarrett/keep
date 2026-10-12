@@ -109,8 +109,8 @@ export async function POST(req: Request) {
     const now = Date.now();
     const tags = Array.isArray(body.tags) ? body.tags.map(String) : [];
     const { rows } = await pool().query<NoteRow>(
-      `INSERT INTO notes (id, user_id, title, summary, color, body, pinned, archived, trashed, markdown, highlight, tags, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, $11, $12, $12)
+      `INSERT INTO notes (id, user_id, title, summary, color, body, pinned, archived, trashed, markdown, highlight, tags, created_at, updated_at, title_manual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, $11, $12, $12, $13)
        ON CONFLICT (id) DO NOTHING
        RETURNING *`,
       [
@@ -126,6 +126,7 @@ export async function POST(req: Request) {
         body.highlight === true,
         tags,
         now,
+        body.titleManual === true,
       ],
     );
     if (rows[0]) {

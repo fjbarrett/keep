@@ -5,6 +5,7 @@ import Foundation
 struct Note: Identifiable, Codable, Equatable {
     let id: String
     var title: String
+    var titleManual: Bool? = nil
     var summary: String?
     var color: String?
     var body: String
@@ -28,7 +29,7 @@ struct Note: Identifiable, Codable, Equatable {
 
     /// Keep authored titles; infer from the body only when a title is missing.
     var displayTitle: String {
-        NoteTitle.preview(title: title, body: body)
+        titleManual == true ? title : NoteTitle.preview(title: title, body: body)
     }
 
     /// Card caption, or nil when there's nothing readable to show.
