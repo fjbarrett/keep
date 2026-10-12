@@ -66,6 +66,7 @@ export async function generateNoteMeta(body: string): Promise<NoteMeta> {
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
+      signal: AbortSignal.timeout(10_000),
       method: "POST",
       headers: {
         "x-api-key": apiKey,

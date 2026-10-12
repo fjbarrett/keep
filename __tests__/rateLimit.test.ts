@@ -88,3 +88,15 @@ describe("clientIpFromHeaders", () => {
   });
 });
 
+
+it("uses only the Cloudflare edge header in tunnel mode", () => {
+  const previous = process.env.TRUST_PROXY;
+  process.env.TRUST_PROXY = "cloudflare";
+  try {
+    expect(clientIpFromHeaders(new Headers({ "cf-connecting-ip": "203.0.113.9", "x-forwarded-for": "192.0.2.1" }))).toBe("203.0.113.9");
+    expect(clientIpFromHeaders(new Headers({ "x-forwarded-for": "192.0.2.1" }))).toBe("unknown");
+  } finally {
+    if (previous === undefined) delete process.env.TRUST_PROXY;
+    else process.env.TRUST_PROXY = previous;
+  }
+});

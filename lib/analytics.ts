@@ -12,6 +12,8 @@ import { logger } from "@/lib/logger";
 export type AnalyticsEventType = "pageview";
 const log = logger.child({ module: "analytics" });
 const MAX_FIELD = 128;
+const ROUTES = new Set(["/", "/signin", "/signup", "/offline", "/analytics", "/note/:id", "/p/:token"]);
+let nextRetentionSweep = 0;
 
 /**
  * Drop the query/hash and collapse dynamic route segments to their pattern, so
@@ -22,7 +24,7 @@ export function normalizePath(input: string): string {
   if (!path.startsWith("/")) path = "/" + path;
   path = path.replace(/^\/note\/[^/]+.*$/, "/note/:id");
   path = path.replace(/^\/p\/[^/]+.*$/, "/p/:token");
-  return path.slice(0, MAX_FIELD);
+  return ROUTES.has(path) ? path : "/other";
 }
 
 /** Referrer reduced to its host; never a path/query. Self-referrals → "internal". */
@@ -92,6 +94,15 @@ export async function recordAnalyticsEvent(input: AnalyticsInput): Promise<void>
   const row = buildAnalyticsRow(newId(), input);
   try {
     await ready();
+    if (input.now >= nextRetentionSweep) {
+      nextRetentionSweep = input.now + 60 * 60_000;
+      try {
+        await pool().query("DELETE FROM analytics_events WHERE ts < $1", [input.now - 90 * 24 * 60 * 60_000]);
+      } catch (err) {
+        nextRetentionSweep = input.now + 60_000;
+        log.error("analytics retention failed", { err });
+      }
+    }
     await pool().query(
       `INSERT INTO analytics_events (id, ts, type, path, referrer, visitor, device)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,

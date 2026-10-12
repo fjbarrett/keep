@@ -18,7 +18,7 @@ export type TokenBucketOptions = {
 
 const DEFAULT_MAX_ENTRIES = 10_000;
 
-// How many proxies we operate sit in front of the app (Caddy in prod = 1). Only
+// For deployments behind a conventional proxy chain, only
 // the right-most TRUSTED_PROXY_HOPS entries of X-Forwarded-For are appended by
 // hops we control; everything to their left is client-supplied and spoofable.
 function trustedProxyHops(): number {
@@ -27,6 +27,11 @@ function trustedProxyHops(): number {
 }
 
 export function clientIpFromHeaders(headers: Headers) {
+  // Enable only when the origin listens on loopback and cloudflared is the
+  // sole network ingress. A missing edge header must not fall back to XFF.
+  if (process.env.TRUST_PROXY === "cloudflare") {
+    return headers.get("cf-connecting-ip")?.trim() || "unknown";
+  }
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
     const chain = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
