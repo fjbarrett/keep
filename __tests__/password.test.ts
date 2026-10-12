@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  decoyPasswordHash,
   passwordIssue,
   passwordNeedsRehash,
   hashPassword,
@@ -36,5 +37,15 @@ describe("hashPassword / verifyPassword", () => {
   it("marks the previous work factor for upgrade", () => {
     expect(passwordNeedsRehash("scrypt$16384$8$1$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaA=="))
       .toBe(true);
+  });
+});
+
+describe("decoyPasswordHash", () => {
+  it("is a current-parameter hash that no password matches", async () => {
+    const decoy = await decoyPasswordHash();
+    expect(decoy.startsWith("scrypt$")).toBe(true);
+    expect(passwordNeedsRehash(decoy)).toBe(false);
+    expect(await verifyPassword("correct horse battery staple", decoy)).toBe(false);
+    await expect(decoyPasswordHash()).resolves.toBe(decoy);
   });
 });
