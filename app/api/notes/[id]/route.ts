@@ -158,20 +158,14 @@ export async function DELETE(
       [...(rows[0]?.body ?? "").matchAll(/\/api\/uploads\/([0-9a-f]{32})/g)]
         .map((match) => match[1]),
     );
-    for (const uploadId of uploadIds) {
-      const reference = `/api/uploads/${uploadId}`;
-      const stillUsed = await pool().query(
-        `SELECT 1 FROM notes WHERE user_id = $1 AND position($2 in body) > 0 LIMIT 1`,
-        [session.user.id, reference],
-      );
-      if (stillUsed.rows[0]) continue;
+    if (uploadIds.size) {
       const removed = await pool().query<{ storage_key: string }>(
-        `DELETE FROM uploads WHERE id = $1 AND user_id = $2 RETURNING storage_key`,
-        [uploadId, session.user.id],
+        `DELETE FROM uploads u WHERE u.id = ANY($1::text[]) AND u.user_id = $2
+           AND NOT EXISTS (SELECT 1 FROM note_upload_references r WHERE r.upload_id = u.id)
+         RETURNING storage_key`,
+        [[...uploadIds], session.user.id],
       );
-      if (removed.rows[0]) {
-        await deletePrivateFile(removed.rows[0].storage_key).catch(() => {});
-      }
+      for (const row of removed.rows) await deletePrivateFile(row.storage_key).catch(() => {});
     }
     return NextResponse.json({ ok: true });
   } catch (err) {
