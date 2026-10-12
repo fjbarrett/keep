@@ -120,6 +120,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (currentVersion === undefined) return null;
       if (user) {
         token.sessionVersion = currentVersion;
+        token.authenticatedAt = Date.now();
       } else if (token.sessionVersion !== currentVersion) {
         // Tokens minted before session versioning carry no claim and fail this
         // comparison too — grandfathering them would exempt every pre-deploy
@@ -134,6 +135,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // use it as the owner key on notes.
     session({ session, token }) {
       if (session.user && token.sub) session.user.id = token.sub;
+      session.authenticatedAt = token.authenticatedAt;
       return session;
     },
     // Mirror Google users into our `users` table so email/password sign-in

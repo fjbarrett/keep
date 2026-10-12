@@ -74,6 +74,11 @@ describe("jwt callback on session reads", () => {
     await expect(readSession({ sub: "user-1", sessionVersion: 2 })).resolves.toBeNull();
   });
 
+  it("does not refresh the authentication time during a session read", async () => {
+    mocks.query.mockResolvedValue(stored(2));
+    await expect(readSession({ sub: "user-1", sessionVersion: 2, authenticatedAt: 1000 })).resolves.toMatchObject({ authenticatedAt: 1000 });
+  });
+
   it("keeps a session whose version matches", async () => {
     mocks.query.mockResolvedValue(stored(2));
     await expect(readSession({ sub: "user-1", sessionVersion: 2 })).resolves.toEqual({
@@ -87,11 +92,12 @@ describe("jwt callback on session reads", () => {
 describe("jwt callback at sign-in", () => {
   it("pins the Google sub and the current version onto a new token", async () => {
     mocks.query.mockResolvedValue(stored(5));
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
     const token = await mocks.config!.callbacks!.jwt!({
       token: { sub: "random-uuid" },
       user: { id: "random-uuid" },
       account: { provider: "google", providerAccountId: "104857392017465920371", type: "oidc" },
     } as JwtParams);
-    expect(token).toEqual({ sub: "104857392017465920371", sessionVersion: 5 });
+    expect(token).toEqual({ sub: "104857392017465920371", sessionVersion: 5, authenticatedAt: 1_700_000_000_000 });
   });
 });

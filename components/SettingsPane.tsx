@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountSecurity } from "./AccountSecurity";
 import { Note } from "@/lib/types";
 import {
   ArchiveIcon,
@@ -13,6 +14,7 @@ import { AccentPicker } from "@/components/AccentPicker";
 import { useModalDialog } from "@/lib/useModalDialog";
 
 export function SettingsPane({
+  ownerId,
   importing,
   importRef,
   notes,
@@ -28,6 +30,7 @@ export function SettingsPane({
   onGuestExport,
   onClose,
 }: {
+  ownerId?: string | null;
   importing: boolean;
   importRef: React.RefObject<HTMLInputElement | null>;
   notes: Note[];
@@ -84,6 +87,7 @@ export function SettingsPane({
             Accent
           </h3>
           <AccentPicker />
+          {ownerId && <AccountSecurity ownerId={ownerId} />}
 
           <h3 className="pt-2 text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
             Views

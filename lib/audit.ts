@@ -20,6 +20,7 @@ export type SecurityEvent =
   // that changes who can reach an account, so it is worth a durable row.
   | "account.link"
   | "session.revoke"
+  | "password.change"
   | "share.create"
   | "share.revoke";
 

@@ -1,10 +1,13 @@
 "use client";
 
 import { readNoteDrafts } from "@/lib/noteDrafts";
-import { signOut } from "next-auth/react";
-import { clearOwnerData, getPendingOps } from "@/lib/offlineDb";
+import { useState } from "react";
+import { signOutAccount } from "@/lib/signOutAccount";
+import { getPendingOps } from "@/lib/offlineDb";
 
-export function SignOutButton({ ownerId }: { ownerId: string }) {
+export function SignOutButton({ ownerId, everywhere = false }: { ownerId: string; everywhere?: boolean }) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   async function handleSignOut() {
     // Queued offline edits die with clearOwnerData; make that an informed
     // choice instead of silent loss.
@@ -17,26 +20,27 @@ export function SignOutButton({ ownerId }: { ownerId: string }) {
     ) {
       return;
     }
-    await clearOwnerData(ownerId).catch(() => {});
+    if (everywhere && !window.confirm("Sign out on all your devices?")) return;
+    setBusy(true);
+    setError(null);
     try {
-      localStorage.setItem("keep.signout", JSON.stringify({ ownerId, at: Date.now() }));
-      localStorage.removeItem("keep.signout");
-    } catch {
-      // Storage may be disabled; this browser's session still ends below.
-    }
-    // Ends only this browser's session. Revoking every device (POST
-    // /api/auth/revoke) is a distinct, explicit action — a plain "Sign out"
-    // must not silently log out the user's phone and other browsers.
-    await signOut({ callbackUrl: "/signin" });
+      if (everywhere) {
+        const response = await fetch("/api/auth/revoke", { method: "POST" });
+        if (!response.ok) throw new Error("Could not sign out other devices. Try again.");
+      }
+      await signOutAccount(ownerId);
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not sign out."); }
+    finally { setBusy(false); }
   }
 
   return (
-    <button
+    <span><button
       type="button"
       onClick={handleSignOut}
+      disabled={busy}
       className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
     >
-      Sign out
-    </button>
+      {everywhere ? "Sign out everywhere" : "Sign out"}
+    </button>{error && <span role="alert" className="block text-sm text-[var(--color-danger)]">{error}</span>}</span>
   );
 }
