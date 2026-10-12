@@ -54,6 +54,18 @@ final class DraftSaverTests: XCTestCase {
         XCTAssertTrue(try storage.load(owner: "A").isEmpty)
     }
 
+    func testActivateLoadsTheReadableDraftsWhenOneFileIsCorrupt() throws {
+        let broken = String(repeating: "b", count: 32)
+        try storage.save(NoteDraft(id: broken, body: "Will break"), owner: "A")
+        try storage.save(NoteDraft(id: id, body: "Keep this text"), owner: "A")
+        let file = try XCTUnwrap(FileManager.default.subpathsOfDirectory(atPath: folder.path)
+            .first { $0.hasSuffix(broken + ".json") })
+        try Data("{".utf8).write(to: folder.appendingPathComponent(file))
+        let sut = try saver()
+        XCTAssertEqual(sut.items.count, 1)
+        XCTAssertEqual(sut.items[id]?.body, "Keep this text")
+    }
+
     func testFailedSaveSurvivesRestartAndRetriesWithSameIdentity() async throws {
         FixtureProtocol.respond = { $0.reply(["error": "Unavailable"], status: 503) }
         let sut = try saver()

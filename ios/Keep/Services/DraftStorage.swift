@@ -1,10 +1,12 @@
 import CryptoKit
 import Foundation
+import os
 
 /// One atomic file per draft avoids rewriting the entire notebook per edit.
 /// Account and backend are both part of the namespace; ownerless files are
 /// never adopted by whichever account signs in next.
 struct DraftStorage {
+    private static let log = Logger(subsystem: "com.keeptxt.keep", category: "drafts")
     private let root: URL
     private let backend: String
 
@@ -48,13 +50,33 @@ struct DraftStorage {
         ).filter { $0.pathExtension == "json" }
         var drafts: [String: NoteDraft] = [:]
         for url in files {
-            let draft = try JSONDecoder().decode(NoteDraft.self, from: Data(contentsOf: url))
-            guard try file(draft.id, owner: owner).standardizedFileURL.path == url.standardizedFileURL.path else {
-                throw CocoaError(.fileReadCorruptFile)
+            do {
+                let draft = try JSONDecoder().decode(NoteDraft.self, from: Data(contentsOf: url))
+                guard try file(draft.id, owner: owner).standardizedFileURL.path == url.standardizedFileURL.path else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                drafts[draft.id] = draft
+            } catch {
+                quarantine(url, reason: error)
             }
-            drafts[draft.id] = draft
         }
         return drafts
+    }
+
+    /// One unreadable file must not lock the account out of every draft: set it
+    /// aside where it can still be inspected and keep loading the rest.
+    private func quarantine(_ url: URL, reason: Error) {
+        let corrupt = url.deletingLastPathComponent().appendingPathComponent("corrupt", isDirectory: true)
+        let destination = corrupt.appendingPathComponent(
+            "\(Int(Date().timeIntervalSince1970 * 1000))-" + url.lastPathComponent)
+        do {
+            try FileManager.default.createDirectory(at: corrupt,
+                withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            try FileManager.default.moveItem(at: url, to: destination)
+            Self.log.error("Quarantined unreadable draft \(url.lastPathComponent, privacy: .public): \(reason.localizedDescription, privacy: .public)")
+        } catch {
+            Self.log.error("Skipped unreadable draft \(url.lastPathComponent, privacy: .public); quarantine failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     func remove(_ id: String, owner: String) throws {

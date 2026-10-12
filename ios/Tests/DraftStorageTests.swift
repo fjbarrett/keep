@@ -52,4 +52,52 @@ final class DraftStorageTests: XCTestCase {
         let storage = DraftStorage(root: directory)
         XCTAssertThrowsError(try storage.save(NoteDraft(id: "../elsewhere", body: "Text"), owner: "A"))
     }
+
+    func testDraftWrittenBeforeEditTimesExistedStillLoads() throws {
+        let storage = DraftStorage(root: directory)
+        let id = String(repeating: "d", count: 32)
+        try storage.save(NoteDraft(id: id, body: "Placeholder"), owner: "A")
+        let file = try XCTUnwrap(draftFiles().first)
+        try JSONSerialization.data(withJSONObject: ["id": id, "body": "Typed on an older build", "revision": 3])
+            .write(to: file)
+        let before = Date().timeIntervalSince1970 * 1000
+        let restored = try storage.load(owner: "A")
+        XCTAssertEqual(restored[id]?.body, "Typed on an older build")
+        XCTAssertEqual(restored[id]?.revision, 3)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(restored[id]?.editedAt), before)
+    }
+
+    func testUnreadableDraftIsQuarantinedAndTheOthersStillLoad() throws {
+        let storage = DraftStorage(root: directory)
+        let broken = String(repeating: "e", count: 32)
+        let intact = String(repeating: "f", count: 32)
+        try storage.save(NoteDraft(id: broken, body: "Will break"), owner: "A")
+        try storage.save(NoteDraft(id: intact, body: "Still here"), owner: "A")
+        let file = try XCTUnwrap(draftFiles().first { $0.lastPathComponent == broken + ".json" })
+        try Data("{not json".utf8).write(to: file)
+        let restored = try storage.load(owner: "A")
+        XCTAssertEqual(Array(restored.keys), [intact])
+        XCTAssertEqual(restored[intact]?.body, "Still here")
+        let quarantined = try draftFiles().filter { $0.pathComponents.contains("corrupt") }
+        XCTAssertEqual(quarantined.count, 1)
+        XCTAssertEqual(try Data(contentsOf: XCTUnwrap(quarantined.first)), Data("{not json".utf8))
+        XCTAssertEqual(Array(try storage.load(owner: "A").keys), [intact])
+    }
+
+    func testDraftFileNamedForAnotherNoteIsQuarantined() throws {
+        let storage = DraftStorage(root: directory)
+        let id = String(repeating: "a", count: 32)
+        try storage.save(NoteDraft(id: id, body: "Mine"), owner: "A")
+        let file = try XCTUnwrap(draftFiles().first)
+        try FileManager.default.copyItem(at: file, to: file.deletingLastPathComponent()
+            .appendingPathComponent(String(repeating: "b", count: 32) + ".json"))
+        XCTAssertEqual(Array(try storage.load(owner: "A").keys), [id])
+        XCTAssertEqual(try draftFiles().filter { $0.pathComponents.contains("corrupt") }.count, 1)
+    }
+
+    private func draftFiles() throws -> [URL] {
+        try FileManager.default.subpathsOfDirectory(atPath: directory.path)
+            .filter { $0.hasSuffix(".json") }
+            .map { directory.appendingPathComponent($0) }
+    }
 }

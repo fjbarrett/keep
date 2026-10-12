@@ -49,4 +49,21 @@ struct NoteDraft: Codable, Equatable, Identifiable {
         self.base = base
         self.revision = revision
     }
+
+    private enum CodingKeys: String, CodingKey { case id, body, title, color, base, revision, editedAt }
+
+    /// A draft journaled before edit times were recorded counts as just edited,
+    /// so it surfaces at the top of the list instead of failing to load.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        body = try container.decode(String.self, forKey: .body)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        color = try container.decodeIfPresent(String.self, forKey: .color)
+        base = try container.decodeIfPresent(Note.self, forKey: .base)
+        revision = try container.decode(Int.self, forKey: .revision)
+        if let editedAt = try container.decodeIfPresent(Double.self, forKey: .editedAt) {
+            self.editedAt = editedAt
+        }
+    }
 }
