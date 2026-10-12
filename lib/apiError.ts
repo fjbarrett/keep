@@ -9,7 +9,7 @@ import { isNoteQuotaError } from "@/lib/noteQuota";
  */
 export function internalError(context: string, err: unknown) {
   if (isNoteQuotaError(err)) {
-    return NextResponse.json({ error: "Note storage quota exceeded (25 MiB). Export or delete notes to make room." }, { status: 413 });
+    return NextResponse.json({ error: "Note limit reached (10,000 notes or 25 MiB). Export or delete notes to make room." }, { status: 413 });
   }
   logger.error("request failed", { context, err });
   return NextResponse.json({ error: "Internal error" }, { status: 500 });

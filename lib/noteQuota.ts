@@ -20,10 +20,11 @@ export const noteQuotaSql = `
       old_bytes := octet_length(OLD.body) + octet_length(OLD.title)
         + octet_length(COALESCE(OLD.summary, '')) + octet_length(COALESCE(OLD.tags::text, ''));
     END IF;
-    IF (TG_OP = 'INSERT' AND note_count >= ${MAX_NOTES_PER_USER}) OR
+    IF (note_count >= ${MAX_NOTES_PER_USER} AND
+        (TG_OP = 'INSERT' OR OLD.user_id IS DISTINCT FROM NEW.user_id)) OR
        (used_bytes + new_bytes > ${MAX_NOTE_STORAGE_BYTES} AND new_bytes > old_bytes) THEN
       RAISE EXCEPTION USING ERRCODE = 'P0001', CONSTRAINT = 'notes_owner_quota',
-        MESSAGE = 'Note storage quota exceeded (25 MiB). Export or delete notes to make room.';
+        MESSAGE = 'Note limit reached (10,000 notes or 25 MiB). Export or delete notes to make room.';
     END IF;
     RETURN NEW;
   END;
