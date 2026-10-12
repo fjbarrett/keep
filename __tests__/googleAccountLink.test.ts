@@ -99,7 +99,7 @@ describe("linkGoogleAccount", () => {
     expect(update).toMatch(/verify_token_expires = NULL/);
     // Nothing may make the clearing conditional on email_verified again.
     expect(update).not.toMatch(/CASE/i);
-    expect(update).not.toMatch(/email_verified/);
+    expect(update).toMatch(/email_verified = \$3/);
   });
 
   it("ignores an address Google has not verified", async () => {
@@ -120,12 +120,15 @@ describe("linkGoogleAccount", () => {
 
   it("updates its own row in place instead of adopting a second one", async () => {
     users = [
-      { id: GOOGLE_SUB, email: "ada@example.com", email_verified: null },
+      { id: GOOGLE_SUB, email: "old-address@example.com", email_verified: null },
       { id: "other", email: "ada@example.com", email_verified: null },
     ];
 
     await expect(link("ada@example.com")).resolves.toEqual({ linked: false });
-    expect(find(/UPDATE users/)).toBeUndefined();
+    const update = mocks.query.mock.calls.find(([sql]) => /UPDATE users/.test(sql as string));
+    expect(update?.[0]).not.toContain("email =");
+    expect(update?.[1]).toEqual(["Ada", 1_700_000_000_000, GOOGLE_SUB]);
+    expect(find(/INSERT INTO users/)).toBeUndefined();
   });
 
   it("rolls back and releases the client when a statement fails", async () => {

@@ -68,6 +68,7 @@ export async function linkGoogleAccount(identity: GoogleIdentity): Promise<LinkO
                 name = $2,
                 updated_at = $3,
                 password_hash = NULL,
+                email_verified = $3,
                 verify_token = NULL,
                 verify_token_expires = NULL
           WHERE id = $4`,
@@ -82,12 +83,20 @@ export async function linkGoogleAccount(identity: GoogleIdentity): Promise<LinkO
         adoptedFrom: squatter.id,
         wasVerified: squatter.email_verified !== null,
       };
+    } else if (squatter && hasOwnRow) {
+      // A changed Google email can already belong to a different Keep account.
+      // Preserve both accounts; the stable Google id still authenticates its
+      // existing owner without claiming the other row's address or content.
+      await client.query("UPDATE users SET name = $1, updated_at = $2 WHERE id = $3", [name, now, id]);
     } else {
       await client.query(
-        `INSERT INTO users (id, email, name, updated_at)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO users (id, email, name, updated_at, email_verified)
+         VALUES ($1, $2, $3, $4, CASE WHEN $2::text IS NOT NULL THEN $4::bigint ELSE NULL END)
          ON CONFLICT (id) DO UPDATE
            SET email = COALESCE(EXCLUDED.email, users.email),
+               email_verified = COALESCE(EXCLUDED.email_verified, users.email_verified),
+               verify_token = CASE WHEN EXCLUDED.email IS NOT NULL THEN NULL ELSE users.verify_token END,
+               verify_token_expires = CASE WHEN EXCLUDED.email IS NOT NULL THEN NULL ELSE users.verify_token_expires END,
                name = EXCLUDED.name,
                updated_at = EXCLUDED.updated_at`,
         [id, email, name, now],
