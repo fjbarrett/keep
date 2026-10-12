@@ -15,7 +15,6 @@ import {
   removePendingOp,
 } from "./offlineDb";
 import {
-  clearGuestNotes,
   firstNoteLine,
   isRetryableNoteError,
   localNoteId,
@@ -56,6 +55,11 @@ function sameNoteSnapshot(left: Note[], right: Note[]) {
   });
 }
 
+function editableFields(note: Note): Partial<Note> {
+  const { id, createdAt, updatedAt, shareToken, ...fields } = note;
+  return fields;
+}
+
 export function useNotes(ownerId: string | null) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -94,13 +98,13 @@ export function useNotes(ownerId: string | null) {
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
-      if (!guestWriteFailedRef.current) return;
+      if (!guestWriteFailedRef.current && !(ownerId && readNoteDrafts(ownerId).some(draft => new TextEncoder().encode(JSON.stringify(draft.note)).byteLength > 60 * 1024))) return;
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, []);
+  }, [ownerId]);
 
   useEffect(() => {
     notesRef.current = notes;
@@ -205,10 +209,10 @@ export function useNotes(ownerId: string | null) {
     try { await notesApi(`/api/notes/${id}`, { method: "DELETE" }); }
     catch (error) { if (!(error instanceof NotesApiError) || error.status !== 404) throw error; }
     if (draft) removeNoteDraft(owner, draft);
-    for (const op of await getPendingOps(owner)) {
+    for (const op of await getPendingOps(owner).catch(() => [])) {
       if (op.noteId === id && op.createdAt <= through) await removePendingOp(owner, op.id);
     }
-    await removeCachedNote(owner, id);
+    await removeCachedNote(owner, id).catch(() => {});
     if (ownerRef.current === owner) serverNotesRef.current.delete(id);
   }, []);
 
@@ -227,8 +231,8 @@ export function useNotes(ownerId: string | null) {
       const data = await notesApi<{ notes: Note[] }>("/api/notes");
       if (ownerRef.current !== ownerId) return;
       data.notes.forEach(rememberSaved);
-      const pending = await getPendingOps(ownerId);
-      const cached = pending.length ? await getCachedNotes(ownerId) : [];
+      const pending = await getPendingOps(ownerId).catch(() => []);
+      const cached = pending.length ? await getCachedNotes(ownerId).catch(() => []) : [];
       if (ownerRef.current !== ownerId) return;
       const drafts = discardAcknowledgedNoteDrafts(ownerId, data.notes);
       const deleted = new Set(pending.filter((op) => op.type === "delete").map((op) => op.noteId));
@@ -243,7 +247,7 @@ export function useNotes(ownerId: string | null) {
       }
       if (ownerRef.current !== ownerId) return;
       const guestNotes = readGuestNotes();
-      const loaded = guestNotes.length > 0 ? [...guestNotes, ...data.notes] : data.notes;
+      const loaded = guestNotes.length > 0 ? [...new Map([...data.notes, ...guestNotes].map(note => [note.id, note])).values()] : data.notes;
       setLocalNoteIds(new Set(guestNotes.map((note) => note.id)));
       if (!sameNoteSnapshot(notesRef.current, loaded)) {
         notesRef.current = loaded;
@@ -488,6 +492,15 @@ export function useNotes(ownerId: string | null) {
     };
 
     if (isGuest || localNoteIds.has(id)) {
+      if (ownerId) {
+        const migration = readNoteDrafts(ownerId).find(draft => draft.note.id === id);
+        if (migration) {
+          try {
+            writeNoteDraft(ownerId, { ...migration, note: optimistic, patch: { ...migration.patch, ...initialPatch },
+              predecessors: [...new Set([...(migration.predecessors ?? []), migration.note.body])] });
+          } catch { setError("Could not journal this migration edit. Keep this page open and retry."); }
+        }
+      }
       persistGuest(optimisticNotes.filter((note) => isGuest || localNoteIds.has(note.id)));
       if (!needsMeta || patch.body === undefined || options.keepalive) return Promise.resolve();
       return metadataForBody(patch.body).then(applyGeneratedMeta);
@@ -652,7 +665,7 @@ export function useNotes(ownerId: string | null) {
         // The note is durable before optional title generation begins.
         void metadataForBody(body).then(async (generated) => {
           const latest = notesRef.current.find((item) => item.id === note.id);
-          if (ownerRef.current !== ownerId || !latest || deletingRef.current.has(note.id) ||
+          if (ownerRef.current !== ownerId || !latest || latest.titleManual || deletingRef.current.has(note.id) ||
               firstNoteLine(latest.body) !== firstNoteLine(body) || latest.title !== meta.title) return;
           await update(note.id, { title: generated.title, summary: generated.summary || null });
         }).catch(() => { /* update retains its draft and exposes storage failures. */ });
@@ -694,6 +707,7 @@ export function useNotes(ownerId: string | null) {
         await enqueueSave(draft.note.id, async () => {
           if (ownerRef.current !== ownerId) return;
           const queued = await getPendingOps(ownerId);
+          if (!copyId && queued.some(op => op.noteId === draft.note.id && op.type === "delete")) return;
           let pending = draft;
           if (copyId === draft.note.id) {
             const note = { ...draft.note, id: localNoteId(), shareToken: null };
@@ -714,6 +728,13 @@ export function useNotes(ownerId: string | null) {
       }
     }
   }, [enqueueSave, localNoteIds, ownerId, persistGuest, refresh, rememberSaved, requestReplay, submitDraft]);
+
+  const recoveredOwnerRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hydrated || !ownerId || !navigator.onLine || recoveredOwnerRef.current === ownerId) return;
+    recoveredOwnerRef.current = ownerId;
+    if (readNoteDrafts(ownerId).length) void retryDrafts();
+  }, [hydrated, ownerId, retryDrafts]);
 
   const trash = useCallback(async (id: string) => {
     const n = notesRef.current.find((note) => note.id === id);
@@ -758,9 +779,10 @@ export function useNotes(ownerId: string | null) {
     return (async () => {
       let deletion;
       try {
-        deletion = await addPendingOp(ownerId, { type: "delete", noteId: id });
-        const queuedDeletion = deletion;
-        await enqueueSave(id, () => trackSync(finishDeletion(ownerId, id, queuedDeletion.createdAt)));
+        try { deletion = await addPendingOp(ownerId, { type: "delete", noteId: id }); }
+        catch (storageError) { if (!navigator.onLine) throw storageError; }
+        const through = deletion?.createdAt ?? Date.now();
+        await enqueueSave(id, () => trackSync(finishDeletion(ownerId, id, through)));
         if (ownerRef.current === ownerId) setError(null);
       } catch (error) {
         if (deletion && isRetryableNoteError(error)) {
@@ -833,42 +855,48 @@ export function useNotes(ownerId: string | null) {
 
   const saveLocalNotes = useCallback(async () => {
     if (!ownerId) return { saved: 0 };
-    const localNotes = notes.filter(
-      (note) => localNoteIds.has(note.id) && !note.trashed,
-    );
-    if (localNotes.length === 0) return { saved: 0 };
-
-    const imported = await Promise.all(
-      localNotes.map((note) =>
-        notesApi<{ note: Note }>("/api/notes", {
-          method: "POST",
-          json: {
-            id: note.id,
-            title: note.title,
-            summary: note.summary ?? null,
-            color: note.color ?? null,
-            body: note.body,
-            pinned: note.pinned,
-            archived: note.archived,
-            trashed: false,
-            markdown: note.markdown,
-            highlight: note.highlight,
-            tags: note.tags,
-          },
-        }),
-      ),
-    );
-    clearGuestNotes();
-    setLocalNoteIds(new Set());
-    const next = [
-      ...imported.map((item) => item.note),
-      ...notesRef.current.filter((note) => !localNoteIds.has(note.id)),
-    ];
-    notesRef.current = next;
-    setNotes(next);
-    cacheNotes(ownerId, next).catch(() => {});
-    return { saved: imported.length };
-  }, [localNoteIds, notes, ownerId]);
+    const original = readGuestNotes();
+    // Persist canonical IDs before any request so legacy guest notes also have
+    // a stable create identity when a response is lost.
+    const canonical = original.map(note => /^[a-f0-9]{32}$/.test(note.id) ? note : { ...note, id: localNoteId() });
+    writeGuestNotes(canonical);
+    const oldIDs = new Set(original.map(note => note.id));
+    notesRef.current = [...notesRef.current.filter(note => !oldIDs.has(note.id)), ...canonical];
+    setNotes(notesRef.current);
+    setLocalNoteIds(new Set(canonical.map(note => note.id)));
+    let savedCount = 0;
+    let failed = false;
+    for (const candidate of canonical.filter(note => !note.trashed)) {
+      if (ownerRef.current !== ownerId) break;
+      const note = notesRef.current.find(note => note.id === candidate.id);
+      if (!note) continue;
+      try {
+        const previous = readNoteDrafts(ownerId).find(draft => draft.note.id === note.id);
+        const pending = writeNoteDraft(ownerId, {
+          note, patch: editableFields(note), type: previous?.base ? "update" : "create", base: previous?.base,
+          predecessors: [...new Set([...(previous?.predecessors ?? []), ...(previous ? [previous.note.body] : [])])],
+        });
+        const saved = await submitDraft(ownerId, pending);
+        if (ownerRef.current !== ownerId) break;
+        rememberSaved(saved);
+        const current = notesRef.current.find(item => item.id === note.id);
+        if (current && JSON.stringify(current) !== JSON.stringify(note)) {
+          // Editing can continue during migration. Keep the guest copy and its
+          // new server base so a later retry conditionally saves those edits.
+          writeNoteDraft(ownerId, { note: current, patch: editableFields(current), type: "update", base: saved });
+          continue;
+        }
+        const remaining = readGuestNotes().filter(item => item.id !== note.id);
+        writeGuestNotes(remaining);
+        setLocalNoteIds(new Set(remaining.map(item => item.id)));
+        notesRef.current = notesRef.current.map(item => item.id === note.id ? saved : item);
+        setNotes(notesRef.current);
+        savedCount += 1;
+      } catch { failed = true; }
+    }
+    if (failed) throw new Error(`Saved ${savedCount} notes. The remaining local notes are kept here; retry when ready.`);
+    return { saved: savedCount };
+  }, [ownerId, rememberSaved, submitDraft]);
 
   const togglePin = useCallback(
     (id: string) => {
