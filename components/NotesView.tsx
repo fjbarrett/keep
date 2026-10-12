@@ -607,6 +607,7 @@ export function NotesView({
 
       {settingsOpen && (
         <SettingsPane
+          ownerId={ownerId}
           importing={importing}
           importRef={importRef}
           notes={notes}
