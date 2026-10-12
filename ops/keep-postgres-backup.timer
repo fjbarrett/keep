@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Keep database backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+Unit=keep-postgres-backup.service
+
+[Install]
+WantedBy=timers.target
