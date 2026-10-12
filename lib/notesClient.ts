@@ -51,14 +51,18 @@ export async function notesApi<T>(
   path: string,
   init?: RequestInit & { json?: unknown },
 ): Promise<T> {
+  const body = init?.json ? JSON.stringify(init.json) : init?.body;
+  // Browsers cap all in-flight keepalive bodies at 64 KiB. Larger saves use
+  // normal fetch; their synchronous journal remains available after navigation.
+  const keepalive = init?.keepalive && !(typeof body === "string" && new TextEncoder().encode(body).byteLength > 60 * 1024);
   const response = await fetch(path, {
     method: init?.method ?? "GET",
     headers: init?.json
       ? { "Content-Type": "application/json", ...(init?.headers ?? {}) }
       : init?.headers,
-    body: init?.json ? JSON.stringify(init.json) : init?.body,
+    body,
     cache: "no-store",
-    keepalive: init?.keepalive,
+    keepalive,
   });
   if (!response.ok) {
     let message = `${response.status}`;

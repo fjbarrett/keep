@@ -167,3 +167,17 @@ describe("useNotes hydration", () => {
     );
   });
 });
+
+it("keeps online reads and deletes usable when IndexedDB rejects access", async () => {
+  vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
+  offlineDb.getCachedNotes.mockRejectedValue(new Error("Storage disabled"));
+  offlineDb.getPendingOps.mockRejectedValue(new Error("Storage disabled"));
+  offlineDb.addPendingOp.mockRejectedValue(new Error("Storage disabled"));
+  const fetch = vi.fn(async (_path, init) => init?.method === "DELETE" ? json({ ok: true }) : json({ notes: [note("Online note")] }));
+  vi.stubGlobal("fetch", fetch);
+  const { result } = renderHook(() => useNotes("online-only"));
+  await waitFor(() => expect(result.current.notes[0]?.title).toBe("Online note"));
+  await act(async () => { await result.current.remove(note("Online note").id); });
+  expect(fetch.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(true);
+  expect(result.current.notes).toEqual([]);
+});

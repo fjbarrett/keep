@@ -1,3 +1,4 @@
+import { readGuestNotes, writeGuestNotes, notesApi } from "@/lib/notesClient";
 import "fake-indexeddb/auto";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -131,4 +132,47 @@ it("keeps a manual title when the note's first line changes", async () => {
   await act(async () => { await result.current.update(initial.id, { body: "A different first line" }); });
   expect(server.title).toBe("My chosen title");
   expect(fetch.mock.calls.some(([path]) => path === "/api/notes/title")).toBe(false);
+});
+
+it("keeps edited local notes after a partially acknowledged account migration", async () => {
+  const owner = crypto.randomUUID();
+  const other = { ...initial, id: "b".repeat(32), title: "Other", body: "Other text" };
+  writeGuestNotes([initial, other]);
+  const rows = new Map<string, Note>();
+  let loseAcknowledgement = true;
+  vi.stubGlobal("fetch", vi.fn(async (path, init) => {
+    if (init?.method === "POST") {
+      const { ownerId: _owner, ...data } = JSON.parse(init.body);
+      if (!rows.has(data.id)) rows.set(data.id, { ...data, updatedAt: 2 });
+      if (data.id === other.id && loseAcknowledgement) {
+        loseAcknowledgement = false;
+        return json({ error: "Temporary failure" }, 503);
+      }
+      return json({ note: rows.get(data.id) });
+    }
+    if (init?.method === "PATCH") {
+      const id = String(path).split("/").pop()!;
+      const { expectedUpdatedAt: _expected, ...patch } = JSON.parse(init.body);
+      rows.set(id, { ...rows.get(id)!, ...patch, updatedAt: 3 });
+      return json({ note: rows.get(id) });
+    }
+    return json({ notes: [...rows.values()] });
+  }));
+  const { result } = renderHook(() => useNotes(owner));
+  await waitFor(() => expect(result.current.hydrated).toBe(true));
+  await act(async () => { await expect(result.current.saveLocalNotes()).rejects.toThrow("Saved 1 notes"); });
+  expect(readGuestNotes().map(note => note.id)).toEqual([other.id]);
+  await act(async () => { await result.current.update(other.id, { body: "Other text\nEdited before retry" }); });
+  await act(async () => { await result.current.refresh(); });
+  expect(result.current.notes).toHaveLength(2);
+  await act(async () => { await result.current.saveLocalNotes(); });
+  expect(readGuestNotes()).toEqual([]);
+  expect(rows.get(other.id)?.body).toBe("Other text\nEdited before retry");
+});
+
+it("keeps large saves out of the browser's keepalive body budget", async () => {
+  const fetch = vi.fn(async (_path: RequestInfo | URL, _init?: RequestInit) => json({ ok: true }));
+  vi.stubGlobal("fetch", fetch);
+  await notesApi("/api/notes/fixture", { method: "PATCH", keepalive: true, json: { body: "x".repeat(70 * 1024) } });
+  expect(fetch.mock.calls[0][1]).toMatchObject({ keepalive: false });
 });
