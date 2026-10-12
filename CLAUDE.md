@@ -17,7 +17,7 @@ Be brief — one or two sentences of guidance, then execute. Don't be preachy.
 
 ## PR conventions
 
-- Always create a feature branch (`feat/...`, `fix/...`, `chore/...`) and open a PR. Squash-merge, delete branch.
+- Create a feature branch (`feat/...`, `fix/...`, `chore/...`). Follow AGENTS.md and explicit session authorization before publishing or merging.
 - Target <300 LOC per PR; <500 acceptable. Bigger almost always splits.
 - One concern per PR. Don't mix redesign + bugfix + new feature.
 - Avoid back-to-back redesigns of the same surface — reads as indecision in `git log`.
@@ -51,18 +51,16 @@ Flag organically when natural — don't pile them on:
 
 ## Deploys
 
-Production runs on a DigitalOcean droplet (`keep-prod`, behind Caddy/HTTPS at
-keeptxt.com), not Vercel. To ship after merging to `main`:
+Production runs on Proxmox behind Cloudflare Tunnel, with Postgres on a separate
+Proxmox VM. Read `ops/README.md` before an authorized deployment:
 
 ```bash
-scripts/deploy.sh        # ssh → pull main, build, restart; then screenshots the live site
+KEEP_HOST=<operator-ssh-target> scripts/deploy.sh <commit>
 ```
 
-**Always screenshot on deploy.** `scripts/deploy.sh` calls `scripts/screenshot.sh`,
-which captures keeptxt.com to `screenshots/keep-<timestamp>.png` (an archive kept
-in the repo so design changes can be reviewed over time) and refreshes
-`docs/screenshot.png` (the image shown in the README). Commit the refreshed
-`docs/screenshot.png` and the new `screenshots/` file with the deploy.
+Screenshot scripts are manual tools. Refresh the README image when its visible
+UI changes; deploying does not generate or commit screenshots. Keep production
+credentials out of the checkout and build environment.
 
 ## Shared agent rules
 

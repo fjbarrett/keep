@@ -1,34 +1,31 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+This file records user-facing changes. Git history contains the earlier
+development history; release dates are recorded when a version ships.
 
-The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+## Unreleased
 
-## [Unreleased]
 ### Added
-- Added a Trash view with restore and permanent delete actions.
-- Added low-cost LLM-generated dashboard titles with local fallback.
-- Added inferred dashboard titles for notes.
-- Added guest notes with local browser storage and sign-in sync.
-- Added Google Keep Takeout import from ZIP or JSON files.
-- Added notes export as a single text file or a ZIP of text files when exporting multiple notes.
-- Added keyboard shortcuts for search, creating notes, view switching, navigation, opening, pinning, archiving, and deleting.
+
+- Account password settings and sign-out across devices.
+- Per-account note storage limits, bounded imports, and streamed exports.
+- Isolated release builds, a non-root runtime, and health-checked rollback.
 
 ### Changed
-- Moved import and export actions into a settings pane.
-- Removed the edit Done button in favor of autosaving the open note.
-- Reworked the app into a persistent sidebar and editor layout on desktop.
-- Local notes now require an explicit save after sign-in instead of auto-syncing.
-- Gave the top bar a more colorful sage-tinted background.
-- Replaced the always-visible search field with a shortcut-driven overlay.
-- Renamed the app display name from fKeep to Keep and removed the header tagline.
-- Made notes body-first by removing title entry from creation and editing.
+
+- Explicit titles stay intact when note bodies change across web and native apps.
+- Guest migration saves progress per note and retains drafts after partial failure.
+- Menus support keyboard navigation; search exposes combobox and option semantics.
+- The web editor mounts once across responsive layouts and loads highlighting on demand.
+- Native Google sign-in uses a proof key and state binding; updated clients are required.
 
 ### Fixed
-- Restored visible note titles and fixed crowded pinned indicators in the sidebar.
-- Normalized stale guest note titles so dashboard rows stay abbreviated.
-- Prevented row color palettes from being clipped by the notes list container.
 
-## [0.1.0] - YYYY-MM-DD
-### Added
-- Initial release.
+- Edits made during a note's first save survive its response.
+- Sign-out blocks late writes from repopulating the previous account's local cache.
+- Native apps quarantine corrupt drafts and recover journaled edits on offline launch.
+- Native conflict recovery offers saving a copy or discarding the local draft.
+- Server outages preserve native sessions; definite authentication failures request sign-in.
+- Share changes authorize ownership before resolving token collisions.
+- Attachment cleanup uses indexed references and preserves files still used by another note.
+- Service-worker caching tracks versioned PDF workers and excludes personalized pages.

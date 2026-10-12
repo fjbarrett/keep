@@ -6,9 +6,10 @@ product — treat them with the same care as the code.
 
 ## Before you start
 
-- Read `HISTORY.md` (agent state, task queue, conventions) and this file.
-- For web work, follow the Task Queue order in `HISTORY.md`; slices have
-  their own done-criteria and release gates.
+- Read this file and, when present, the local `HISTORY.md` coordination notes.
+  `HISTORY.md` is ignored and is not required for a fresh clone.
+- Follow an assigned task's done-criteria and release gates. User instructions
+  about local-only Git take precedence over the publishing workflow below.
 
 ## Git — every change ships on a branch
 
@@ -62,9 +63,9 @@ shared files. Default to isolation; coordinate only through git.
   run the gates below. Never commit red — if a gate can't run, say which
   one in the commit body.
 
-## GitHub — push and open a PR
+## GitHub — when explicitly authorized
 
-- Push the branch to `origin` (create the remote repo as private if one
+- Only when the user requests GitHub work, push the branch to `origin` (create the remote repo as private if one
   doesn't exist) and open a PR with `## Summary` and `## Test plan`.
 - Squash-merge, then delete the branch. Merging to `main` auto-deploys
   production — never push to `main` directly.
@@ -76,6 +77,10 @@ shared files. Default to isolation; coordinate only through git.
 - `ios/` changes: regenerate after adding files (`cd ios && xcodegen
   generate`), then build the Mac scheme with `xcodebuild`.
 - If a gate can't run here, say so in the PR instead of implying green.
+- Keep database authorization and limits in shared server paths. Preserve local
+  drafts before asynchronous work, and test save/retry races with changed data.
+- Use semantic controls and keyboard focus restoration for web UI. Verify
+  responsive layouts and failure states when editing shared components.
 
 ## Ask before
 

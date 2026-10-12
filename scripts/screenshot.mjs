@@ -46,8 +46,8 @@ await page.waitForTimeout(2000); // let Shiki paint + the entrance animation set
 const docs = path.join(root, "docs", "screenshot.png");
 fs.mkdirSync(path.dirname(docs), { recursive: true });
 
-// CI refreshes the README image on every merge to main; archiving one PNG per
-// merge would bloat the repo, so KEEP_SHOT_ARCHIVE=0 skips the timestamped copy
+// Set KEEP_SHOT_ARCHIVE=0 to refresh only the README image during a manual run;
+// this skips the timestamped copy
 // (mirrors IOS_SHOT_ARCHIVE in scripts/ios-screenshot.sh).
 if (process.env.KEEP_SHOT_ARCHIVE === "0") {
   await page.screenshot({ path: docs });
