@@ -118,3 +118,23 @@ Keep scheduled encrypted database backups and container backups. Check the
 actual backup job and periodically restore into an isolated environment; archive
 integrity alone does not prove application-level recovery. Before retiring an
 old database, verify every dependent app has migrated and retain a final backup.
+
+## Database backups
+
+The container backup does not contain Postgres. On the database VM, install
+`backup-postgres` as root-owned `/usr/local/sbin/keep-postgres-backup` (0755),
+and the matching service/timer files under `/etc/systemd/system` (0644).
+Reload systemd, enable `keep-postgres-backup.timer`, then start the service once.
+
+The service connects through the local socket as `postgres` and writes a custom
+format dump of only `keep` under `/var/lib/keep-postgres-backups` (0700).
+Archives use 0600 permissions. A successful dump is published atomically before
+completed archives older than fourteen days are pruned. The daily timer runs
+at 02:15 UTC with up to ten minutes of jitter and catches up after downtime.
+
+Check the service result and periodically restore a dump into a separate,
+access-restricted database using `pg_restore --no-owner --no-privileges`.
+Do not restore over production to test a backup. These local dumps protect
+against logical mistakes; they share the VM's storage. Copy them to encrypted
+off-host storage for host-loss recovery. No off-host destination is configured
+by this timer.

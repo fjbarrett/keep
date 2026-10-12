@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Run as postgres through keep-postgres-backup.service on the database VM.
+set -euo pipefail
+umask 077
+exec 9>/run/keep-postgres-backup/lock
+flock -n 9 || exit 75
+backup_dir=/var/lib/keep-postgres-backups
+pending=$(mktemp "$backup_dir/.pending.XXXXXX")
+trap 'rm -f -- "$pending"' EXIT
+pg_dump --format=custom --file="$pending" keep
+pg_restore --list "$pending" >/dev/null
+archive="$backup_dir/keep-$(date -u +%Y%m%dT%H%M%SZ).dump"
+mv -- "$pending" "$archive"
+# Prune only this service's completed archives after a successful replacement.
+find "$backup_dir" -maxdepth 1 -type f -name 'keep-????????T??????Z.dump' -mtime +13 -delete
+printf 'Created %s\n' "$archive"

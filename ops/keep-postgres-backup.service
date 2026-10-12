@@ -1,0 +1,23 @@
+[Unit]
+Description=Keep PostgreSQL logical backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+ExecStart=/usr/local/sbin/keep-postgres-backup
+StateDirectory=keep-postgres-backups
+StateDirectoryMode=0700
+RuntimeDirectory=keep-postgres-backup
+RuntimeDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX
+MemoryMax=256M
+TimeoutStartSec=10min
+Nice=10
