@@ -8,6 +8,10 @@ import {
 } from "@/lib/analytics";
 
 describe("normalizePath", () => {
+  it("collapses unknown paths into one bucket", () => {
+    expect(normalizePath("/private-value-one")).toBe("/other");
+    expect(normalizePath("/private-value-two")).toBe("/other");
+  });
   it("strips query/hash and defaults to /", () => {
     expect(normalizePath("/signin?next=/x#frag")).toBe("/signin");
     expect(normalizePath("")).toBe("/");
