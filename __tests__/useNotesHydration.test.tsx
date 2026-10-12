@@ -70,6 +70,17 @@ afterEach(() => {
 });
 
 describe("useNotes hydration", () => {
+  it("keeps an optimistic draft when the initial cache arrives late", async () => {
+    const cachedRead = deferred<Note[]>();
+    offlineDb.getCachedNotes.mockReturnValue(cachedRead.promise);
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    const { result } = renderHook(() => useNotes("owner"));
+    act(() => { void result.current.create({ title: "New text", body: "Typed before hydration" }); });
+    const createdID = result.current.notes[0].id;
+    await act(async () => cachedRead.resolve([note("Cached")]));
+    expect(result.current.notes.find((item) => item.id === createdID)?.body).toBe("Typed before hydration");
+  });
+
   it("starts the server request without waiting for IndexedDB", async () => {
     const cachedRead = deferred<Note[]>();
     const network = deferred<Response>();

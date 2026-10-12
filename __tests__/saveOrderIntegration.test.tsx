@@ -11,6 +11,55 @@ const initial: Note = { id: "a".repeat(32), title: "Heading", body: "Heading\nOr
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); });
 
+it("persists a new note before optional title generation returns", async () => {
+  const owner = crypto.randomUUID();
+  let server: Note | undefined;
+  let finishTitle!: (value: Response) => void;
+  vi.stubGlobal("fetch", vi.fn((path, init) => {
+    if (path === "/api/notes/title") return new Promise<Response>((resolve) => { finishTitle = resolve; });
+    if (init?.method === "POST") {
+      server = { ...initial, ...JSON.parse(init.body), updatedAt: 2 };
+      return Promise.resolve(json({ note: server }));
+    }
+    if (init?.method === "PATCH") {
+      server = { ...server!, ...JSON.parse(init.body), updatedAt: 3 };
+      return Promise.resolve(json({ note: server }));
+    }
+    return Promise.resolve(json({ notes: server ? [server] : [] }));
+  }));
+  const { result } = renderHook(() => useNotes(owner));
+  await waitFor(() => expect(result.current.hydrated).toBe(true));
+  await act(async () => { await result.current.create({ body: "A durable note" }); });
+  expect(server?.body).toBe("A durable note");
+  expect(finishTitle).toBeDefined();
+  await act(async () => { finishTitle(json({ title: "Generated title", summary: "Summary" })); });
+  await waitFor(() => expect(server?.title).toBe("Generated title"));
+});
+
+it("recomputes metadata when typing supersedes a pending title request", async () => {
+  const owner = crypto.randomUUID();
+  let server = initial;
+  const titles: Array<(value: Response) => void> = [];
+  vi.stubGlobal("fetch", vi.fn((path, init) => {
+    if (path === "/api/notes/title") return new Promise<Response>((resolve) => titles.push(resolve));
+    if (init?.method === "PATCH") {
+      server = { ...server, ...JSON.parse(init.body), updatedAt: server.updatedAt + 1 };
+      return Promise.resolve(json({ note: server }));
+    }
+    return Promise.resolve(json({ notes: [server] }));
+  }));
+  const { result } = renderHook(() => useNotes(owner));
+  await waitFor(() => expect(result.current.hydrated).toBe(true));
+  let first!: Promise<void>, second!: Promise<void>;
+  act(() => { first = result.current.update(initial.id, { body: "New heading\nFirst" }); });
+  await waitFor(() => expect(titles).toHaveLength(1));
+  act(() => { second = result.current.update(initial.id, { body: "New heading\nLatest" }); });
+  await act(async () => { titles[0](json({ title: "New title" })); await first; });
+  await waitFor(() => expect(titles).toHaveLength(2));
+  await act(async () => { titles[1](json({ title: "New title" })); await second; });
+  expect(server).toMatchObject({ title: "New title", body: "New heading\nLatest" });
+});
+
 it.each([true, false])("integrated save keeps latest text when exit request completes first: %s", async (latestFirst) => {
   const owner = crypto.randomUUID();
   let server = initial;

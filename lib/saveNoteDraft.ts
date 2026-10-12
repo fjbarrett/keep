@@ -12,13 +12,19 @@ export async function saveNoteDraft(owner: string, submitted: NoteDraft, options
   const current = readNoteDrafts(owner).find((draft) => draft.note.id === submitted.note.id);
   const draft = current?.revision === submitted.revision ? current : submitted;
   let base = draft.base;
-  const patch = draft.type === "create" ? { ...draft.note } : draft.patch;
+  const { title, summary, color, body, pinned, archived, trashed, markdown, highlight, tags } = draft.note;
+  const patch = draft.type === "create"
+    ? { title, summary, color, body, pinned, archived, trashed, markdown, highlight, tags }
+    : draft.patch;
   let saved: Note | undefined;
   if (draft.type === "create") {
     const data = await notesApi<{ note: Note }>("/api/notes", {
       method: "POST", ...options, json: { ...draft.note, ownerId: owner },
     });
-    if (data.note.body === draft.note.body) saved = data.note;
+    if (data.note.body === draft.note.body) {
+      if (Object.entries(patch).every(([key, value]) => equal(data.note[key as keyof Note], value))) saved = data.note;
+      else base = data.note;
+    }
     else if (draft.predecessors?.includes(data.note.body)) base = data.note;
     else throw conflict(data.note);
   }
