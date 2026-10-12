@@ -42,6 +42,11 @@ export default async function SignInPage({
           </>
         )}
 
+        {searchParams.error && searchParams.error !== "verify" && (
+          <p role="alert" className="mb-3 text-sm text-[var(--color-danger)]">
+            Sign-in could not complete. Try again, or use your existing sign-in method.
+          </p>
+        )}
         <EmailPasswordSignIn redirectTo={redirectTo} />
 
         <div className="relative my-5 flex items-center">

@@ -54,7 +54,7 @@ export function SignUpForm({ token }: { token?: string }) {
       <div className="text-center">
         <p role="status" className="text-sm font-medium text-[var(--color-text)]">Check your email</p>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
-          We sent a link to <strong>{email}</strong> to choose your password. Then you can{" "}
+          If <strong>{email}</strong> needs verification, a link is on its way to choose a password. If you already have an account,{" "}
           <a href="/signin" className="text-[var(--color-link)] hover:underline">
             sign in
           </a>
