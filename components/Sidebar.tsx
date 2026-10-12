@@ -82,7 +82,6 @@ export function Sidebar({
   onInfo,
   onColor,
   onCollapse,
-  mobile,
 }: {
   hydrated: boolean;
   filtered: Note[];
@@ -104,7 +103,6 @@ export function Sidebar({
   onInfo: (note: Note) => void;
   onColor: (id: string, color: string | null) => void;
   onCollapse?: () => void;
-  mobile?: boolean;
 }) {
   const buckets = bucketByDate(filtered);
   const filteredTitle =
@@ -242,11 +240,7 @@ export function Sidebar({
   return (
     <aside
       aria-label="Note sidebar"
-      className={
-        mobile
-          ? "flex h-full w-full flex-col bg-[var(--color-canvas)]"
-          : "hidden h-full w-[260px] shrink-0 flex-col bg-[var(--color-canvas)] md:flex"
-      }
+      className="flex h-full w-full flex-col bg-[var(--color-canvas)]"
     >
       <div className="flex flex-col gap-1 p-2">
         <button
@@ -371,11 +365,11 @@ export function Sidebar({
         <div className="flex items-center justify-between px-2.5 py-1">
           <SyncIndicator status={syncStatus} />
           <div className="flex items-center gap-0.5">
-            {onCollapse && !mobile && (
+            {onCollapse && (
               <button
                 type="button"
                 onClick={onCollapse}
-                className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                className="hidden h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] md:grid"
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"
               >
@@ -385,22 +379,18 @@ export function Sidebar({
             <button
               type="button"
               onClick={onOpenSettings}
-              className={
-                mobile
-                  ? "flex h-10 items-center gap-2 rounded-md px-2.5 text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-                  : "grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-              }
+              className="flex h-10 items-center gap-2 rounded-md px-2.5 text-[var(--color-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] md:h-8 md:w-8 md:justify-center md:px-0"
               title="Settings"
               aria-label="Settings"
             >
               <SettingsIcon className="h-4 w-4" />
-              {mobile && <span className="text-sm">Settings</span>}
+              <span className="text-sm md:hidden">Settings</span>
             </button>
-            {!mobile && (
+            {(
               <button
                 type="button"
                 onClick={onOpenShortcuts}
-                className="grid h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
+                className="hidden h-8 w-8 place-items-center rounded-md text-[var(--color-muted)] transition-colors md:grid hover:bg-[rgba(255,179,19,0.14)] hover:text-[var(--color-orange)]"
                 title="Keyboard shortcuts"
                 aria-label="Keyboard shortcuts"
               >

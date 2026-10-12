@@ -22,6 +22,8 @@ const SHORTCUT_GROUPS = [
       { keys: ["a", "⌃⌘A"], label: "Toggle archive" },
       { keys: ["⌘I"], label: "Get info" },
       { keys: ["Del"], label: "Move to trash" },
+      { keys: ["F3", "⇧F3"], label: "Next / previous search match" },
+      { keys: ["⌥Tab"], label: "Indent highlighted text" },
     ],
   },
   {

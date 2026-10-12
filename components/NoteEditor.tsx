@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { marked } from "marked";
 import { localNoteId } from "@/lib/notesClient";
 import { mapTextOffset } from "@/lib/mapTextOffset";
 import { Note } from "@/lib/types";
@@ -141,7 +140,7 @@ export function NoteEditor({
     [onCreate, submitUpdate, newDraftId],
   );
   // Search highlighting: when a note is opened from search, paint a yellow box
-  // on every match and let Tab cycle through them (see the plain-editor overlay).
+  // on every match and let F3 cycle through them (see the plain-editor overlay).
   const [findQuery, setFindQuery] = useState<string | null>(null);
   const [findActive, setFindActive] = useState(0);
   const matches = useMemo<[number, number][]>(() => {
@@ -409,7 +408,7 @@ export function NoteEditor({
     prevPanelHeightRef.current = el.offsetHeight;
   });
 
-  // Bring the active match into view whenever it changes (open, or Tab cycle).
+  // Bring the active match into view whenever it changes (open, or F3 cycle).
   useEffect(() => {
     if (!findQuery || matches.length === 0) return;
     scrollRef.current
@@ -421,7 +420,7 @@ export function NoteEditor({
   // Tab remains available for keyboard focus navigation.
   useEffect(() => {
     if (!findQuery || matches.length === 0) return;
-    function onTab(e: KeyboardEvent) {
+    function onSearchStep(e: KeyboardEvent) {
       if (e.key !== "F3") return;
       e.preventDefault();
       e.stopPropagation();
@@ -431,8 +430,8 @@ export function NoteEditor({
           : (i + 1) % matches.length,
       );
     }
-    window.addEventListener("keydown", onTab, true);
-    return () => window.removeEventListener("keydown", onTab, true);
+    window.addEventListener("keydown", onSearchStep, true);
+    return () => window.removeEventListener("keydown", onSearchStep, true);
   }, [findQuery, matches.length]);
 
   useEffect(() => {
@@ -600,6 +599,7 @@ export function NoteEditor({
   async function copyFormatted() {
     if (!body.trim()) return;
     try {
+      const { marked } = await import("marked");
       const html = await marked(body);
       await navigator.clipboard.write([
         new ClipboardItem({
