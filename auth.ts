@@ -22,8 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!email || !password) return null;
 
         // Throttle before the DB hit and scrypt: per-IP stops a spray (and the
-        // scrypt CPU-DoS), per-account slows targeted guessing across rotating
-        // IPs. Blocked attempts fail the same null way as a bad password.
+        // scrypt CPU-DoS), per-account/source slows repeated guessing. Blocked attempts fail the same null way as a bad password.
         const ip = request?.headers ? clientIpFromHeaders(request.headers) : "unknown";
         const throttle = checkLoginThrottle(ip, email);
         if (!throttle.allowed) {
