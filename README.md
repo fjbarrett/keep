@@ -4,7 +4,7 @@ A small, opinionated notes app with autosave, pin/archive/trash, full-text
 search, and a date-grouped sidebar. It is a Next.js application backed by
 Postgres, with a guest mode that keeps notes in the browser until sign-in.
 
-![Keep — note editor with a docked AI chat and proposed edit](./docs/screenshot.png)
+![Keep note editor and date-grouped sidebar](./docs/screenshot.png)
 
 ## Stack
 
@@ -32,6 +32,7 @@ Postgres, with a guest mode that keeps notes in the browser until sign-in.
 - Plain-text or ZIP export
 - Private, authenticated image uploads through S3-compatible storage or Vercel Blob
 - Anonymous aggregate analytics and a private owner dashboard
+- Account password settings and sign-out across devices
 
 Offline support protects edits made while the application is already open.
 For privacy, personalized HTML and public shared notes are never stored by the
@@ -46,7 +47,7 @@ Use Node 22 (the version used by CI and `.nvmrc`).
 
 ```bash
 nvm use
-npm install
+npm ci
 cp .env.example .env.local
 # Set AUTH_SECRET, AUTH_URL, and DATABASE_URL.
 # Add Google, Resend, Anthropic, and object-storage settings as needed.
@@ -67,7 +68,7 @@ Useful checks:
 npm test
 npx tsc --noEmit
 npm run build
-npm audit
+npm audit --omit=dev --audit-level=high
 ```
 
 ## Project layout
@@ -96,13 +97,19 @@ proxy.ts                 Auth gate, CSP, rewrites, and public rate limits
 
 ## Deployment
 
-Production runs in a dedicated Proxmox LXC behind Cloudflare Tunnel. GitHub
-Actions runs the test, typecheck, audit, and production-build gates on a hosted
-runner, then a repository-scoped self-hosted runner deploys the latest `main`
-commit from inside the private network. The runner can sudo only the root-owned
-deployment script; the origin has no public inbound port or deployment key.
+Production runs in a Proxmox LXC behind Cloudflare Tunnel, with Postgres on a
+separate Proxmox VM. The app binds to loopback and verifies the database's TLS
+certificate. Builds run without runtime credentials in a separate directory;
+a health check precedes each release switch, with rollback on failure.
 
-`scripts/deploy.sh` remains the manual SSH flow for recovery and maintenance.
+See [the operator runbook](./ops/README.md) for provisioning, deployment,
+rollback, and the CI trust boundary. `scripts/deploy.sh <commit>` deploys an
+explicitly selected local Git revision to a prepared host.
+
+An account can store 10,000 notes and 25 MiB of note text and metadata. Imports
+use the same database quota as normal writes; exports stream in bounded batches.
+Attachment limits are separate. Full dependency audits also report build-tool
+advisories; the production dependency audit is the blocking gate.
 
 The app can also run on other Node.js hosts when the same environment variables
 and a Postgres database are available.
@@ -113,7 +120,9 @@ Keep's server can read note content: notes are stored as plaintext Postgres
 columns so server search, export, and optional AI metadata work. Browser guest
 notes are plaintext localStorage; signed-in offline copies are plaintext
 IndexedDB scoped by account. The native clients put titles, summaries, and tags
-in Spotlight, while full note bodies stay out of the system index.
+in Spotlight, while full note bodies stay out of the system index. Native
+session cookies use the system cookie store, not the Keychain. Drafts are
+account-scoped files that may be included in device backups.
 
 Random public share links use 128-bit tokens. Vanity tokens must be at least 16
 characters and should still be treated as public URLs. Uploaded images remain

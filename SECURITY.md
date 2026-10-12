@@ -17,10 +17,11 @@ not put credentials, private notes, or an unpatched exploit in a public issue.
 - Keep attachment storage private. S3 deployments should enable Block Public
   Access and grant the application only object read/write/delete permissions
   under the `keep/` prefix.
-- Set `DEPLOY_KNOWN_HOSTS` to a separately verified SSH host-key line. Deployment
-  fails closed when the host key changes.
-- A configured `ANTHROPIC_KEY` sends authenticated note text to Anthropic for
-  titles/summaries; set `AI_METADATA_ENABLED=false` to keep note text local, and
+- Use a separately verified SSH host key for deployment. Keep CI outside the
+  application container; its SSH identity must only invoke a fixed deployment
+  command, never upload executable artifacts or read runtime credentials.
+- `ANTHROPIC_KEY` plus `AI_METADATA_ENABLED=true` sends authenticated note text
+  to Anthropic for titles/summaries; leave the flag false to keep text local, and
   disclose the model use to users when it stays on. Provider and account budgets
   should also be configured outside the application.
 - Back up Postgres and object storage with encryption at rest and tested restore
@@ -33,6 +34,14 @@ Keep is not end-to-end encrypted. The server can read note content. Signed-in
 web clients keep account-scoped offline copies in IndexedDB until explicit
 sign-out or site-data removal; guest notes remain in localStorage. Native
 Spotlight integration indexes titles, summaries, and tags, but not note bodies.
+Native session cookies use `HTTPCookieStorage`, not Keychain storage. Native
+draft files and cookies may be included in operating-system backups. A definite
+401 asks for sign-in; a server outage preserves the session and local drafts.
+
+Native Google sign-in requires the current clients: the handoff uses a proof
+key and state binding. Older clients cannot exchange a code after this upgrade;
+email/password sign-in is unchanged. Handoff codes are hashed and the short-lived
+cookie payload is encrypted with a key derived from `AUTH_SECRET`.
 
 Public shares are bearer links. Random links carry 128 bits of entropy; vanity
 links are public names with a 16-character minimum. Revocation stops page,

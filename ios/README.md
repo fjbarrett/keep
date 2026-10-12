@@ -7,8 +7,7 @@ and recovery actions.
 
 ![Keep on iOS](docs/screenshot.png)
 
-> The shot refreshes automatically on each merge to `main` (see Screenshots).
-> Until signed in (or pointed at a reachable backend) it shows the sign-in state.
+Screenshots are refreshed manually (see Screenshots).
 
 ## Requirements
 
@@ -68,6 +67,13 @@ redirects to `keep://auth-callback?code=…`, which `GoogleSignIn` trades at
 `/api/native/exchange` for the session cookie — landing it in the shared
 `URLSession` jar so `/api/notes` is authenticated. (The `keep://` scheme needs no
 Info.plist registration; the auth session claims it for the flow's duration.)
+The client sends a SHA-256 proof-key challenge and verifies state on return.
+Deploy this client update with the server handoff change; old Google sign-in
+clients cannot exchange codes. Password sign-in remains compatible.
+
+Cookies live in `HTTPCookieStorage`, not the Keychain. Cookies and draft files
+may be backed up by the operating system. On an offline launch, a remembered
+account can recover its journaled drafts; a full offline catalogue is not stored.
 
 ## macOS app
 
@@ -98,14 +104,8 @@ scripts/ios-screenshot.sh            # first available iPhone simulator
 IOS_SIM_NAME="iPhone 17 Pro" scripts/ios-screenshot.sh
 ```
 
-On every merge to `main`, the `ios-screenshot` CI job re-captures, archives the
-shot under `ios/screenshots/`, and commits the refreshed image. It runs on a
-macOS runner, so it's gated behind a repo variable to avoid spending macOS
-minutes until you opt in:
-
-```bash
-gh variable set IOS_SCREENSHOT --body true
-```
+The native CI workflow builds and tests; it does not refresh these images.
+Run the script when a visible change warrants a new screenshot.
 
 ## Saving and accessibility
 
