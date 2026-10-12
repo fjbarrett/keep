@@ -5,7 +5,7 @@ import { pool, ready } from "@/lib/db";
 import { hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
 import { recordSecurityEvent } from "@/lib/audit";
 import { linkGoogleAccount } from "@/lib/googleAccountLink";
-import { maskEmail } from "@/lib/logger";
+import { logger, maskEmail } from "@/lib/logger";
 import { clientIpFromHeaders } from "@/lib/rateLimit";
 import { checkLoginThrottle } from "@/lib/loginThrottle";
 
@@ -99,12 +99,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.sub = user.id;
       }
       if (!token.sub) return null;
-      await ready();
-      const { rows } = await pool().query<{ session_version: number }>(
-        `SELECT session_version FROM users WHERE id = $1`,
-        [token.sub],
-      );
-      const currentVersion = rows[0]?.session_version;
+      let currentVersion: number | undefined;
+      try {
+        await ready();
+        const { rows } = await pool().query<{ session_version: number }>(
+          `SELECT session_version FROM users WHERE id = $1`,
+          [token.sub],
+        );
+        currentVersion = rows[0]?.session_version;
+      } catch (err) {
+        // @auth/core treats a throw here as an unverifiable JWT and clears the
+        // session cookie, so a database restart would sign every client out
+        // (Google users would have to redo OAuth). Keep the token as issued:
+        // revocation is enforced again on the next read that reaches the
+        // database, and route handlers still gate on their own auth() call.
+        logger.warn("session version check skipped", { err });
+        return token;
+      }
       if (currentVersion === undefined) return null;
       if (user) {
         token.sessionVersion = currentVersion;
