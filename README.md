@@ -1,68 +1,93 @@
 # Keep
 
-A small, opinionated notes app with autosave, pin/archive/trash, full-text
-search, and a date-grouped sidebar. It is a Next.js application backed by
-Postgres, with a guest mode that keeps notes in the browser until sign-in.
+Keep is a notes app for the web, iPhone, iPad, and Mac. Open a note, write,
+and it saves as you go. You can start without an account and sign in later
+to bring your notes across devices.
 
-![Keep note editor and date-grouped sidebar](./docs/screenshot.png)
+**[Try Keep at keeptxt.com](https://keeptxt.com)** — no account needed to try
+the web editor. Create a note, type a few lines, and reload the page. Guest
+notes stay in that browser until you sign in; clearing site data removes them.
 
-## Stack
+![Keep note editor with a pinned note and date-grouped sidebar](./docs/screenshot.png)
 
-- **Next.js 16** App Router and React 19
-- **TypeScript** end to end
-- **Tailwind CSS** with app-wide color tokens
-- **Auth.js / NextAuth** with Google and verified email/password sign-in
-- **Postgres** through a small pooled data layer
-- **IndexedDB** for account-scoped note caching and queued mutations
-- Native **iOS and macOS** clients sharing the same authenticated API
+## What you can do
 
-## Features
+- Write plain text or Markdown, with a preview and optional code highlighting.
+- Find notes with search, tags, color labels, and keyboard shortcuts.
+- Pin the notes you use often, archive the rest, and restore notes from trash.
+- Sign in to sync across devices and share a note through a link you can revoke.
+- On the web, import Google Keep exports, text, Markdown, ZIPs, or PDFs, and
+  export your notes as text or a ZIP.
 
-- Debounced autosave for new and existing notes
-- Local title/summary inference, with explicit opt-in Anthropic enhancement
-- Pin, archive, trash, restore, and delete forever
-- Tags, color labels, and full-text search across title and body
-- Keyboard navigation and a searchable command-style overlay
-- Stable deep links at `/note/<noteId>`
-- Guest notes in `localStorage`, with idempotent migration after sign-in
-- Account-scoped offline cache and ordered mutation replay for interrupted saves
-- Markdown preview and optional Shiki syntax highlighting, persisted per note
-- Public share links with 128-bit bearer tokens, vanity links, and revocation
-- Google Keep Takeout, plain-text, Markdown, ZIP, and PDF import
-- Plain-text or ZIP export
-- Private, authenticated image uploads through S3-compatible storage or Vercel Blob
-- Anonymous aggregate analytics and a private owner dashboard
-- Account password settings and sign-out across devices
+The [iOS and macOS apps](./ios/README.md) use SwiftUI and the same API as the
+web app. They share models and sync code, with interfaces built for each
+platform. The native README has screenshots, build instructions, and current
+feature gaps.
 
-Offline support protects edits made while the application is already open.
-For privacy, personalized HTML and public shared notes are never stored by the
-service worker, so a full page reload still requires a network connection. An
-explicit sign-out removes that account's IndexedDB cache, queued mutations, and
-draft journal after warning about unsynced text. Conflicting saves keep a local
-draft with retry and save-copy actions.
+## How it works
 
-## Getting started
+The web app uses **Next.js 16, React 19, TypeScript, and Tailwind CSS**.
+**Postgres** stores signed-in notes, and **Auth.js** handles Google and
+verified email/password sign-in. Guest notes live in the browser; signed-in
+accounts also have an IndexedDB cache and a queue for interrupted saves.
 
-Use Node 22 (the version used by CI and `.nvmrc`).
+Some of the work behind the editor:
+
+- **Saving while you keep typing.** A local draft is recorded before the
+  network request. Saves check the version they started from, so a conflict
+  keeps your draft and offers recovery instead of silently replacing another
+  device's edits. See the [save logic](./lib/saveNoteDraft.ts) and
+  [conflict tests](./__tests__/conditionalDraftSave.test.ts).
+- **Moving from guest mode to an account.** Migration can retry after a partial
+  failure without duplicating notes or discarding text edited along the way.
+  The [save-order tests](./__tests__/saveOrderIntegration.test.tsx) cover this
+  alongside edits that arrive during a pending save.
+- **Recovering from a bad release.** Production runs on Proxmox behind
+  Cloudflare Tunnel, with Postgres on a separate VM. A candidate release passes
+  health checks before it becomes active; failed activation rolls back to the
+  previous release. The [operator runbook](./ops/README.md) and
+  [release tests](./ops/tests/activate-release.sh) explain that path.
+
+## Run it locally
+
+Use Node.js 22, as specified in [`.nvmrc`](./.nvmrc). If you use nvm:
 
 ```bash
+git clone https://github.com/fjbarrett/keep.git
+cd keep
 nvm use
 npm ci
 cp .env.example .env.local
-# Set AUTH_SECRET, AUTH_URL, and DATABASE_URL.
-# Add Google, Resend, Anthropic, and object-storage settings as needed.
+```
+
+For a first look, guest mode needs no database or external service keys.
+In `.env.local`, replace these values (generate a secret with
+`openssl rand -base64 32`):
+
+```dotenv
+AUTH_SECRET=your-generated-secret
+AUTH_URL=http://localhost:3000
+APP_URL=http://localhost:3000
+DATABASE_URL=
+```
+
+Then start the app:
+
+```bash
 npm run dev
 ```
 
-The idempotent bootstrap in `lib/db.ts` creates the notes, users, uploads,
-native-auth, audit, and analytics tables on first use. A transient bootstrap
-failure is retryable on the next request.
+Open [localhost:3000](http://localhost:3000).
+Without Postgres, analytics may log database warnings; guest editing still works.
 
-AI metadata is disabled by default. Setting `AI_METADATA_ENABLED=true` and an
-Anthropic key sends up to the first 8 KiB of authenticated note text to
-Anthropic for a title and summary. Guest text always stays in the browser.
+To use accounts and sync, set `DATABASE_URL` to your Postgres connection
+string. The app creates its tables on first use. Configure Google OAuth for
+Google sign-in or Resend for production signup emails; in development,
+verification links are logged when Resend is unset. The comments in
+[`.env.example`](./.env.example) explain the settings, including optional
+private image storage.
 
-Useful checks:
+## Checks and tests
 
 ```bash
 npm test
@@ -71,65 +96,51 @@ npm run build
 npm audit --omit=dev --audit-level=high
 ```
 
-## Project layout
+The Vitest suite covers editor behavior, save and sync races, draft recovery,
+authentication, sharing, and import/upload limits. These checks and the release
+rollback tests run in [web CI](./.github/workflows/ci.yml), using Node 22 and
+npm 11. Production dependency advisories block releases at high severity and
+above; build-tool advisories are reported separately.
 
-```text
-app/
-  api/notes/             Authenticated CRUD, import/export, titles, sharing
-  api/uploads/           Owner/share-authorized private image delivery
-  api/auth/              Auth.js plus registration and email verification
-  note/[noteId]/         Stable note deep links
-  p/[token]/             Public shared-note pages
-components/
-  NotesView.tsx          Top-level product state and editor wiring
-  NoteEditor.tsx         Race-safe debounced editor
-  Sidebar.tsx            Date groups, filters, actions, and sharing
-  NotesGrid.tsx          Responsive note cards
-lib/
-  db.ts                  Postgres pool and idempotent schema bootstrap
-  useNotes.ts            Optimistic CRUD and ordered sync queue
-  offlineDb.ts           Per-account IndexedDB cache and outbox
-  titleModel.ts          Anthropic metadata with local fallback
-ios/                     Native iOS and macOS clients
-__tests__/               Unit, route, persistence, and editor regression tests
-proxy.ts                 Auth gate, CSP, rewrites, and public rate limits
-```
+[Native CI](./.github/workflows/native.yml) runs the shared Swift tests and
+builds the iOS and Mac apps when native code changes. Browser automation is
+currently used for screenshot capture; complete browser journeys are not yet
+part of CI.
 
-## Deployment
+## Finding your way around
 
-Production runs in a Proxmox LXC behind Cloudflare Tunnel, with Postgres on a
-separate Proxmox VM. The app binds to loopback and verifies the database's TLS
-certificate. Builds run without runtime credentials in a separate directory;
-a health check precedes each release switch, with rollback on failure.
+| Directory | What's there |
+| --- | --- |
+| [`app/`](./app) | Pages and API routes for notes, accounts, imports, and sharing |
+| [`components/`](./components) | The editor, sidebar, note grid, and other web UI |
+| [`lib/`](./lib) | Storage, sync, authentication helpers, and the database layer |
+| [`ios/`](./ios) | SwiftUI apps and their shared models and services |
+| [`__tests__/`](./__tests__) | Web unit, component, and route regression tests |
+| [`ops/`](./ops) | Deployment, rollback, and database backup tooling |
 
-See [the operator runbook](./ops/README.md) for provisioning, deployment,
-rollback, and the CI trust boundary. `scripts/deploy.sh <commit>` deploys an
-explicitly selected local Git revision to a prepared host.
+## Limits and privacy
 
-An account can store 10,000 notes and 25 MiB of note text and metadata. Imports
-use the same database quota as normal writes; exports stream in bounded batches.
-Attachment limits are separate. Full dependency audits also report build-tool
-advisories; the production dependency audit is the blocking gate.
+Offline support protects edits while the web app is already open. A full
+reload still needs a connection because the service worker does not cache
+personalized pages. Signing out clears that account's local data after a
+warning about unsynced text. Native apps keep recoverable drafts but do not
+yet store a full offline note catalogue.
 
-The app can also run on other Node.js hosts when the same environment variables
-and a Postgres database are available.
+Keep is **not end-to-end encrypted**: the server can read signed-in notes,
+and browser copies are stored in plaintext. Anyone with a public share link
+can read that note until you revoke the link. New image uploads use private
+storage and are served through the app's access checks.
 
-## Security and privacy
+AI titles and summaries are optional. The example configuration disables them
+with `AI_METADATA_ENABLED=false`. If an Anthropic key is configured and that
+flag is not `false`, up to the first 8,192 characters of a signed-in note can
+be sent to Anthropic. Guest text stays in the browser.
 
-Keep's server can read note content: notes are stored as plaintext Postgres
-columns so server search, export, and optional AI metadata work. Browser guest
-notes are plaintext localStorage; signed-in offline copies are plaintext
-IndexedDB scoped by account. The native clients put titles, summaries, and tags
-in Spotlight, while full note bodies stay out of the system index. Native
-session cookies use the system cookie store, not the Keychain. Drafts are
-account-scoped files that may be included in device backups.
-
-Random public share links use 128-bit tokens. Vanity tokens must be at least 16
-characters and should still be treated as public URLs. Uploaded images remain
-private objects and are served only to their owner or through a note that
-currently has a valid share token. See [SECURITY.md](./SECURITY.md) for the
-deployment checklist and reporting process.
+Accounts can store up to 10,000 notes and 25 MiB of note text and metadata;
+attachments have separate limits. See [SECURITY.md](./SECURITY.md) for more
+on data storage and vulnerability reporting, and [the runbook](./ops/README.md)
+for hosting and backups.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+[MIT](./LICENSE).
